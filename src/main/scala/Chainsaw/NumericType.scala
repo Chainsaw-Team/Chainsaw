@@ -18,12 +18,13 @@ object SFixType extends NumericEnum
 object ComplexFixType extends NumericEnum
 
 /** Chainsaw version HardType which can be manipulated without a hardware context
- * @param integral
- * @param signed
- * @param fractional
- * @param complex
+ *
+ * @param integral   width of integral part
+ * @param fractional width of fractional part
+ * @param signed     signed when it is true, unsigned when it is false
+ * @param complex    complex number when it is true, real number when it is fals
  */
-case class NumericType(integral: Int, signed: Boolean = false, fractional: Int = 0, complex: Boolean = false) {
+case class NumericType(integral: Int, fractional: Int, signed: Boolean, complex: Boolean) {
 
   /** --------
    * requirements
@@ -63,9 +64,9 @@ case class NumericType(integral: Int, signed: Boolean = false, fractional: Int =
     HardType(ComplexFix(integral exp, -fractional exp))
   }
 
-  def toSFixInfo = NumericType(integral, signed, fractional, complex = false)
+  def toSFixInfo = NumericType(integral, fractional, signed, complex = false)
 
-  def toComplexFixInfo = NumericType(integral, signed, fractional, complex = true)
+  def toComplexFixInfo = NumericType(integral, fractional, signed, complex = true)
 
   /** --------
    * constant -> signal
@@ -112,7 +113,7 @@ case class NumericType(integral: Int, signed: Boolean = false, fractional: Int =
 
   /** --------
    * others -> BigInt
-   -------- */
+   * -------- */
   private def toUnSigned(sint: BigInt, width: Int): BigInt = if (sint < 0) sint + (BigInt(1) << (width + 1)) else sint
 
   def sint2Bits(sint: BigInt): BigInt = toUnSigned(sint, integral)
@@ -138,7 +139,7 @@ case class NumericType(integral: Int, signed: Boolean = false, fractional: Int =
 
   /** --------
    * Bits -> others
-   *  -------- */
+   * -------- */
   def toComplex(bits: Bits): ComplexFix = {
     val ret = asComplexFix()
     ret.assignFromBits(bits)
@@ -161,27 +162,27 @@ case class NumericType(integral: Int, signed: Boolean = false, fractional: Int =
 }
 
 object UIntInfo {
-  def apply(integral: Int) = NumericType(integral)
+  def apply(integral: Int) = NumericType(integral, 0, signed = false, complex = false)
 }
 
 object SIntInfo {
-  def apply(integral: Int) = NumericType(integral, signed = true)
+  def apply(integral: Int) = NumericType(integral, 0, signed = true, complex = false)
 }
 
 object SFixInfo {
   def apply(integral: Int, fractional: Int) =
-    NumericType(integral = integral, signed = true, fractional = fractional)
+    NumericType(integral, fractional, signed = true, complex = false)
 }
 
 object ComplexFixInfo {
   def apply(integral: Int, fractional: Int) =
-    NumericType(integral = integral, signed = true, fractional = fractional, complex = true)
+    NumericType(integral = integral, fractional = fractional, signed = true, complex = true)
 }
 
 
 object ShowNumericTypeInfo extends App {
 
-  val complex = ComplexFixInfo(3,5) // using complex as an example as it is the most complicated type
+  val complex = ComplexFixInfo(3, 5) // using complex as an example as it is the most complicated type
   println(complex)
   // for design TODO: add user case
 

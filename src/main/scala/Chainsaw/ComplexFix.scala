@@ -42,7 +42,7 @@ case class ComplexFix(peak: ExpNumber, resolution: ExpNumber) extends Bundle {
   }
 
   // TODO: multiplication using 3 mults
-  def *(that: ComplexFix): ComplexFix = ???
+  //  def *(that: ComplexFix): ComplexFix = ???
 
   /** --------
    * nontrivial computations
