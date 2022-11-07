@@ -1,6 +1,8 @@
 
 package object Chainsaw {
 
+
+
   val dot = "■"
 
   implicit class StringUtil(s: String) {
