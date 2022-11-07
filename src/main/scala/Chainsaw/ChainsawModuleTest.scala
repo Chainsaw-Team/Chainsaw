@@ -10,31 +10,7 @@ class ChainsawModuleTest extends AnyFlatSpec {
 
   it should "work correctly" in { // TODO: more complete test
 
-    val formatI = MatrixFormat(4, 10)
-
-    val basic = Seq(-1, 0, 1, 2, 3, 4, 5, -1)
-    val frame = FrameFormat(basic, 4)
-    val formatO = frame.repeat(2).interpolate(2).pad(2)
-
-    println(s"basic = $basic")
-    println(s"formatO = $formatO")
-
-    val gen: ChainsawGenerator = new ChainsawGenerator {
-      override def name = "test"
-
-      override def impl(dataIn: Seq[Any]) = dataIn
-
-      override var inputTypes = Seq.fill(4)(UIntInfo(4))
-      override var outputTypes = Seq.fill(4)(UIntInfo(4))
-
-      override var inputFormat = formatI
-      override var outputFormat = formatO
-      override var latency = 5
-
-      override def implH = new ChainsawModule(this) {
-        dataOut := dataIn.d(latency)
-      }
-    }
+    val gen = ChainsawDuts.simpleDut
 
     SimConfig.withFstWave.compile(gen.implH).doSim { dut =>
       dut.lastIn #= false

@@ -47,7 +47,7 @@ class ChainsawModule(val gen: ChainsawGenerator) extends Module {
   lastOut := lastIn.validAfter(latency)
   validOut := validIn.validAfter(latency)
 
-  if (simTime) { // assertion for valid input which is continuous
+  if (atSimTime) { // assertion for valid input which is continuous
 
     val workingCounter = Counter(period)
     when(validIn)(workingCounter.increment())

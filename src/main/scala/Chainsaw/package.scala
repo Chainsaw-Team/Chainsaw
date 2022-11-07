@@ -15,9 +15,15 @@ package object Chainsaw {
   var verbose = 0
 
   val naiveSet = mutable.Set[String]()
-  var simTime = true
+  var atSimTime = true
 
   val dot = "■"
+
+  /** --------
+   * type def
+   -------- */
+  type Metric = (Any, Any) => Boolean
+  type FrameMetric = (Seq[Any], Seq[Any]) => Boolean
 
   implicit class StringUtil(s: String) {
 
