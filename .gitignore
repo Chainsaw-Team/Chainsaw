@@ -24,6 +24,8 @@ out
 *.vcd
 # exceptions
 !tester/src/test/resources/*.vhd
+# resources
+src/main/resources
 
 # Workspaces
 genWorkSpace/
@@ -32,3 +34,5 @@ synthWorkSpace/
 testReports/
 tmp/
 null
+
+
