@@ -51,19 +51,15 @@ case class WaveformGraph(name: String, waves: Seq[Waveform]) {
     pw.write(json)
     pw.close()
 
-    println(s"your waveform file:\n ${jsonFile.getAbsolutePath} had been generated ")
+    println(s"your waveform file generated:\n ${jsonFile.getAbsolutePath}")
   }
-
 }
 
-object WaveformGraph {
-  // user case
-  def main(args: Array[String]): Unit = {
-    val wave0 = Waveform("w0", "====", (0 until 4).map("x" + _.toString))
-    val wave1 = Waveform("w1", "====", (5 until 8).map("x" + _.toString))
-    val fig0 = WaveformGraph("example", Seq(wave0, wave1))
-    val fig1 = WaveformGraph("another", Seq(wave0, wave1))
-    fig0.generateJsonFile()
-    fig1.generateJsonFile()
-  }
+object ShowWaveformGraph extends App {
+  val wave0 = Waveform("w0", "====", (0 until 4).map("x" + _.toString))
+  val wave1 = Waveform("w1", "====", (5 until 8).map("x" + _.toString))
+  val fig0 = WaveformGraph("example", Seq(wave0, wave1))
+  val fig1 = WaveformGraph("another", Seq(wave0, wave1))
+  fig0.generateJsonFile()
+  fig1.generateJsonFile()
 }
