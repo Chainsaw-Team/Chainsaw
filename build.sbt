@@ -17,7 +17,8 @@ lazy val Chainsaw = (project in file("."))
   .settings(
     name := "Chainsaw",
     libraryDependencies ++= Seq(spinalCore, spinalLib, spinalIdslPlugin),
-    libraryDependencies ++= Seq(jGraphCore, jGraphExt)
+    libraryDependencies ++= Seq(jGraphCore, jGraphExt),
+    libraryDependencies += "org.json4s" %% "json4s-jackson" % "4.0.3"
   )
 
 fork := true
