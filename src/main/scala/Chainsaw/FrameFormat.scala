@@ -30,9 +30,6 @@ case class FrameFormat(flow: Seq[Seq[Int]]) {
 
   def getPort(elem: Int) = flow.flatten.indexWhere(_ == elem) % portSize
 
-  def validCycles = flow.zipWithIndex.filterNot(_._1.forall(_ == -1)).map(_._2)
-
-  def bubbleCycles = flow.zipWithIndex.filter(_._1.forall(_ == -1)).map(_._2)
 
   /** --------
    * methods for readability & visualization
@@ -67,7 +64,7 @@ case class FrameFormat(flow: Seq[Seq[Int]]) {
     val data: Seq[Seq[String]] = flow.transpose.map(seq => seq.filter(_ > -1).map(toData) ++ seq.filter(_ > -1).map(toDataPrime))
 
     val waveforms = waves.zip(data).zipWithIndex.map { case ((wave, data), i) => Waveform(s"port$i", addPrePost(wave.repeat(2)), data) }
-    val valid = Waveform("valid", addPrePost(flow.map(seq => if (seq.forall(_ == -1)) "0" else "1").mkString("").repeat(2)), Seq())
+    val valid = Waveform("valid", addPrePost(flow.map(seq => "1").mkString("").repeat(2)), Seq())
     val last = Waveform("last", addPrePost(("0" * (period - 1) + "1").repeat(2)), Seq())
 
     WaveformGraph(name, waveforms :+ last :+ valid).generateJsonFile()
@@ -79,7 +76,7 @@ case class FrameFormat(flow: Seq[Seq[Int]]) {
   // build input frame from raw data
   def fromRawData[T](seq: Seq[T], zero: T) = {
     val data = flow.map(_.map(index => if (index >= 0) seq(index) else zero)) //
-    val valid = flow.map(_.exists(_ >= 0))
+    val valid = flow.map(_ => true)
     val last = Seq.fill(period - 1)(false) :+ true
     (data, valid, last)
   }
@@ -125,7 +122,10 @@ case class FrameFormat(flow: Seq[Seq[Int]]) {
 }
 
 object FrameFormat {
-  def apply(flow: Seq[Int], portSize: Int): FrameFormat = FrameFormat(flow.grouped(portSize).toSeq)
+  def apply(flow: Seq[Int], portSize: Int): FrameFormat = {
+    require(flow.length % portSize == 0)
+    FrameFormat(flow.grouped(portSize).toSeq)
+  }
 
 }
 
