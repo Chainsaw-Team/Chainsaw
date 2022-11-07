@@ -4,6 +4,12 @@ import spinal.core._
 
 import scala.language.postfixOps
 
+sealed trait ImplMode
+
+object Comb extends ImplMode
+
+object StateMachine extends ImplMode
+
 trait ChainsawGenerator {
 
   def name: String
@@ -13,8 +19,7 @@ trait ChainsawGenerator {
    * -------- */
   def impl(dataIn: Seq[Any]): Seq[Any] // golden model
 
-  // TODO: impl
-  //  val implMode: ImplMode = Comb
+  val implMode: ImplMode = Comb
 
   /** --------
    * size information
@@ -57,7 +62,7 @@ trait ChainsawGenerator {
 
   def getImplH: ChainsawModule = {
     doDrc()
-    if (useNaive && !simTime) implPass
+    if (useNaive && !atSimTime) implPass
     else if (useNaive) implNaiveH.getOrElse(implH)
     else implH
   }
