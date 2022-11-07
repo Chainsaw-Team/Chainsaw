@@ -2,6 +2,10 @@ package Chainsaw
 
 import spinal.core._
 import spinal.lib._
+import spinal.core._
+import spinal.core.sim._
+import spinal.lib._
+import spinal.lib.fsm._
 
 import scala.language.postfixOps
 
@@ -33,23 +37,42 @@ class ChainsawModule(val gen: ChainsawGenerator) extends Module {
 
   // as a lazy val, the counter won't be created if you never use it,
   // besides, it won't be created multiple times even if you repeatedly use it
-  lazy val localCounter = {
-    val ret = CounterFreeRun(gen.inputFormat.period)
+  val localCounter = {
+    val ret = Counter(period)
+    when(validIn)(ret.increment())
     ret.setName("localCounter")
-    when(lastIn)(ret.clear())
     ret
   }
 
-  val outputCounter = Delay(localCounter.value, latency, init = localCounter.value.getZero)
-
   lastOut := lastIn.validAfter(latency)
-  if (needNoControl || outputFormat.isCompact) {
-    validOut := validIn.validAfter(latency)
-  } else {
-    switch(outputCounter) {
-      outputFormat.validCycles.foreach(i => is(i)(validOut.set()))
-      default(validOut.clear())
+  validOut := validIn.validAfter(latency)
+
+  if (simTime) { // assertion for valid input which is continuous
+
+    val workingCounter = Counter(period)
+    when(validIn)(workingCounter.increment())
+    workingCounter.setName("workingCounter")
+
+    val fsm: StateMachine = new StateMachine {
+
+      val validNext = validIn.d()
+      val lastNext = lastIn.d()
+
+      val WAITING = makeInstantEntry()
+      val WORKING0, WORKING1 = new StateDelay(period)
+      WAITING.whenIsActive(when(validIn)(goto(WORKING0)))
+      WORKING0.whenCompleted {
+        when(validIn)(goto(WORKING1)).otherwise(goto(WAITING))
+        assert(lastNext, "illegal input: lastIn is expected at the end of a frame")
+      }
+      WORKING1.whenCompleted {
+        when(validIn)(goto(WORKING0)).otherwise(goto(WAITING))
+        assert(lastNext, "illegal input: lastIn is expected at the end of a frame")
+      }
+      assert(!(isActive(WORKING0) && !validNext), "input must be continuous within a frame")
+      assert(!(isActive(WORKING1) && !validNext), "input must be continuous within a frame")
     }
+    fsm.setName("workingStateFsm")
   }
 
   /** --------
