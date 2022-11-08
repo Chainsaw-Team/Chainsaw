@@ -1,4 +1,5 @@
-import Chainsaw.{ChainsawDuts, ChainsawTest}
+package Chainsaw
+
 import org.scalatest.flatspec.AnyFlatSpec
 
 import scala.util.Random
@@ -7,9 +8,11 @@ class ChainsawTestTest extends AnyFlatSpec {
 
   behavior of "ChainsawTest"
 
+  val testCount = 10
+
   it should "pass for correct modules" in {
 
-    (0 until 20).foreach { _ =>
+    (0 until testCount).foreach { _ =>
       val gen = ChainsawDuts.simpleDut(correct = true)
       val test = ChainsawTest(
         testName = "simpleTest",
@@ -21,7 +24,7 @@ class ChainsawTestTest extends AnyFlatSpec {
   }
 
   it should "not pass for wrong modules" in {
-    val reports = (0 until 20).map { _ =>
+    val reports = (0 until testCount).map { _ =>
       val gen = ChainsawDuts.simpleDut(correct = false)
       val test = ChainsawTest(
         testName = "simpleTest",

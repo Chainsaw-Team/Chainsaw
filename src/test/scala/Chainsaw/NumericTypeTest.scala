@@ -1,4 +1,5 @@
-import Chainsaw.{ComplexFixInfo, NumericType, SFixInfo, SIntInfo}
+package Chainsaw
+
 import org.scalatest.flatspec.AnyFlatSpec
 
 import scala.util.Random

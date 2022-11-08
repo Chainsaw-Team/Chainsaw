@@ -1,4 +1,5 @@
-import Chainsaw.ChainsawDuts
+package Chainsaw
+
 import org.scalatest.flatspec.AnyFlatSpec
 import spinal.core.sim._
 
