@@ -3,7 +3,7 @@ package Chainsaw
 object ChainsawDuts {
 
   // a pass-through
-  def simpleDut = {
+  def simpleDut(correct:Boolean) = {
 
     val basic = Seq(-1, 0, 1, 2, 3, 4, 5, -1)
     val frame = FrameFormat(basic, 4)
@@ -16,7 +16,7 @@ object ChainsawDuts {
     val gen: ChainsawGenerator = new ChainsawGenerator {
       override def name = "test"
 
-      override def impl(dataIn: Seq[Any]) = dataIn
+      override def impl(dataIn: Seq[Any]) = if(correct) dataIn else dataIn.reverse
 
       override var inputTypes = Seq.fill(4)(UIntInfo(4))
       override var outputTypes = Seq.fill(4)(UIntInfo(4))
