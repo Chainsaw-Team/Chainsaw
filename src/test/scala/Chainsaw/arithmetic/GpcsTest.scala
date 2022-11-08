@@ -15,8 +15,6 @@ import scala.util.Random
 
 class GpcsTest extends AnyFlatSpec {
 
-  val defaultCompressorPerfGraphPath = new File("src/main/resources/compressorPerfs")
-
   val testcases = Seq(
     (Compressor4to2, Range.inclusive(Compressor4to2.widthMin, 64)),
     (Compressor3to1, Range.inclusive(Compressor3to1.widthMin, 64)),
