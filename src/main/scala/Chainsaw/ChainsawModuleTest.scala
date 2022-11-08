@@ -10,7 +10,7 @@ class ChainsawModuleTest extends AnyFlatSpec {
 
   it should "work correctly" in { // TODO: more complete test
 
-    val gen = ChainsawDuts.simpleDut
+    val gen = ChainsawDuts.simpleDut(true)
 
     SimConfig.withFstWave.compile(gen.implH).doSim { dut =>
       dut.lastIn #= false
