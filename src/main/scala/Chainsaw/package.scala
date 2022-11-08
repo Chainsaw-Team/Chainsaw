@@ -2,6 +2,7 @@
 import org.slf4j.LoggerFactory
 import spinal.core._
 import spinal.lib._
+import java.io.File
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
@@ -25,6 +26,11 @@ package object Chainsaw {
    * -------- */
   type Metric = (Any, Any) => Boolean
   type FrameMetric = (Seq[Any], Seq[Any]) => Boolean
+
+  /** --------
+   * paths
+   -------- */
+  val unisimDir = new File("src/main/resources/unisims")
 
   implicit class StringUtil(s: String) {
 
