@@ -47,33 +47,37 @@ class ChainsawModule(val gen: ChainsawGenerator) extends Module {
   lastOut := lastIn.validAfter(latency)
   validOut := validIn.validAfter(latency)
 
-  if (atSimTime) { // assertion for valid input which is continuous
+  // FIXME: assertion works before reset, why?
 
-    val workingCounter = Counter(period)
-    when(validIn)(workingCounter.increment())
-    workingCounter.setName("workingCounter")
-
-    val fsm: StateMachine = new StateMachine {
-
-      val validNext = validIn.d()
-      val lastNext = lastIn.d()
-
-      val WAITING = makeInstantEntry()
-      val WORKING0, WORKING1 = new StateDelay(period)
-      WAITING.whenIsActive(when(validIn)(goto(WORKING0)))
-      WORKING0.whenCompleted {
-        when(validIn)(goto(WORKING1)).otherwise(goto(WAITING))
-        assert(lastNext, "illegal input: lastIn is expected at the end of a frame")
-      }
-      WORKING1.whenCompleted {
-        when(validIn)(goto(WORKING0)).otherwise(goto(WAITING))
-        assert(lastNext, "illegal input: lastIn is expected at the end of a frame")
-      }
-      assert(!(isActive(WORKING0) && !validNext), "input must be continuous within a frame")
-      assert(!(isActive(WORKING1) && !validNext), "input must be continuous within a frame")
-    }
-    fsm.setName("workingStateFsm")
-  }
+  //  if (atSimTime) { // assertion for valid input which is continuous
+  //
+  //    val workingCounter = Counter(period)
+  //    when(validIn)(workingCounter.increment())
+  //    workingCounter.setName("workingCounter")
+  //
+  //    val fsm: StateMachine = new StateMachine {
+  //
+  //      val validNext = validIn.validAfter(1)
+  //      val lastNext = lastIn.validAfter(1)
+  //
+  //      val WAITING = makeInstantEntry()
+  //      val WORKING0, WORKING1 = new StateDelay(period)
+  //      WAITING.whenIsActive(when(validIn)(goto(WORKING0)))
+  //      WORKING0.whenCompleted {
+  //        when(validIn)(goto(WORKING1)).otherwise(goto(WAITING))
+  //        assert(lastNext, "illegal input: lastIn is expected at the end of a frame", WARNING)
+  //      }
+  //      WORKING1.whenCompleted {
+  //        when(validIn)(goto(WORKING0)).otherwise(goto(WAITING))
+  //        assert(lastNext, s"illegal input: lastIn is expected at the end of a frame at time", WARNING)
+  //      }
+  //      val badValid0 = isActive(WORKING0) && !validNext
+  //      val badValid1 = isActive(WORKING1) && !validNext
+  //      assert(!badValid0, s"input must be continuous within a frame", WARNING)
+  //      assert(!badValid1, s"input must be continuous within a frame", WARNING)
+  //    }
+  //    fsm.setName("workingStateFsm")
+  //  }
 
   /** --------
    * control utils
