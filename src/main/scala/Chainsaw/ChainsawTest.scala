@@ -1,6 +1,5 @@
 package Chainsaw
 
-import Chainsaw.ChainsawMetric.defaultMetric
 import Chainsaw.ChainsawTest._
 import breeze.math.Complex
 import spinal.core._

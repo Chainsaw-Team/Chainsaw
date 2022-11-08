@@ -1,6 +1,6 @@
-package Chainsaw
-
+import Chainsaw.{ComplexFixInfo, NumericType, SFixInfo, SIntInfo}
 import org.scalatest.flatspec.AnyFlatSpec
+
 import scala.util.Random
 
 class NumericTypeTest extends AnyFlatSpec {

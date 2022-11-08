@@ -1,5 +1,4 @@
-package Chainsaw
-
+import Chainsaw.{ChainsawDuts, ChainsawTest}
 import org.scalatest.flatspec.AnyFlatSpec
 
 import scala.util.Random

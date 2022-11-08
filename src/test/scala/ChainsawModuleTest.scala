@@ -1,7 +1,5 @@
-package Chainsaw
-
+import Chainsaw.ChainsawDuts
 import org.scalatest.flatspec.AnyFlatSpec
-import spinal.core._
 import spinal.core.sim._
 
 class ChainsawModuleTest extends AnyFlatSpec {
