@@ -25,7 +25,9 @@ out
 # exceptions
 !tester/src/test/resources/*.vhd
 # resources
-src/main/resources
+!src/main/resources/
+src/main/resources/*
+!src/main/resources/unisims/
 
 # Workspaces
 genWorkSpace/
