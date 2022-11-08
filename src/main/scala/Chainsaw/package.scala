@@ -30,7 +30,10 @@ package object Chainsaw {
   /** --------
    * paths
    -------- */
+  val vivadoPath = new File("/tools/Xilinx/Vivado/2021.1/bin/vivado") // vivado executable path TODO: should be read from environment variables
   val unisimDir = new File("src/main/resources/unisims")
+  val simWorkspace = new File("simWorkspace")
+  val synthWorkspace = new File("synthWorkspace")
 
   implicit class StringUtil(s: String) {
 
