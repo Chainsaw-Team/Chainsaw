@@ -21,6 +21,8 @@ trait ChainsawGenerator {
 
   val implMode: ImplMode = Comb
 
+  val metric: ChainsawMetric
+
   /** --------
    * size information
    * -------- */
@@ -125,6 +127,8 @@ trait ChainsawGenerator {
       override def name = old.name + "_" + that.name
 
       override def impl(dataIn: Seq[Any]): Seq[Any] = that.impl(old.impl(dataIn))
+
+      override val metric = that.metric
 
       override var inputTypes = old.inputTypes
       override var outputTypes = that.outputTypes
