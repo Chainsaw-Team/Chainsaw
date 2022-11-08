@@ -39,13 +39,5 @@ object ChainsawMetric { // common metrics
 
   def doubleAbs(epsilon: Double) = ChainsawMetric(doubleBound(epsilon), berBound(0, doubleBound(epsilon)))
 
-  def carrySaveMetric(compensation: BigInt) = ChainsawMetric(defaultBound,
-    frameWise = (yours: Seq[Any], golden: Seq[Any]) => {
-      val g = golden.asInstanceOf[Seq[BigInt]].sum
-      val y = yours.asInstanceOf[Seq[BigInt]].sum
-      if (g < 0) true else g == y - compensation
-    }
-  )
-
   val defaultMetric = ChainsawMetric(defaultBound, forallBound(defaultBound))
 }

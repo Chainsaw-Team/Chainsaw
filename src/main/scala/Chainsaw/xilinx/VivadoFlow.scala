@@ -145,10 +145,12 @@ object DefaultVivadoFlow {
     val flow = new VivadoFlow(design, flowType, vu9p, name, new File(synthWorkspace, name))
     flow.doFlow()
   }
+}
 
-  def synth[T <: Module](design: => T, name: String) = general(design, name, SYNTH)
+object VivadoSynth {
+  def apply[T <: Module](design: => T, name: String) = DefaultVivadoFlow.general(design, name, SYNTH)
+}
 
-  def impl[T <: Module](design: => T, name: String) = general(design, name, IMPL)
-
-  def bitGen[T <: Module](design: => T, name: String) = general(design, name, BITGEN)
+object VivadoImpl {
+  def apply[T <: Module](design: => T, name: String) = DefaultVivadoFlow.general(design, name, IMPL)
 }
