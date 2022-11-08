@@ -35,6 +35,12 @@ package object Chainsaw {
   val simWorkspace = new File("simWorkspace")
   val synthWorkspace = new File("synthWorkspace")
 
+  implicit class IntUtil(int: Int) {
+    def divideAndCeil(base: Int) = (int + base - 1) / base
+
+    def nextMultiple(base: Int) = divideAndCeil(base) * base
+  }
+
   implicit class StringUtil(s: String) {
 
     // complement version of method padTo(padToRight)
@@ -53,6 +59,30 @@ package object Chainsaw {
   implicit class BoolUtil(data: Bool) {
     // drive a flag which is initially unset
     def validAfter(cycle: Int): Bool = Delay(data, cycle, init = False)
+  }
+
+  implicit class VecUtil[T <: Data](vec: Vec[T]) {
+    def :=(that: Seq[T]): Unit = {
+      require(vec.length == that.length)
+      vec.zip(that).foreach { case (port, data) => port := data }
+    }
+
+    def vecShiftWrapper(bitsShift: UInt => Bits, that: UInt): Vec[T] = {
+      val ret = cloneOf(vec)
+      val shiftedBits: Bits = bitsShift((that * widthOf(vec.dataType)).resize(log2Up(widthOf(vec.asBits))))
+      ret.assignFromBits(shiftedBits)
+      ret
+    }
+
+    val bits = vec.asBits
+
+    def rotateLeft(that: Int): Vec[T] = vecShiftWrapper(bits.rotateRight, that)
+
+    def rotateLeft(that: UInt): Vec[T] = vecShiftWrapper(bits.rotateRight, that)
+
+    def rotateRight(that: Int): Vec[T] = vecShiftWrapper(bits.rotateLeft, that)
+
+    def rotateRight(that: UInt): Vec[T] = vecShiftWrapper(bits.rotateLeft, that)
   }
 
   case class BitValue(value: BigInt, width: Int) {
