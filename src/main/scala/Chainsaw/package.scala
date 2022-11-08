@@ -4,6 +4,7 @@ import spinal.core._
 import spinal.lib._
 
 import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 
 package object Chainsaw {
 
@@ -21,7 +22,7 @@ package object Chainsaw {
 
   /** --------
    * type def
-   -------- */
+   * -------- */
   type Metric = (Any, Any) => Boolean
   type FrameMetric = (Seq[Any], Seq[Any]) => Boolean
 
@@ -45,4 +46,42 @@ package object Chainsaw {
     def validAfter(cycle: Int): Bool = Delay(data, cycle, init = False)
   }
 
+  case class BitValue(value: BigInt, width: Int) {
+
+    /** works the same as SpinalHDL splitAt
+     *
+     * @example 10100.split(3) = (10,100)
+     */
+    def splitAt(lowWidth: Int): (BigInt, BigInt) = {
+      require(value > 0)
+      val base = BigInt(1) << lowWidth
+      (value >> lowWidth, value % base)
+    }
+
+    def takeLow(n: Int) = {
+      require(value >= BigInt(0))
+      splitAt(n)._2
+    }
+
+    def takeHigh(n: Int) = {
+      require(value >= BigInt(0))
+      splitAt(value.bitLength - n)._1
+    }
+
+    def apply(range: Range) = {
+      (value / Pow2(range.low)) % Pow2(range.length)
+    }
+  }
+
+  // TODO: make BigInt behaves just like Bits/UInt
+  implicit class BigIntUtil(bi: BigInt) {
+    def toBitValue(width: Int = -1) = {
+      if(width == -1) BitValue(bi, bi.bitLength)
+      else BitValue(bi, width)
+    }
+  }
+
+  object Pow2 {
+    def apply(exp: Int) = BigInt(1) << exp
+  }
 }
