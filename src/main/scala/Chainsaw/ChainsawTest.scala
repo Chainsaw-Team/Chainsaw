@@ -142,7 +142,8 @@ case class ChainsawTest(
       if (golden == null) raws.map(impl)
       else golden.grouped(outputFormat.rawDataCount).toSeq
 
-    require(goldenInUse.head.length == outputFormat.rawDataCount, "golden model format mismatch")
+    require(goldenInUse.head.length == outputFormat.rawDataCount,
+      s"golden model format mismatch, expected: ${outputFormat.rawDataCount}, actual:${goldenInUse.head.length}")
 
     val success = implMode match {
       case Comb => // get and compare golden & yours slice by slice
