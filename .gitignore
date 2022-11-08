@@ -32,9 +32,10 @@ src/main/resources/*
 # Workspaces
 genWorkSpace/
 simWorkspace/
-synthWorkSpace/
+synthWorkspace/
 testReports/
 tmp/
 null
 
-
+# draft
+src/main/scala/draft.sc

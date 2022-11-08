@@ -30,11 +30,7 @@ object ChainsawDuts {
       override def implH = new ChainsawModule(this) {
         dataOut := dataIn.d(latency)
       }
-
-
     }
-
     gen
   }
-
 }
