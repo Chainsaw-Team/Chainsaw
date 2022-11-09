@@ -13,13 +13,13 @@ class BitHeapCompressorTest extends AnyFlatSpec {
   def testNaive(): Unit = {
     behavior of "toy compressor tree"
 
-    it should "have a correct naive model" in {
+    it should "work at a certain corner case" in {
       val operands = Seq( // a testcase including weighted, signed and delayed input
-        ArithInfo(16, 0, isPositive = true, 0),
-        ArithInfo(16, 5, isPositive = true, 0),
-        ArithInfo(16, 9, isPositive = true, 0),
-        ArithInfo(16, 12, isPositive = false, 0),
-        ArithInfo(16, 15, isPositive = true, 0)
+        ArithInfo(16, 0),
+        ArithInfo(16, 5),
+        ArithInfo(16, 9),
+        ArithInfo(16, 12, isPositive = false),
+        ArithInfo(16, 15)
       )
       verbose = 1
       val compressorTreeGen = BitHeapCompressor(operands)
@@ -37,8 +37,10 @@ class BitHeapCompressorTest extends AnyFlatSpec {
   /** --------
    * testcases
    * -------- */
-  // TODO: test for timeStrategy = Randomly
+
   val testcases: Seq[Seq[(Seq[ArithInfo], InfosShape)]] = Seq(
+    // TODO: test for all cases with timeStrategy = Randomly
+
     //    RectangularInfos(widthRange = Range.inclusive(100, 200, 100), heightRange = Range.inclusive(10, 100, 20), timeStrategy = Randomly, upBound = 8),
     //    RectangularInfos(
     //      widthRange = Range.inclusive(100, 200, 100),
@@ -219,7 +221,7 @@ class BitHeapCompressorTest extends AnyFlatSpec {
       widthRange.flatMap { w =>
         heightRange.map { h =>
           (
-            genRectangularInfos(w, h - (if (mixSign) h / 3 else 0), shift, sign, withNoise, timeStrategy, upBound) ++ genRectangularInfos(w, (if (mixSign) h / 3 else 0), shift, !sign, withNoise, timeStrategy, upBound),
+            genRectangularInfos(w, h - (if (mixSign) h / 3 else 0), shift, sign, withNoise, timeStrategy, upBound) ++ genRectangularInfos(w, if (mixSign) h / 3 else 0, shift, !sign, withNoise, timeStrategy, upBound),
             Rectangle(width = w, height = h, shift = shift, sign = sign, withNoise = withNoise, mixSign = mixSign, timeStrategy = timeStrategy, upBound = upBound)
           )
         }
@@ -308,7 +310,7 @@ class BitHeapCompressorTest extends AnyFlatSpec {
       graphData
     }
 
-    private def drawGraph(graphData: Seq[(String, String, (String, mutable.ArrayBuffer[Any]), (String, mutable.ArrayBuffer[Any]))], showNow: Boolean) = {
+    private def drawGraph(graphData: Seq[(String, String, (String, mutable.ArrayBuffer[Any]), (String, mutable.ArrayBuffer[Any]))], showNow: Boolean): Unit = {
       graphData.foreach { graph =>
         val (xLabel, xData) = graph._3
         val (yLabel, yData) = graph._4
@@ -339,7 +341,7 @@ class BitHeapCompressorTest extends AnyFlatSpec {
         //      }
       }
 
-      def genPerfGraph(showNow: Boolean = false) = {
+      def genPerfGraph(showNow: Boolean = false): Unit = {
         val lutGraphData = getGraphData(lutData, resourceType = "LUT")
         val ffGraphData = getGraphData(ffData, resourceType = "FF")
         val dspGraphData = getGraphData(dspData, resourceType = "DSP")
