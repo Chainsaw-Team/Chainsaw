@@ -13,6 +13,12 @@ val jGraphTVersion = "1.4.0" // last version compatible with Java 1.8
 val jGraphCore = "org.jgrapht" % "jgrapht-core" % jGraphTVersion
 val jGraphExt = "org.jgrapht" % "jgrapht-ext" % jGraphTVersion
 
+// optimus
+val optimusVersion = "3.2.4"
+val optimus = "com.github.vagmcs" %% "optimus" % optimusVersion
+val optimusOj = "com.github.vagmcs" %% "optimus-solver-oj" % optimusVersion
+val optimusLp = "com.github.vagmcs" %% "optimus-solver-lp" % optimusVersion
+
 lazy val Chainsaw = (project in file("."))
   .settings(
     name := "Chainsaw",
@@ -24,7 +30,8 @@ lazy val Chainsaw = (project in file("."))
     libraryDependencies += "org.scalanlp" %% "breeze" % "1.0", // for numeric & matrix operations
     libraryDependencies += "cc.redberry" %% "rings.scaladsl" % "2.5.7", // for finite field operations
 
-    libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.9" // for scala test
+    libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.9", // for scala test
+    libraryDependencies ++= Seq(optimus, optimusOj, optimusLp)
   )
 
 fork := true
