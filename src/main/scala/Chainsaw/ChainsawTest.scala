@@ -4,6 +4,7 @@ import Chainsaw.ChainsawTest._
 import breeze.math.Complex
 import spinal.core._
 import spinal.core.sim._
+import spinal.lib.{master, slave}
 import spinal.sim._
 
 import scala.collection.mutable.ArrayBuffer
@@ -74,10 +75,37 @@ case class ChainsawTest(
         s"\n\tdata length = ${dataFlow.length} cycles, ${dataFlow.length / gen.inputFormat.period} frames in total"
     )
 
+
     /** --------
      * do simulation
      * -------- */
-    SimConfig.workspaceName(testName).withFstWave.compile(gen.implH).doSim { dut =>
+    SimConfig.workspaceName(testName).withFstWave.compile {
+      /** --------
+       * wrapper for time diff
+       * -------- */
+      new Module {
+
+        val core = gen.getImplH
+        val flowIn = slave(cloneOf(core.flowIn))
+        val flowOut = master(cloneOf(core.flowOut))
+
+        setDefinitionName(s"${gen.name}_dut")
+
+        // compensation for unaligned inputs/outputs
+        val outputSpan = actualOutTimes.max
+
+        core.validIn := flowIn.valid
+        core.lastIn := flowIn.last
+
+        core.dataIn.zip(flowIn.fragment).zip(actualInTimes)
+          .foreach { case ((corePort, dutPort), i) => corePort := dutPort.d(i) }
+        flowOut.fragment.zip(core.dataOut).zip(actualOutTimes)
+          .foreach { case ((dutPort, corePort), i) => dutPort := corePort.d(outputSpan - i) }
+
+        flowOut.valid := core.validOut.validAfter(outputSpan)
+        flowOut.last := core.lastOut.validAfter(outputSpan)
+      }
+    }.doSim { dut =>
       import dut.{clockDomain, flowIn, flowOut}
 
       // init
@@ -194,7 +222,7 @@ object ChainsawTest {
    * methods for debug/visualization
    * -------- */
   def showData[T](data: Seq[T], portSize: Int) = {
-    val elementsPerCycle = 4 max data.length / portSize // TODO: this should be adjustable
+    val elementsPerCycle = 8 max data.length / portSize // TODO: this should be adjustable
     val cycles = 4 // TODO: this should be adjustable
 
     def showRow(data: Seq[T]) = data.take(elementsPerCycle).mkString(" ") +
