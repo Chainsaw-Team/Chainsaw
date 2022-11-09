@@ -39,3 +39,6 @@ null
 
 # draft
 src/main/scala/draft.sc
+
+# private project
+src/main/scala/Chainsaw/project/das
