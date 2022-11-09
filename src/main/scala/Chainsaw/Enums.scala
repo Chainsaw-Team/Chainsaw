@@ -57,10 +57,3 @@ object Direct extends SopStructure
 object Transpose extends SopStructure
 
 object Systolic extends SopStructure
-
-sealed trait Direction
-
-object In extends Direction
-
-object Out extends Direction
-
