@@ -5,11 +5,15 @@ import spinal.core.sim._
 import spinal.lib._
 import spinal.lib.fsm._
 import spinal.lib.bus.amba4.axis._
+import spinal.lib.bus.amba4.axilite._
 
 import scala.language.postfixOps
 
 object AxiExample extends App {
 
+  /** --------
+   * AXI-Stream example
+   * -------- */
   case class AxisFifoExample() extends Component {
 
     val byteCount = 8
@@ -47,4 +51,20 @@ object AxiExample extends App {
   }
 
   SpinalConfig().generateVerilog(AxisWidthAdapterExample())
+
+  /** --------
+   * AXI-Lite example
+   * -------- */
+
+  case class AxiLiteExample() extends Component {
+
+    val config = AxiLite4Config(5, 32)
+
+    val ctrlIn = slave(AxiLite4(config))
+    val ctrlOut = master(AxiLite4(config))
+
+    ctrlIn >> ctrlOut
+  }
+
+  SpinalConfig().generateVerilog(AxiLiteExample())
 }
