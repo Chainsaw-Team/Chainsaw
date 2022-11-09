@@ -48,16 +48,16 @@ case class BitHeapCompressor(operandInfos: Seq[ArithInfo]) extends ChainsawGener
 
   override def implH: ChainsawModule = new ChainsawModule(this) {
 
-    def pipeline(data: Bool): Bool = data.d(1)
+    def pipeline(data: Bool): Bool = data.d()
 
     def zero(): Bool = False
 
     val operands = uintDataIn.zip(operandInfos)
-      .map { case (int, info) => if (info.isPositive) int else ~int }.map(_.d(1).asBools)
+      .map { case (int, info) => if (info.isPositive) int else ~int }.map(_.d().asBools)
     val heapIn = BitHeap.getHeapFromInfos(Seq(operandInfos), Seq(operands))
     val heapOut = heapIn.implCompressTree(Gpcs(), solutions, pipeline, s"operands of CompressorTree_${operandInfos.hashCode()}".replace('-', 'N'))
     val rows = heapOut.output(zero).map(_.asBits().asUInt)
-    // TODO: reconsider resize
+    // TODO: reconsider resize - when redundant compressors are used
     uintDataOut := Seq(rows.head @@ U(0, heapOut.weightLows.head bits), rows.last @@ U(0, heapOut.weightLows.head bits))
   }
 }

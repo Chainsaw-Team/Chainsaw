@@ -56,7 +56,7 @@ case class Bcm(constant: BigInt, widthIn: Int, multiplierType: MultiplierType, w
         val range = weight until weight + widthIn
         val inter = range intersect targetSlice // get slices by intersection, this may be empty
         val dataSlice = inter.map(_ - weight) // inclusive slice
-        (dataSlice, ArithInfo(dataSlice.length, weight, c == '1', 0))
+        (dataSlice, ArithInfo(dataSlice.length, weight, c == '1'))
       }
       .filterNot(_._1.isEmpty) // skip empty slices
       .map { case (slice, info) => (slice, info << slice.head) } // true weight
@@ -115,7 +115,7 @@ case class Bcm(constant: BigInt, widthIn: Int, multiplierType: MultiplierType, w
     det
   }
 
-  val metric = ChainsawMetric(frameWise = frameWiseMetric)
+  override val metric = ChainsawMetric(frameWise = frameWiseMetric)
 
   /** --------
    * error bound analysis for MSB mode
