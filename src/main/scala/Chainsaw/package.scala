@@ -2,13 +2,13 @@
 import org.slf4j.LoggerFactory
 import spinal.core._
 import spinal.lib._
-import java.io.File
 
+import java.io.File
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
+import scala.reflect.ClassTag
 
 package object Chainsaw {
-
 
   /** --------
    * global run-time environment
@@ -29,12 +29,15 @@ package object Chainsaw {
 
   /** --------
    * paths
-   -------- */
+   * -------- */
   val vivadoPath = new File("/tools/Xilinx/Vivado/2021.1/bin/vivado") // vivado executable path TODO: should be read from environment variables
   val unisimDir = new File("src/main/resources/unisims")
   val simWorkspace = new File("simWorkspace")
   val synthWorkspace = new File("synthWorkspace")
 
+  /** --------
+   * scala type utils
+   * -------- */
   implicit class IntUtil(int: Int) {
     def divideAndCeil(base: Int) = (int + base - 1) / base
 
@@ -49,40 +52,10 @@ package object Chainsaw {
     def repeat(times: Int) = Seq.fill(times)(s).reduce(_ + _)
   }
 
-  // extension of Data
-  implicit class DataUtil[T <: Data](data: T) {
-    def d(cycle: Int = 1): T = Delay(data, cycle)
+  implicit class seqUtil[T: ClassTag](seq: Seq[T]) {
+    def prevAndNext[TOut](f: ((T, T)) => TOut) = seq.init.zip(seq.tail).map(f)
 
-  }
-
-  // extension of Bool
-  implicit class BoolUtil(data: Bool) {
-    // drive a flag which is initially unset
-    def validAfter(cycle: Int): Bool = Delay(data, cycle, init = False)
-  }
-
-  implicit class VecUtil[T <: Data](vec: Vec[T]) {
-    def :=(that: Seq[T]): Unit = {
-      require(vec.length == that.length)
-      vec.zip(that).foreach { case (port, data) => port := data }
-    }
-
-    def vecShiftWrapper(bitsShift: UInt => Bits, that: UInt): Vec[T] = {
-      val ret = cloneOf(vec)
-      val shiftedBits: Bits = bitsShift((that * widthOf(vec.dataType)).resize(log2Up(widthOf(vec.asBits))))
-      ret.assignFromBits(shiftedBits)
-      ret
-    }
-
-    val bits = vec.asBits
-
-    def rotateLeft(that: Int): Vec[T] = vecShiftWrapper(bits.rotateRight, that)
-
-    def rotateLeft(that: UInt): Vec[T] = vecShiftWrapper(bits.rotateRight, that)
-
-    def rotateRight(that: Int): Vec[T] = vecShiftWrapper(bits.rotateLeft, that)
-
-    def rotateRight(that: UInt): Vec[T] = vecShiftWrapper(bits.rotateLeft, that)
+    def padToLeft(len: Int, elem: T) = seq.reverse.padTo(len, elem).reverse
   }
 
   case class BitValue(value: BigInt, width: Int) {
@@ -115,12 +88,60 @@ package object Chainsaw {
   // TODO: make BigInt behaves just like Bits/UInt
   implicit class BigIntUtil(bi: BigInt) {
     def toBitValue(width: Int = -1) = {
-      if(width == -1) BitValue(bi, bi.bitLength)
+      if (width == -1) BitValue(bi, bi.bitLength)
       else BitValue(bi, width)
     }
   }
 
+  /** --------
+   * spinal type utils
+   * -------- */
+  // extension of Data
+  implicit class DataUtil[T <: Data](data: T) {
+    def d(cycle: Int = 1): T = Delay(data, cycle)
+  }
+
+  // extension of Bool
+  implicit class BoolUtil(data: Bool) {
+    // drive a flag which is initially unset
+    def validAfter(cycle: Int): Bool = Delay(data, cycle, init = False)
+  }
+
+  implicit class VecUtil[T <: Data](vec: Vec[T]) {
+    def :=(that: Seq[T]): Unit = {
+      require(vec.length == that.length)
+      vec.zip(that).foreach { case (port, data) => port := data }
+    }
+
+    def vecShiftWrapper(bitsShift: UInt => Bits, that: UInt): Vec[T] = {
+      val ret = cloneOf(vec)
+      val shiftedBits: Bits = bitsShift((that * widthOf(vec.dataType)).resize(log2Up(widthOf(vec.asBits))))
+      ret.assignFromBits(shiftedBits)
+      ret
+    }
+
+    val bits = vec.asBits
+
+    def rotateLeft(that: Int): Vec[T] = vecShiftWrapper(bits.rotateRight, that)
+
+    def rotateLeft(that: UInt): Vec[T] = vecShiftWrapper(bits.rotateRight, that)
+
+    def rotateRight(that: Int): Vec[T] = vecShiftWrapper(bits.rotateLeft, that)
+
+    def rotateRight(that: UInt): Vec[T] = vecShiftWrapper(bits.rotateLeft, that)
+  }
+
+
   object Pow2 {
     def apply(exp: Int) = BigInt(1) << exp
   }
+
+  import xilinx._
+
+  def ChainsawSynth(gen: ChainsawGenerator, name: String, withRequirement: Boolean = false) = {
+    val report = VivadoSynth(gen.implH, name)
+    if (withRequirement) report.require(gen.utilEstimation, gen.fmaxEstimation)
+    report
+  }
+
 }
