@@ -10,6 +10,8 @@ object Comb extends ImplMode
 
 object StateMachine extends ImplMode
 
+import xilinx._
+
 trait ChainsawGenerator {
 
   def name: String
@@ -21,7 +23,7 @@ trait ChainsawGenerator {
 
   val implMode: ImplMode = Comb
 
-  val metric: ChainsawMetric
+  val metric: ChainsawMetric = ChainsawMetric.defaultMetric
 
   /** --------
    * size information
@@ -41,9 +43,8 @@ trait ChainsawGenerator {
   /** --------
    * performance information
    * -------- */
-  // TODO: impl
-  //  var utilEstimation: VivadoUtil = VivadoUtilRequirement()
-  //  var fmaxEstimation: HertzNumber = 600 MHz
+  var utilEstimation: VivadoUtil = VivadoUtilRequirement()
+  var fmaxEstimation: HertzNumber = 600 MHz
 
   /** --------
    * implementations

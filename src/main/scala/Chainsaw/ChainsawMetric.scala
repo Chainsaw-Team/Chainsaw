@@ -39,5 +39,7 @@ object ChainsawMetric { // common metrics
 
   def doubleAbs(epsilon: Double) = ChainsawMetric(doubleBound(epsilon), berBound(0, doubleBound(epsilon)))
 
-  val defaultMetric = ChainsawMetric(defaultBound, forallBound(defaultBound))
+  /** default metric which require all elements in yours and golden are exactly the same
+   */
+  def defaultMetric = ChainsawMetric(defaultBound, forallBound(defaultBound))
 }
