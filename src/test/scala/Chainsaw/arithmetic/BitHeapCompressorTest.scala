@@ -40,7 +40,6 @@ class BitHeapCompressorTest extends AnyFlatSpec {
 
   val testcases: Seq[Seq[(Seq[ArithInfo], InfosShape)]] = Seq(
     // TODO: test for all cases with timeStrategy = Randomly
-
     //    RectangularInfos(widthRange = Range.inclusive(100, 200, 100), heightRange = Range.inclusive(10, 100, 20), timeStrategy = Randomly, upBound = 8),
     //    RectangularInfos(
     //      widthRange = Range.inclusive(100, 200, 100),
@@ -222,6 +221,7 @@ class BitHeapCompressorTest extends AnyFlatSpec {
         heightRange.map { h =>
           (
             genRectangularInfos(w, h - (if (mixSign) h / 3 else 0), shift, sign, withNoise, timeStrategy, upBound) ++ genRectangularInfos(w, if (mixSign) h / 3 else 0, shift, !sign, withNoise, timeStrategy, upBound),
+
             Rectangle(width = w, height = h, shift = shift, sign = sign, withNoise = withNoise, mixSign = mixSign, timeStrategy = timeStrategy, upBound = upBound)
           )
         }
