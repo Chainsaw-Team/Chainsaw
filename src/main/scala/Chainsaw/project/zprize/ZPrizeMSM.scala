@@ -1,6 +1,6 @@
 package Chainsaw.project.zprize
 
-object ZPrizeMSM extends App {
+object ZPrizeMSM {
 
   /** --------
    * parameters
@@ -23,8 +23,8 @@ object ZPrizeMSM extends App {
 
   import Chainsaw.arithmetic.Csd
 
-  println(s"Csd(baseModulus).weight = ${Csd(baseModulus).weight}")
-  println(s"Csd(MPrime).weight = ${Csd(MPrime).weight}")
+  //  println(s"Csd(baseModulus).weight = ${Csd(baseModulus).weight}")
+  //  println(s"Csd(MPrime).weight = ${Csd(MPrime).weight}")
 
   //  // the elliptic curve that we use
   //  val a = asBigInteger(0)
