@@ -1,4 +1,5 @@
 
+import cc.redberry.rings.scaladsl.IntZ
 import org.slf4j.LoggerFactory
 import spinal.core._
 import spinal.lib._
@@ -7,6 +8,7 @@ import java.io.File
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.reflect.ClassTag
+import scala.math.BigInt
 
 package object Chainsaw {
 
@@ -143,6 +145,10 @@ package object Chainsaw {
     val report = VivadoSynth(gen.implH, name)
     if (withRequirement) report.require(gen.utilEstimation, gen.fmaxEstimation)
     report
+  }
+
+  implicit class intzUti(intz: IntZ) {
+    def toBigInt = BigInt(intz.toByteArray)
   }
 
 }
