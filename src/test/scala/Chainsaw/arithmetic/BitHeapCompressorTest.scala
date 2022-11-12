@@ -20,6 +20,7 @@ class BitHeapCompressorTest extends AnyFlatSpec {
         ArithInfo(16, 9),
         ArithInfo(16, 12, isPositive = false),
         ArithInfo(16, 15)
+
       )
       verbose = 1
       val compressorTreeGen = BitHeapCompressor(operands)
@@ -37,10 +38,9 @@ class BitHeapCompressorTest extends AnyFlatSpec {
   /** --------
    * testcases
    * -------- */
-
   val testcases: Seq[Seq[(Seq[ArithInfo], InfosShape)]] = Seq(
     // TODO: test for all cases with timeStrategy = Randomly
-
+    
     //    RectangularInfos(widthRange = Range.inclusive(100, 200, 100), heightRange = Range.inclusive(10, 100, 20), timeStrategy = Randomly, upBound = 8),
     //    RectangularInfos(
     //      widthRange = Range.inclusive(100, 200, 100),
@@ -340,6 +340,7 @@ class BitHeapCompressorTest extends AnyFlatSpec {
         //        matlabEngine.eval(s"saveas(gcf,'$reportPath/$yLabel/$title.png', 'png')")
         //      }
       }
+
 
       def genPerfGraph(showNow: Boolean = false): Unit = {
         val lutGraphData = getGraphData(lutData, resourceType = "LUT")

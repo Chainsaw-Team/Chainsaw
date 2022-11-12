@@ -58,6 +58,7 @@ case class BitHeapCompressor(operandInfos: Seq[ArithInfo]) extends ChainsawGener
     val heapOut = heapIn.implCompressTree(Gpcs(), solutions, pipeline, s"operands of CompressorTree_${operandInfos.hashCode()}".replace('-', 'N'))
     val rows = heapOut.output(zero).map(_.asBits().asUInt)
     // TODO: reconsider resize - when redundant compressors are used
+
     uintDataOut := Seq(rows.head @@ U(0, heapOut.weightLows.head bits), rows.last @@ U(0, heapOut.weightLows.head bits))
   }
 }

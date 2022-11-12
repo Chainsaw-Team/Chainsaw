@@ -41,5 +41,5 @@ object ChainsawMetric { // common metrics
 
   /** default metric which require all elements in yours and golden are exactly the same
    */
-  def defaultMetric = ChainsawMetric(defaultBound, forallBound(defaultBound))
+  def defaultMetric = ChainsawMetric(defaultBound, forallBound(defaultBound)
 }
