@@ -2,6 +2,7 @@ package Chainsaw.arithmetic
 
 import Chainsaw._
 import Chainsaw.xilinx._
+import Chainsaw.device.DSPMultFull
 import spinal.core.IntToBuilder
 
 import scala.language.postfixOps
@@ -34,10 +35,10 @@ case class KaraBase(widthA: Int, widthB: Int, multType: MultiplierType) extends 
 
   override var inputTypes = Seq(widthA, widthA, widthB, widthB).map(UIntInfo(_))
   override var outputTypes = multType match {
-    case FullMultiplier => Seq(UIntInfo(widthA * 2))
-    case SquareMultiplier => Seq(UIntInfo(widthA * 2))
-    case MsbMultiplier => Seq(UIntInfo(widthA))
-    case LsbMultiplier => Seq(UIntInfo(widthA))
+    case FullMultiplier => Seq(UIntInfo(widthA * 4))      // should be 4
+    case SquareMultiplier => Seq(UIntInfo(widthA * 4))    //
+    case MsbMultiplier => Seq(UIntInfo(widthA * 2))
+    case LsbMultiplier => Seq(UIntInfo(widthA * 2))
     case Kara => Seq(widthCross, widthCross + 1, widthCross).map(UIntInfo(_))
   }
 
@@ -51,8 +52,8 @@ case class KaraBase(widthA: Int, widthB: Int, multType: MultiplierType) extends 
     }
   )
 
-  override var latency = multType match {
-    case FullMultiplier => ???
+  override var latency = multType match {    // TODO
+    case FullMultiplier => 6
     case SquareMultiplier => ???
     case MsbMultiplier => ???
     case LsbMultiplier => ???
@@ -77,10 +78,30 @@ case class KaraBase(widthA: Int, widthB: Int, multType: MultiplierType) extends 
 
     multType match {
       case FullMultiplier =>
-      case SquareMultiplier => ???
-      case MsbMultiplier => ???
-      case LsbMultiplier => ???
-      case Kara =>
+        val Seq(aHigh, aLow, bHigh, bLow) = uintDataIn
+        val DSPMultFull = new DSPMultFull(widthA)
+        DSPMultFull.io.a := aHigh.resize(widthA)
+        DSPMultFull.io.b := aLow.resize(widthA)
+        DSPMultFull.io.c := bHigh.resize(widthA)
+        DSPMultFull.io.d := bLow.resize(widthA)
+        uintDataOut := Seq(DSPMultFull.io.ret)
+
+      case SquareMultiplier => ???    // TODO
+        val Seq(aHigh, aLow, bHigh, bLow) = uintDataIn
+
+      case MsbMultiplier => ???    // TODO
+        val Seq(aHigh, aLow, bHigh, bLow) = uintDataIn
+
+      case LsbMultiplier => ???    // TODO
+        val Seq(aHigh, aLow, bHigh, bLow) = uintDataIn
+        // 0-1
+        val ALBH = (aLow.intoSInt * bHigh.intoSInt).d()
+        val AHBL = (aHigh.intoSInt * bLow.intoSInt).d()
+        val sumShift = (ALBH(widthA-1 downto 0) + AHBL(widthA-1 downto 0))
+        val ALBL = (aLow.intoSInt * bLow.intoSInt).d()
+
+
+      case Kara =>    // FIXME
         val Seq(aHigh, aLow, bHigh, bLow) = uintDataIn
         // 0-1
         val aMerge = (aHigh.intoSInt -^ aLow.intoSInt).d()
