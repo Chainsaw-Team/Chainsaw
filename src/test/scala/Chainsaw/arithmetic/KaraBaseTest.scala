@@ -16,7 +16,7 @@ class KaraBaseTest extends AnyFlatSpec {
   }
 
   //  val modes = Seq(FullMultiplier, SquareMultiplier, MsbMultiplier, LsbMultiplier, Kara)
-  val modes = Seq(FullMultiplier, Kara)
+  val modes = Seq(FullMultiplier, LsbMultiplier, Kara)
 
   "kara base" should "work" in modes.foreach(testKaraBase)
 

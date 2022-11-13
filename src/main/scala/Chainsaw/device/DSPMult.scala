@@ -83,7 +83,56 @@ class DSPMultFull(width: Int = 16) extends Component {
 }    // Done
 
 
-// TODO: DSP_Mult_Low
+class DSPMultLow(width: Int = 16) extends Component {
+  val io = new Bundle {
+    val AH  = in  UInt(width bits)      // AH
+    val AL  = in  UInt(width bits)      // AL
+    val BH  = in  UInt(width bits)      // BH
+    val BL  = in  UInt(width bits)      // BL
+    val MultiplierA = out Bits (width*2 bits)
+    val MultiplierB = out Bits (width*2 bits)
+    val ret = out UInt(width*2 bits)    // low bit Mult
+    // FIXME: Just for test
+    val DSP0retLowBit_test  = out UInt(width bits)
+    val DSP1retLowBit_test  = out UInt(width bits)
+    val DSP1retShifted_test = out UInt(width*2 bits)
+  }
+  noIoPrefix()
+
+  // DSP0: AL * BH (take low width bits), no add
+  val ALBH_Mult = new DSP48E2Cell_MultAdd(0,1,0,1)    // 配平
+  ALBH_Mult.io.A := io.AL.resize(30)
+  ALBH_Mult.io.B := io.BH.resize(18)
+  ALBH_Mult.io.C := U(0)
+  val DSP0retLowBit = ALBH_Mult.io.P(width-1 downto 0)    // take low width bits
+
+  // DSP1: AH * BL (take low width bits) + result of DSP0
+  val AHBL_MultAdd = new DSP48E2Cell_MultAdd(1,2,1,0)
+  AHBL_MultAdd.io.A := io.AH.resize(30)
+  AHBL_MultAdd.io.B := io.BL.resize(18)
+  AHBL_MultAdd.io.C := DSP0retLowBit.resize(48)
+  val DSP1retLowBit = AHBL_MultAdd.io.P(width-1 downto 0)    // take low width bits
+  val DSP1retShifted = DSP1retLowBit << width
+
+  // DSP2: AL * BL (full mult) + result of DSP1
+  val ALBL_MultAdd = new DSP48E2Cell_MultAdd(2,2,3,0)
+  ALBL_MultAdd.io.A := io.AL.resize(30)
+  ALBL_MultAdd.io.B := io.BL.resize(18)
+  ALBL_MultAdd.io.C := DSP1retShifted.resize(48)
+  val DSP2ret = ALBL_MultAdd.io.P(width*2-1 downto 0)    // take low width*2 bits
+
+  io.ret := DSP2ret
+
+  // FIXME: Just for test
+  io.MultiplierA := io.AH ## io.AL
+  io.MultiplierB := io.BH ## io.BL
+  io.DSP0retLowBit_test := DSP0retLowBit
+  io.DSP1retLowBit_test := DSP1retLowBit
+  io.DSP1retShifted_test := DSP1retShifted
+
+}    // Done
+
+
 
 class DSPMultKara(widthA: Int = 16, widthB: Int = 25) extends Component {
   val io = new Bundle {
@@ -144,9 +193,9 @@ class DSPMultKara(widthA: Int = 16, widthB: Int = 25) extends Component {
 
 object DSPMult_Main {
   def main(args: Array[String]) {
-    NewSpinalConfig.generateVerilog(new DSPMultKara(16,25)).printRtl()
+//    NewSpinalConfig.generateVerilog(new DSPMultKara(16,25)).printRtl()
 //    NewSpinalConfig.generateVerilog(new DSPMultFull(16)).printRtl()
-//    NewSpinalConfig.generateVerilog(new DSP_Mult_Low).printRtl()
+    NewSpinalConfig.generateVerilog(new DSPMultLow(16)).printRtl()
 //    NewSpinalConfig.generateVerilog(new DSP_Mult_Square).printRtl()
   }
 }
