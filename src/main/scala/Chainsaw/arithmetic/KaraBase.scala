@@ -2,7 +2,7 @@ package Chainsaw.arithmetic
 
 import Chainsaw._
 import Chainsaw.xilinx._
-import Chainsaw.device.{DSPMultFull, DSPMultLow, DSPMultKara}
+import Chainsaw.device.{DSPMultFull, DSPMultLow, DSPMultHigh, DSPMultKara}
 import spinal.core.IntToBuilder
 
 import scala.language.postfixOps
@@ -27,7 +27,7 @@ case class KaraBase(widthA: Int, widthB: Int, multType: MultiplierType) extends 
     multType match {
       case FullMultiplier => Seq(prod)
       case SquareMultiplier => Seq(prod)
-      case MsbMultiplier => Seq(prod.toBitValue(widthA * 2).takeHigh(widthA))
+      case MsbMultiplier => Seq(prod.toBitValue(widthA * 4).takeHigh(widthA * 2))
       case LsbMultiplier => Seq(prod.toBitValue(widthA * 4).takeLow(widthA * 2))
       case Kara => Seq(aH * bH, aH * bL + aL * bH, aL * bL)
     }
@@ -35,9 +35,9 @@ case class KaraBase(widthA: Int, widthB: Int, multType: MultiplierType) extends 
 
   override var inputTypes = Seq(widthA, widthA, widthB, widthB).map(UIntInfo(_))
   override var outputTypes = multType match {
-    case FullMultiplier => Seq(UIntInfo(widthA * 4))      // should be 4
-    case SquareMultiplier => Seq(UIntInfo(widthA * 4))    //
-    case MsbMultiplier => Seq(UIntInfo(widthA * 2))
+    case FullMultiplier => Seq(UIntInfo(widthA * 4))
+    case SquareMultiplier => Seq(UIntInfo(widthA * 4))
+    case MsbMultiplier => Seq(UIntInfo(widthA * 2 + 1))    // TODO: to be checked
     case LsbMultiplier => Seq(UIntInfo(widthA * 2))
     case Kara => Seq(widthCross, widthCross + 1, widthCross).map(UIntInfo(_))
   }
@@ -54,8 +54,8 @@ case class KaraBase(widthA: Int, widthB: Int, multType: MultiplierType) extends 
 
   override var latency = multType match {    // TODO
     case FullMultiplier => 6
-    case SquareMultiplier => ???
-    case MsbMultiplier => ???
+    case SquareMultiplier => 6
+    case MsbMultiplier => 7
     case LsbMultiplier => 7
     case Kara => 3    // old: 2
   }
@@ -86,11 +86,23 @@ case class KaraBase(widthA: Int, widthB: Int, multType: MultiplierType) extends 
         DSPMultFull.io.d := bLow.resize(widthA)
         uintDataOut := Seq(DSPMultFull.io.ret)
 
-      case SquareMultiplier => ???    // TODO
+      case SquareMultiplier =>    // FIXME: 暂时用着dsp-full, 之后再修改成dsp-square
         val Seq(aHigh, aLow, bHigh, bLow) = uintDataIn
+        val DSPMultFull = new DSPMultFull(widthA)
+        DSPMultFull.io.a := aHigh.resize(widthA)
+        DSPMultFull.io.b := aLow.resize(widthA)
+        DSPMultFull.io.c := bHigh.resize(widthA)
+        DSPMultFull.io.d := bLow.resize(widthA)
+        uintDataOut := Seq(DSPMultFull.io.ret)
 
-      case MsbMultiplier => ???    // TODO
+      case MsbMultiplier =>
         val Seq(aHigh, aLow, bHigh, bLow) = uintDataIn
+        val DSPMultHigh = new DSPMultHigh(widthA)
+        DSPMultHigh.io.AH := aHigh
+        DSPMultHigh.io.AL := aLow
+        DSPMultHigh.io.BH := bHigh
+        DSPMultHigh.io.BL := bLow
+        uintDataOut := Seq(DSPMultHigh.io.ret)
 
       case LsbMultiplier =>
         val Seq(aHigh, aLow, bHigh, bLow) = uintDataIn
