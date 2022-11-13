@@ -2,7 +2,7 @@ package Chainsaw.arithmetic
 
 import Chainsaw._
 import Chainsaw.xilinx._
-import Chainsaw.device.DSPMultFull
+import Chainsaw.device.{DSPMultFull, DSPMultKara}
 import spinal.core.IntToBuilder
 
 import scala.language.postfixOps
@@ -47,7 +47,7 @@ case class KaraBase(widthA: Int, widthB: Int, multType: MultiplierType) extends 
 
   override val outputTimes = Some(
     multType match {
-      case Kara => Seq(0, 3, 0)
+      case Kara => Seq(0, 2, 1)    // old: Seq(0, 3, 0)
       case _ => Seq(0)
     }
   )
@@ -57,7 +57,7 @@ case class KaraBase(widthA: Int, widthB: Int, multType: MultiplierType) extends 
     case SquareMultiplier => ???
     case MsbMultiplier => ???
     case LsbMultiplier => ???
-    case Kara => 2
+    case Kara => 3    // old: 2
   }
 
   utilEstimation = VivadoUtilRequirement(dsp = 3)
@@ -77,7 +77,7 @@ case class KaraBase(widthA: Int, widthB: Int, multType: MultiplierType) extends 
   override def implH: ChainsawModule = new ChainsawModule(this) {
 
     multType match {
-      case FullMultiplier =>
+      case FullMultiplier =>    // Done
         val Seq(aHigh, aLow, bHigh, bLow) = uintDataIn
         val DSPMultFull = new DSPMultFull(widthA)
         DSPMultFull.io.a := aHigh.resize(widthA)
@@ -101,21 +101,17 @@ case class KaraBase(widthA: Int, widthB: Int, multType: MultiplierType) extends 
         val ALBL = (aLow.intoSInt * bLow.intoSInt).d()
 
 
-      case Kara =>    // FIXME
-        val Seq(aHigh, aLow, bHigh, bLow) = uintDataIn
-        // 0-1
-        val aMerge = (aHigh.intoSInt -^ aLow.intoSInt).d()
-        val bMerge = (bHigh -^ bLow).asSInt.d() // outside
-        // 0-2
-        val high = (aHigh.intoSInt * bHigh.intoSInt).d(2) // dsp1
-        val low = (aLow.intoSInt * bLow.intoSInt).d(2) // dsp2
-        // 2-3, dsp0
-        val mid0 = (aMerge.d() * bMerge.d()).d()
-        // 3-4
-        val mid1 = (high.d() - mid0).d() // 4-5 post-adder
-        // 4-5
-        val mid = (low.d(2) + mid1).d()
-        uintDataOut := Seq(high.asUInt.resized, mid.asUInt.resized, low.asUInt.resized)
+      case Kara =>    // Done
+          val Seq(aHigh, aLow, bHigh, bLow) = uintDataIn
+          val DSPMultKara = new DSPMultKara(widthA, widthB)
+          DSPMultKara.io.AH := aHigh
+          DSPMultKara.io.AL := aLow
+          DSPMultKara.io.BH := bHigh
+          DSPMultKara.io.BL := bLow
+          val high = DSPMultKara.io.AHBH
+          val mid  = DSPMultKara.io.AHBLALBH
+          val low  = DSPMultKara.io.ALBL
+          uintDataOut := Seq(high.resized, mid.resized, low.resized)
     }
   }
 }
