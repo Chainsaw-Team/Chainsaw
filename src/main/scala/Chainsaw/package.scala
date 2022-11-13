@@ -37,6 +37,7 @@ package object Chainsaw {
   val unisimDir = new File("src/main/resources/unisims")
   val simWorkspace = new File("simWorkspace")
   val synthWorkspace = new File("synthWorkspace")
+  val cplexJarPath = new File("/opt/ibm/ILOG/CPLEX_Studio1210/cplex/lib/cplex.jar")
 
   /** --------
    * scala type utils
@@ -68,20 +69,14 @@ package object Chainsaw {
      * @example 10100.split(3) = (10,100)
      */
     def splitAt(lowWidth: Int): (BigInt, BigInt) = {
-      require(value > 0)
+      require(value >= 0)
       val base = BigInt(1) << lowWidth
       (value >> lowWidth, value % base)
     }
 
-    def takeLow(n: Int) = {
-      require(value >= BigInt(0))
-      splitAt(n)._2
-    }
+    def takeLow(n: Int) = splitAt(n)._2
 
-    def takeHigh(n: Int) = {
-      require(value >= BigInt(0))
-      splitAt(value.bitLength - n)._1
-    }
+    def takeHigh(n: Int) = splitAt(width - n)._1
 
     def apply(range: Range) = {
       (value / Pow2(range.low)) % Pow2(range.length)
