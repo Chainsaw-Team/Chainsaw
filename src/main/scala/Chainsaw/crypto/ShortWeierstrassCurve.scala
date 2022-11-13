@@ -33,7 +33,6 @@ case class ShortWeierstrassCurve(override val modulus: IntZ, override val c: Int
     val a12 = zp.add(m01, m02) // y1y2 + z1z2
     val m10 = zp.multiply(a00, a01) // x1x2 + y1y2 + x1y2 + x2y1
     val m11 = zp.multiply(a02, a03) // x1x2 + z1z2 + x1z2 + x2z1
-
     val m12 = zp.multiply(a04, a05) // y1y2 + z1z2 + y1z2 + y2z1
     // stage 2
     val tri20 = m02 * 3 // 3z1z2
@@ -64,9 +63,7 @@ case class ShortWeierstrassCurve(override val modulus: IntZ, override val c: Int
   def pdblHomo(p: EcPointProj) = paddHomo(p, p)
 
   // TODO: better implementation of ladder on ShortWeierstrassCurve
-  
   override def padd(p0: EcPointAffine, p1: EcPointAffine) = {
     paddHomo(p0.toProjective, p1.toProjective).toAffine(Homo)
   }
-
 }

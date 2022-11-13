@@ -69,7 +69,7 @@ package object Chainsaw {
      * @example 10100.split(3) = (10,100)
      */
     def splitAt(lowWidth: Int): (BigInt, BigInt) = {
-      require(value >= 0)
+      require(value >= 0, s"$value")
       val base = BigInt(1) << lowWidth
       (value >> lowWidth, value % base)
     }
