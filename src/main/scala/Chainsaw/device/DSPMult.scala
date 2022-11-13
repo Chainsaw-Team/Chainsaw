@@ -133,6 +133,52 @@ class DSPMultLow(width: Int = 16) extends Component {
 }    // Done
 
 
+class DSPMultHigh(width: Int = 16) extends Component {
+  val io = new Bundle {
+    val AH  = in  UInt(width bits)      // AH
+    val AL  = in  UInt(width bits)      // AL
+    val BH  = in  UInt(width bits)      // BH
+    val BL  = in  UInt(width bits)      // BL
+    val MultiplierA = out Bits (width*2 bits)
+    val MultiplierB = out Bits (width*2 bits)
+    val ret = out UInt(width*2+1 bits)    // high bit Mult
+    // FIXME: Just for test
+    val DSP0retLowBit_test  = out UInt(48 bits)
+    val DSP1retHighBit_test = out UInt(width+1 bits)
+  }
+  noIoPrefix()
+
+  // DSP0: AL * BH, no add
+  val ALBH_Mult = new DSP48E2Cell_MultAdd(0,1,0,1)    // 配平
+  ALBH_Mult.io.A := io.AL.resize(30)
+  ALBH_Mult.io.B := io.BH.resize(18)
+  ALBH_Mult.io.C := U(0)
+  val DSP0ret = ALBH_Mult.io.P
+
+  // DSP1: AH * BL + result of DSP0 (take high width bits)
+  val AHBL_MultAdd = new DSP48E2Cell_MultAdd(1,2,1,0)
+  AHBL_MultAdd.io.A := io.AH.resize(30)
+  AHBL_MultAdd.io.B := io.BL.resize(18)
+  AHBL_MultAdd.io.C := DSP0ret
+  val DSP1retHighBit = AHBL_MultAdd.io.P(2*width downto width)    // take width+1 bits
+
+  // DSP2: AH * BH (full mult) + result of DSP1
+  val AHBH_MultAdd = new DSP48E2Cell_MultAdd(2,2,3,0)
+  AHBH_MultAdd.io.A := io.AH.resize(30)
+  AHBH_MultAdd.io.B := io.BH.resize(18)
+  AHBH_MultAdd.io.C := DSP1retHighBit.resize(48)
+  val DSP2ret = AHBH_MultAdd.io.P(width*2 downto 0)    // take low width*2 bits
+
+  io.ret := DSP2ret
+
+  // FIXME: Just for test
+  io.MultiplierA := io.AH ## io.AL
+  io.MultiplierB := io.BH ## io.BL
+  io.DSP0retLowBit_test := DSP0ret
+  io.DSP1retHighBit_test := DSP1retHighBit
+
+}    // Done
+
 
 class DSPMultKara(widthA: Int = 16, widthB: Int = 25) extends Component {
   val io = new Bundle {
@@ -195,7 +241,8 @@ object DSPMult_Main {
   def main(args: Array[String]) {
 //    NewSpinalConfig.generateVerilog(new DSPMultKara(16,25)).printRtl()
 //    NewSpinalConfig.generateVerilog(new DSPMultFull(16)).printRtl()
-    NewSpinalConfig.generateVerilog(new DSPMultLow(16)).printRtl()
+//    NewSpinalConfig.generateVerilog(new DSPMultLow(16)).printRtl()
+    NewSpinalConfig.generateVerilog(new DSPMultHigh(16)).printRtl()
 //    NewSpinalConfig.generateVerilog(new DSP_Mult_Square).printRtl()
   }
 }
