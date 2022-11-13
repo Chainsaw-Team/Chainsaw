@@ -2,7 +2,7 @@ package Chainsaw.arithmetic
 
 import Chainsaw._
 import Chainsaw.xilinx._
-import Chainsaw.device.{DSPMultFull, DSPMultKara}
+import Chainsaw.device.{DSPMultFull, DSPMultLow, DSPMultKara}
 import spinal.core.IntToBuilder
 
 import scala.language.postfixOps
@@ -28,7 +28,7 @@ case class KaraBase(widthA: Int, widthB: Int, multType: MultiplierType) extends 
       case FullMultiplier => Seq(prod)
       case SquareMultiplier => Seq(prod)
       case MsbMultiplier => Seq(prod.toBitValue(widthA * 2).takeHigh(widthA))
-      case LsbMultiplier => Seq(prod.toBitValue(widthA * 2).takeLow(widthA))
+      case LsbMultiplier => Seq(prod.toBitValue(widthA * 4).takeLow(widthA * 2))
       case Kara => Seq(aH * bH, aH * bL + aL * bH, aL * bL)
     }
   }
@@ -56,7 +56,7 @@ case class KaraBase(widthA: Int, widthB: Int, multType: MultiplierType) extends 
     case FullMultiplier => 6
     case SquareMultiplier => ???
     case MsbMultiplier => ???
-    case LsbMultiplier => ???
+    case LsbMultiplier => 7
     case Kara => 3    // old: 2
   }
 
@@ -92,14 +92,14 @@ case class KaraBase(widthA: Int, widthB: Int, multType: MultiplierType) extends 
       case MsbMultiplier => ???    // TODO
         val Seq(aHigh, aLow, bHigh, bLow) = uintDataIn
 
-      case LsbMultiplier => ???    // TODO
+      case LsbMultiplier =>
         val Seq(aHigh, aLow, bHigh, bLow) = uintDataIn
-        // 0-1
-        val ALBH = (aLow.intoSInt * bHigh.intoSInt).d()
-        val AHBL = (aHigh.intoSInt * bLow.intoSInt).d()
-        val sumShift = (ALBH(widthA-1 downto 0) + AHBL(widthA-1 downto 0))
-        val ALBL = (aLow.intoSInt * bLow.intoSInt).d()
-
+        val DSPMultLow = new DSPMultLow(widthA)
+        DSPMultLow.io.AH := aHigh
+        DSPMultLow.io.AL := aLow
+        DSPMultLow.io.BH := bHigh
+        DSPMultLow.io.BL := bLow
+        uintDataOut := Seq(DSPMultLow.io.ret)
 
       case Kara =>    // Done
           val Seq(aHigh, aLow, bHigh, bLow) = uintDataIn
