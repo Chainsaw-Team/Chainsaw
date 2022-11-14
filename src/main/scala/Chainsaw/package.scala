@@ -6,9 +6,8 @@ import spinal.lib._
 
 import java.io.File
 import scala.collection.mutable
-import scala.collection.mutable.ArrayBuffer
-import scala.reflect.ClassTag
 import scala.math.BigInt
+import scala.reflect.ClassTag
 
 package object Chainsaw {
 
@@ -38,6 +37,7 @@ package object Chainsaw {
   val simWorkspace = new File("simWorkspace")
   val synthWorkspace = new File("synthWorkspace")
   val cplexJarPath = new File("/opt/ibm/ILOG/CPLEX_Studio1210/cplex/lib/cplex.jar")
+  val flopocoPath = new File("/home/ltr/flopoco/build/flopoco")
 
   /** --------
    * scala type utils

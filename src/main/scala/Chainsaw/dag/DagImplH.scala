@@ -1,11 +1,10 @@
 package Chainsaw.dag
 
 import spinal.core._
-import spire.math.NumberTag
+import spire.math.{NumberTag, log}
 
 import scala.collection.JavaConverters._
-import scala.collection.mutable // as JGraphT is based on Java
-
+import scala.collection.mutable
 import Chainsaw._
 
 object DagImplH {
@@ -28,6 +27,7 @@ object DagImplH {
         val incomingEdges = target.incomingEdges.sortBy(_.inOrder)
         val drivingSignals = target.sourcePorts.map(signalMap)
         val pipelinedSignals = drivingSignals.zip(incomingEdges).map { case (signal, e) => signal.d(e.weight.toInt) }
+        // TODO: better resize strategy for implH
         val resizedSignals = pipelinedSignals.zip(target.gen.inputTypes).map{ case (bits, info) => info.resize(bits).get}
         target.gen match {
           case combinational: Combinational =>

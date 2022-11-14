@@ -23,8 +23,7 @@ class BcmTest extends AnyFlatSpec {
         case LsbMultiplier => Bcm(constant, LsbMultiplier, widthIn, widthIn, widthIn, useCsd)
       }
       val data = Seq.fill(1000)(BigInt(widthIn, Random))
-      val test = ChainsawTest("testBcm", gen, data)
-      test.doTest()
+      ChainsawTest("testBcm", gen, data).doTest()
     }
   }
 
