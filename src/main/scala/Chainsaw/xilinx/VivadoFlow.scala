@@ -97,8 +97,8 @@ class VivadoFlow[T <: Component](
     // sources from dut
     val lstFile = Source.fromFile(new File(workspacePath, s"$topModuleName.lst"))
     lstFile.getLines().foreach { line =>
-      if (line.startsWith("/")) script += s"read_verilog $line\n" // absolute path
-      else script += s"read_verilog ${line.split("/").last}\n" // relative path
+      val sourceFile = new File(line)
+      script += getReadCommand(sourceFile)
     }
     lstFile.close()
 
