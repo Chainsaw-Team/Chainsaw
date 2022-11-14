@@ -91,9 +91,9 @@ case class CpaGraph() extends Dag {
   val o = OutputVertex(UIntInfo(40))
   // declare submodules
   val widths = Seq.fill(4)(10)
-  val add0 = Cpa(BinaryAdder, widths, S2M).asVertex // aligned -> diff
-  val add1 = Cpa(BinaryAdder, widths, M2M).asVertex // diff -> diff
-  val add2 = Cpa(BinaryAdder, widths, M2S).asVertex // diff -> aligned
+  val add0 = Cpa(BinaryAdder, widths, S2M, withCarry = true).asVertex // aligned -> diff
+  val add1 = Cpa(BinaryAdder, widths, M2M, withCarry = true).asVertex // diff -> diff
+  val add2 = Cpa(BinaryAdder, widths, M2S, withCarry = true).asVertex // diff -> aligned
 
   add0.in(0) := i
   add1.<<(add0)
