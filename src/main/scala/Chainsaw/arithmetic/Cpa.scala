@@ -1,11 +1,7 @@
 package Chainsaw.arithmetic
 
-import spinal.core._
-import spinal.core.sim._
-import spinal.lib._
-import spinal.lib.fsm._
-
 import Chainsaw._
+import spinal.core._
 
 sealed trait CpaMode
 
@@ -20,11 +16,11 @@ object S2S extends CpaMode
 /** carry-propagation adder
  *
  * @param adderType function of adder
- * @param widths    widths of sub-adders
+ * @param widths    widths of sub-adders, low to high
  * @param cpaMode   interface of adder
  * @param withCarry carry-out existence
  */
-case class Cpa(adderType: AdderType, widths: Seq[Int], cpaMode: CpaMode, withCarry: Boolean = true) extends ChainsawGenerator {
+case class Cpa(adderType: AdderType, widths: Seq[Int], cpaMode: CpaMode, withCarry: Boolean) extends ChainsawGenerator {
 
   override def name = s"cpa_${widths.mkString("_")}_${cpaMode.getClass.getSimpleName.init}_${adderType.getClass.getSimpleName.init}_${withCarry}"
 
@@ -32,14 +28,14 @@ case class Cpa(adderType: AdderType, widths: Seq[Int], cpaMode: CpaMode, withCar
 
   val widthInc = adderType match {
     case BinaryAdder => 1
-    // when you want the sign of subtraction, set 1 bit more on width, then MSB = 1 means negative
-    case BinarySubtractor => 0
+    case BinarySubtractor => 1
     case TernaryAdder => 2
     case TernarySubtractor1 => 1
     case TernarySubtractor2 => 0
   }
 
   val widthsWithInc = widths.init :+ (if (withCarry) widths.last + widthInc else widths.last)
+  val widthFull = widths.sum
 
   val operandCount = adderType match {
     case BinaryAdder => 2
@@ -51,7 +47,7 @@ case class Cpa(adderType: AdderType, widths: Seq[Int], cpaMode: CpaMode, withCar
     val temp = cpaMode match {
       case M2M => widths.map(UIntInfo(_))
       case M2S => widths.map(UIntInfo(_))
-      case _ => Seq(widths.sum).map(UIntInfo(_))
+      case _ => Seq(widthFull).map(UIntInfo(_))
     }
     Seq.fill(operandCount)(temp).flatten
   }
@@ -64,21 +60,32 @@ case class Cpa(adderType: AdderType, widths: Seq[Int], cpaMode: CpaMode, withCar
 
   override def impl(dataIn: Seq[Any]) = {
 
+    // get concatenated inputs a, b and optional c
     def concat(bigInts: Seq[BigInt], widths: Seq[Int]): BigInt = {
       val str = bigInts.zip(widths).map { case (int, i) => int.toString(2).padToLeft(i, '0') }.reverse.reduce(_ + _)
       BigInt(str, 2)
     }
 
+    val upper = if (withCarry) Pow2(widthFull + widthInc) else Pow2(widthFull)
+
+    def addWrapAround(value: BigInt): BigInt = if (value >= upper) value - upper else value
+
+    def subWrapAround(value: BigInt): BigInt = {
+      if (!withCarry) if (value < 0) value + upper else value
+      else value + (upper / 2)
+    }
+
     val data = dataIn.asInstanceOf[Seq[BigInt]]
       .grouped(inputWidths.length / operandCount).toSeq
       .map(concat(_, widths))
-
     val Seq(a, b) = data
     val c: BigInt = if (data.length > 2) data(2) else BigInt(0)
+    require(Seq(a, b, c).forall(_ < upper))
 
+    //
     val ret = adderType match {
-      case BinaryAdder => a + b
-      case BinarySubtractor => a - b
+      case BinaryAdder => addWrapAround(a + b)
+      case BinarySubtractor => subWrapAround(a - b)
       case TernaryAdder => a + b + c
       case TernarySubtractor1 => a + b - c
       case TernarySubtractor2 => a - b - c
@@ -91,18 +98,6 @@ case class Cpa(adderType: AdderType, widths: Seq[Int], cpaMode: CpaMode, withCar
       case _ => slices.prevAndNext { case (prev, next) => ret.toBitValue()(next - 1 downto prev) }
     }
   }
-
-  def frameWiseMetric(yours: Seq[Any], golden: Seq[Any]) = {
-
-    val y = yours.asInstanceOf[Seq[BigInt]]
-    val g = golden.asInstanceOf[Seq[BigInt]]
-
-    if (g.exists(_ < 0)) true
-    else yours.equals(golden)
-
-  }
-
-  override val metric = ChainsawMetric(frameWise = frameWiseMetric)
 
   override var inputFormat = inputNoControl
   override var outputFormat = outputNoControl
@@ -128,7 +123,7 @@ case class Cpa(adderType: AdderType, widths: Seq[Int], cpaMode: CpaMode, withCar
     case _ => widths.length
   }
 
-  override def implH: ChainsawModule = new ChainsawModule(this) {
+  override def implH = new ChainsawModule(this) {
 
     val coreCount = widths.length // number of subAdders
     val inputTimesExtended = actualInTimes.padTo(coreCount, 0)
@@ -136,13 +131,12 @@ case class Cpa(adderType: AdderType, widths: Seq[Int], cpaMode: CpaMode, withCar
     val inputCompensations = widths.indices.zip(inputTimesExtended).map { case (target, actual) => target - actual }
     val outputCompensations = outputTimesExtended.zip(widths.indices).map { case (target, actual) => target + latency - actual }
 
-    val uintIns = dataIn.map(_.asUInt)
     val dataWords: Seq[Seq[UInt]] = // a mesh of dataWords where each column contains all words of an operand
       {
         if (cpaMode == S2M | cpaMode == S2S) {
           val slices = widths.scan(0)(_ + _).prevAndNext { case (prev, next) => (next - 1) downto prev }
-          uintIns.map(operand => slices.map(operand(_)))
-        } else uintIns.grouped(coreCount).toSeq
+          uintDataIn.map(operand => slices.map(operand(_)))
+        } else uintDataIn.grouped(coreCount).toSeq
       }.transpose
 
     // prepare output words
@@ -177,22 +171,20 @@ case class Cpa(adderType: AdderType, widths: Seq[Int], cpaMode: CpaMode, withCar
       }
     }.last._1
 
-    val lastWord = adderType match {
-      case BinaryAdder => if (withCarry) finalCarryOut.head.asUInt @@ sumWords.last else sumWords.last
-      case BinarySubtractor => sumWords.last
-      case _ => ???
-    }
+    val lastWord = if (withCarry) finalCarryOut.head.asUInt @@ sumWords.last else sumWords.last
+
     val outputWords = (sumWords.init :+ lastWord).map(_.asBits)
 
     if (cpaMode == M2S | cpaMode == S2S) dataOut.head := outputWords.reverse.reduce(_ ## _)
     else dataOut.zip(outputWords).foreach { case (port, bits) => port := bits } // low to high
 
     Seq.tabulate(operandCount, inputWidths.length / operandCount)((i, j) => dataIn(i * inputWidths.length / operandCount + j).setName(s"operand_${i}_$j"))
+
+    def isNegative = ~uintDataOut.head.msb
   }
+}
 
-  // TODO: impl
-  override def implNaiveH = Some(new ChainsawModule(this) {
-
-
-  })
+object CpaS2S {
+  def apply(adderType: AdderType, width: Int, withCarry: Boolean) =
+    Cpa(adderType, getBinaryWidths(width), S2S, withCarry)
 }

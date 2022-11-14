@@ -36,20 +36,6 @@ object Output extends VarType
 
 object Var extends VarType
 
-object Custom extends OperatorType
-
-object Multiplexer extends OperatorType
-
-object And extends OperatorType
-
-object Shift extends OperatorType
-
-object Split extends OperatorType
-
-object Merge extends OperatorType
-
-object Resize extends OperatorType
-
 sealed trait SopStructure
 
 object Direct extends SopStructure

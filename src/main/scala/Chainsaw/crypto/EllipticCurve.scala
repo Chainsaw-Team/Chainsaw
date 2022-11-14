@@ -67,7 +67,7 @@ class EllipticCurve(val modulus: IntZ, val a: IntZ, val b: IntZ, val c: IntZ, va
     temp
   }
 
-  def pladder(r0: EcPointAffine, r1: EcPointAffine, bit: Int) = {
+  def pladder(r0: EcPointAffine, r1: EcPointAffine, bit: Int): (EcPointAffine, EcPointAffine) = {
     if (bit == 1) (padd(r0, r1), pdbl(r1))
     else (pdbl(r0), padd(r0, r1))
   }

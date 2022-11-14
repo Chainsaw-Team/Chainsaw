@@ -24,9 +24,6 @@ class EllipticCurveTest extends AnyFlatSpec {
   "elliptic curve" should "work with naive implementation for BLS-377" in bls377.selfTest(points)
 
   val betterBls377 = EllipticCurve(baseModulus, 0, 0, 0, 1)
-  //  val betterBls377 = ShortWeierstrassCurve(baseModulus, 0, 1)
 
   "short weierstrass curve" should "work with homo coordinates algorithm for BLS-377" in betterBls377.selfTest(points)
-
-
 }
