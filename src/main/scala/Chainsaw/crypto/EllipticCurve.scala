@@ -2,6 +2,8 @@ package Chainsaw.crypto
 
 
 import Chainsaw._
+import Chainsaw.dag.Dag
+import cc.redberry.rings.scaladsl.GaussianIntegers.z
 import cc.redberry.rings.scaladsl._
 import cc.redberry.rings.scaladsl.syntax._
 
@@ -53,6 +55,8 @@ class EllipticCurve(val modulus: IntZ, val a: IntZ, val b: IntZ, val c: IntZ, va
     assert(isOnCurve(ret), s"padd/pdbl failed on $p0 + $p1")
     ret
   }
+
+  def paddGraph(width: Int): Dag = null
 
   // caution! padd & pdbl are actually two different operations in affine coordinates, we merge them for simplicity while using pmul
   def pdbl(p: EcPointAffine) = padd(p, p)
@@ -113,11 +117,31 @@ object EllipticCurve {
   }
 }
 
+sealed trait Coordinates
+
+object Jacobi extends Coordinates //X : Y : Z
+
+object Homo extends Coordinates //X : Y : Z
+
+object extendedHomo extends Coordinates //X : Y : Z : T
+
+object extendedJacobi extends Coordinates //X : Y : Z : W
+
+object extendedAffine extends Coordinates //x : y : u
+
 object EcZeroAffine extends EcPointAffine(null, null)
 
 case class EcPointAffine(x: IntZ, y: IntZ) {
 
-  def toProjective: EcPointProj = if (this == EcZeroAffine) EcPointProj(1, 1, 0) else EcPointProj(x, y, asBigInteger(1))
+  def toProjective(coordinates: Coordinates)(implicit eccGroup: EllipticCurve): EcPointProj = {
+    coordinates match {
+      case crypto.Jacobi => EcPointProj(x, y, asBigInteger(1))(coordinates)
+      case crypto.Homo => EcPointProj(x, y, asBigInteger(1))(coordinates)
+      case crypto.extendedHomo => EcPointProj(x, y, 1, eccGroup.zp.multiply(x, y))(coordinates)
+      case crypto.extendedJacobi => EcPointProj(x, y, asBigInteger(1), asBigInteger(1))(coordinates)
+      case crypto.extendedAffine => EcPointProj(x, y, eccGroup.zp.multiply(x, y, asBigInteger(BigInt("0196bab03169a4f2ca0b7670ae65fc7437786998c1a32d217f165b2fe0b32139735d947870e3d3e4e02c125684d6e016", 16))))(coordinates)
+    }
+  }
 
   def +(that: EcPointAffine)(implicit eccGroup: EllipticCurve) = eccGroup.padd(this, that)
 
@@ -128,28 +152,34 @@ case class EcPointAffine(x: IntZ, y: IntZ) {
   def inverse(implicit eccGroup: EllipticCurve) = EcPointAffine(x, (-y) % eccGroup.modulus)
 }
 
-sealed trait Coordinates
-
-object Jacobi extends Coordinates
-
-object Homo extends Coordinates
 
 /** ecliptic curve point in projective(Jacobi or homogeneous) coordinates
  */
-case class EcPointProj(x: IntZ, y: IntZ, z: IntZ) {
+case class EcPointProj(axis: IntZ*)(coordinates: Coordinates) {
 
-  def toAffine(coordinates: Coordinates)(implicit eccGroup: EllipticCurve) = {
+  def toAffine(implicit eccGroup: EllipticCurve) = {
     if (isZero) EcZeroAffine
     else {
       val denominators = coordinates match {
-        case Jacobi => (z.pow(2), z.pow(3))
-        case Homo => (z, z)
+        case crypto.Jacobi => (axis(2).pow(2), axis(2).pow(3))
+        case crypto.Homo => (axis(2), axis(2))
+        case crypto.extendedHomo => (axis(2), axis(2))
+        case crypto.extendedJacobi => (axis(2), axis(3))
+        case crypto.extendedAffine => (asBigInteger(1), asBigInteger(1))
       }
-      val xAffine = eccGroup.zp.divideExact(x, denominators._1)
-      val yAffine = eccGroup.zp.divideExact(y, denominators._2)
+      val xAffine = eccGroup.zp.divideExact(axis(0), denominators._1)
+      val yAffine = eccGroup.zp.divideExact(axis(1), denominators._2)
       EcPointAffine(xAffine, yAffine)
     }
   }
 
-  def isZero = z.intValue() == 0
+  def isZero = {
+    coordinates match {
+      case crypto.Jacobi => axis(2).isZero
+      case crypto.Homo => axis(2).isZero
+      case crypto.extendedHomo => axis(2).isZero
+      case crypto.extendedJacobi => axis(2).isZero || axis(3).isZero
+      case crypto.extendedAffine => false
+    }
+  }
 }

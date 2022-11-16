@@ -16,8 +16,11 @@ class KaraBaseTest extends AnyFlatSpec {
   }
 
   val modes = Seq(FullMultiplier, SquareMultiplier, MsbMultiplier, LsbMultiplier, Kara)
-//  val modes = Seq(SquareMultiplier)
 
-  "kara base" should "work" in modes.foreach(testKaraBase)
+  behavior of "kara base"
+
+  modes.foreach(mode => it should s"work for ${mode.getClass.getSimpleName} mode" in testKaraBase(mode))
+
+  modes.foreach(mode => it should s"synth for ${mode.getClass.getSimpleName} mode" in ChainsawSynth(KaraBase(16, 16, mode), "synthKaraBase", withRequirement = true))
 
 }
