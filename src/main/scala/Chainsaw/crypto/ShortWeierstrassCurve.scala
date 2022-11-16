@@ -63,6 +63,7 @@ case class ShortWeierstrassCurve(override val modulus: IntZ, override val c: Int
   def pdblHomo(p: EcPointProj) = paddHomo(p, p)
 
   // TODO: better implementation of ladder on ShortWeierstrassCurve
+
   override def padd(p0: EcPointAffine, p1: EcPointAffine) = {
     paddHomo(p0.toProjective, p1.toProjective).toAffine(Homo)
   }

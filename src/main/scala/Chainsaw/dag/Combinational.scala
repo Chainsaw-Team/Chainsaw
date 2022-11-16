@@ -3,11 +3,16 @@ package Chainsaw.dag
 import Chainsaw._
 import spinal.core._
 
+/** simple generators which are combinational for the ease of Dag implementation
+ *
+ */
 abstract class Combinational extends ChainsawGenerator {
 
   override var latency = 0
 
-  override def implH = null
+  override def implH = null // this should never be invoked, instead, method comb will be used for implementation
+
+
 
   def comb(dataIn:Seq[Bits]):Seq[Bits]
 }
