@@ -1,5 +1,8 @@
 package Chainsaw.xilinx
 
+
+
+
 case class VivadoUtil(
                        lut: Int,
                        ff: Int,
@@ -17,13 +20,37 @@ case class VivadoUtil(
   def *(k: Int) = VivadoUtil(this.getValues.map(_ * k))
 
   // to get percentage
-  def /(that: VivadoUtil) =
+  def /(that: VivadoUtil): Seq[Double] =
     this.getValues.zip(that.getValues).map { case (a, b) => a.toDouble / b }
 
-  def <=(that: VivadoUtil) =
+  def <=(that: VivadoUtil): Boolean =
     this.getValues.zip(that.getValues).forall { case (a, b) => a.toDouble <= b }
 
-  def >=(that: VivadoUtil) = that <= this
+  def >=(that: VivadoUtil): Boolean = that <= this
+
+  def normalizedCost(clbPerDsp: Double): Double = dsp.toDouble max (lut / clbPerDsp)
+
+  def isBetterThan(that: VivadoUtil, strategy: UtilStrategy, clbPerDsp: Double) = {
+
+    def getDet(value: Double, thatValue: Double): Int = if (value < thatValue) 1 else if (value == thatValue) 0 else -1
+
+    val dspBetter = getDet(this.dsp, that.dsp)
+    val clbBetter = getDet(this.lut, that.lut)
+
+    // TODO: generalize clbPerDsp
+    val ratioBetter = getDet(this.normalizedCost(clbPerDsp), that.normalizedCost(clbPerDsp))
+
+    /** judge whether a solution is better than another by multiple determinants with decresing priorities
+     * @param betters 1 for better, 0 for equally good, -1 for worst
+     */
+    def betterWithPriority(betters: Int*): Boolean = betters.reverse.zipWithIndex.map{ case (better, i) => better << i}.sum > 0
+
+    strategy match {
+      case DspFirst => betterWithPriority(dspBetter, clbBetter, ratioBetter)
+      case ClbFirst => betterWithPriority(clbBetter, dspBetter, ratioBetter)
+      case RatioFirst => betterWithPriority(ratioBetter, dspBetter, clbBetter)
+    }
+  }
 
   def showInt(value: Int) =
     if (value == Int.MaxValue) "unlimited" else value.toString
@@ -54,3 +81,11 @@ object VivadoUtilRequirement {
            ) =
     VivadoUtil(lut, ff, dsp, bram36, carry8)
 }
+
+sealed trait UtilStrategy
+
+object DspFirst extends UtilStrategy
+
+object ClbFirst extends UtilStrategy
+
+object RatioFirst extends UtilStrategy
