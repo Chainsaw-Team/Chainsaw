@@ -117,4 +117,5 @@ case class BitHeapCompressor(operandInfos: Seq[ArithInfo], carrySaveCompress: Bo
     }
     uintDataOut := Seq((ret.head.asUInt @@ U(0, heapOut.weightLows.head bits)).resize(finalWidthOut), (ret.last.asUInt @@ U(0, heapOut.weightLows.head bits)).resize(finalWidthOut))
   }
+
 }

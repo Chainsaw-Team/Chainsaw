@@ -28,6 +28,7 @@ object Gpcs {
     val ret = Seq(Compressor1to1, Compressor4to2, Compressor3to1, Compressor6to3, Compressor3to2)
     ret
   }
+
 }
 
 /** general parallel counter (4; 2) for Xilinx FPGA

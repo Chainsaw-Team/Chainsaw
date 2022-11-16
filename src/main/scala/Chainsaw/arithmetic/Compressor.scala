@@ -38,7 +38,7 @@ abstract class Compressor {
 
   /** hardware implementation, the compressor is responsible for padding zeros
     */
-  def impl(bitsIn: BitHeap[Bool], width: Int): BitHeap[Bool]
+  def impl(bitsIn: BitHeaps[Bool], width: Int): BitHeaps[Bool]
 
   /** -------- attributes
     * --------
@@ -63,8 +63,8 @@ abstract class Compressor {
 
   // visualization
   def toString(width: Int) = {
-    val dotsIn    = BitHeap.getHeapFromHeights(Seq(inputFormat(width)), Seq(0), Seq(0)).toString
-    val dotsOut   = BitHeap.getHeapFromHeights(Seq(outputFormat(width)), Seq(0), Seq(0)).toString
+    val dotsIn    = BitHeaps.getHeapFromHeights(Seq(inputFormat(width)), Seq(0), Seq(0)).toString
+    val dotsOut   = BitHeaps.getHeapFromHeights(Seq(outputFormat(width)), Seq(0), Seq(0)).toString
     val length    = outputFormat(width).length
     val arrowLine = s"${" " * (length / 2) * 2}$downArrow"
     val shiftedDotsIn =

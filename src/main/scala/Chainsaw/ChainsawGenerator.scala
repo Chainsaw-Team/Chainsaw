@@ -99,6 +99,7 @@ trait ChainsawGenerator {
       "invalid generator with negative latency, " +
         "do you forgot to invoke GraphDone at the end of Dag construction?"
     )
+
   }
 
   final def inputWidths: Seq[Int] = inputTypes.map(_.bitWidth)

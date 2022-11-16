@@ -862,6 +862,7 @@ object BitHeaps {
       tableForHeap.zip(table).foreach { case (buf, seq) => buf ++= seq }
       bitHeapConfigInfos += BitHeapConfigInfo(tableForHeap, weightLow, time)
     }
+
     BitHeaps(bitHeapConfigInfos: _*)
   }
 
