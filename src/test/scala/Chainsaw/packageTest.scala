@@ -15,6 +15,12 @@ class packageTest extends AnyFlatSpec {
     assert(BigInt("11011", 2).toBitValue(5).takeHigh(3) == BigInt("110", 2))
     assert(BigInt("11011", 2).toBitValue(5).takeLow(3) == BigInt("011", 2))
     assert(BigInt("11011", 2).toBitValue(5)(3 downto 1) == BigInt("101", 2))
+
+    assert(BigInt("11010011", 2).toBitValue().splitN(2) ==
+      Seq(BigInt("1101", 2), BigInt("0011", 2)).reverse) // without padding
+
+    assert(BigInt("11011", 2).toBitValue().splitN(3) ==
+      Seq(BigInt("01", 2), BigInt("10", 2), BigInt("11", 2)).reverse) // with padding
   }
 
 }

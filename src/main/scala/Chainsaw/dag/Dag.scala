@@ -3,7 +3,7 @@ package Chainsaw.dag
 import Chainsaw._
 import org.jetbrains.annotations.Debug.Renderer
 import org.jgrapht._
-import org.jgrapht.alg.connectivity.ConnectivityInspector
+import org.jgrapht.alg.connectivity._
 import org.jgrapht.graph._
 import spinal.core._
 
@@ -140,8 +140,11 @@ abstract class Dag()
     setEdgeWeight(e, weight)
   }
 
-  //  def autoPipeline(): Dag = AutoPipeline(this)
-  def autoPipeline(): Dag = AutoPipeline(this)
+  def autoPipeline(): Dag = {
+    logger.info(s"cplex exist: ${cplexJarPath.exists()}")
+    if (cplexJarPath.exists()) AutoPipelineCplex(this)
+    else AutoPipeline(this)
+  }
 
   /** --------
    * methods for rewriting
@@ -201,7 +204,11 @@ abstract class Dag()
 
   def assureAcyclic(): Unit = assert(!new alg.cycle.CycleDetector(this).detectCycles(), "dag must be acyclic")
 
-  def assureConnected(): Unit = assert(new ConnectivityInspector(this).isConnected, "dag must be a connected graph")
+  def assureConnected(): Unit = {
+    val ins = new ConnectivityInspector(this)
+    assert(ins.isConnected,
+      s"dag must be a connected graph, connected sets = \n ${ins.connectedSets().asScala.mkString("\n")}")
+  }
 
   override def doDrc(): Unit = {
     logger.info(s"\n----drc started...----")
@@ -235,4 +242,6 @@ abstract class Dag()
   }
 
   def exportPng(graphName: String = name): Unit = ToPng(this, graphName)
+
+  override def toString = s"\nvertices:\n${vertexSet().asScala.mkString("\n")}" + s"edges:\n${edgeSet().asScala.map(_.toStringInGraph).mkString("\n")}"
 }

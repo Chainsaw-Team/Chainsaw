@@ -14,7 +14,9 @@ object AutoPipeline {
    * @return dag with a valid solution and weights on edges
    * @see ''Parhi, Keshab K.. “Vlsi Digital Signal Processing Systems: Design And Implementation.” (2007).'' Chapter 4
    */
-  def apply(dag: Dag, sources: Option[Seq[DagVertex]] = None, targets: Option[Seq[DagVertex]] = None, maximumLatency: Int = 500): Dag = {
+  def apply(dag: Dag, sources: Option[Seq[DagVertex]] = None,
+            targets: Option[Seq[DagVertex]] = None,
+            maximumLatency: Int = 500): Dag = {
 
     implicit val refDag: Dag = dag
 
@@ -39,7 +41,7 @@ object AutoPipeline {
 
     val coeffs = outs.map(_ => 1.0) ++ ins.map(_ => -1.0)
     val expr = (outs ++ ins).zip(coeffs)
-      .map{ case (v, coeff) => variableMap(v) * coeff}
+      .map { case (v, coeff) => variableMap(v) * coeff }
       .reduce(_ + _) // \Sigma outs - \Sigma ins
 
     minimize(expr)

@@ -88,3 +88,13 @@ case class Bcm(constant: BigInt, multiplierType: MultiplierType, widthIn: Int, w
     dataOut := ret
   }
 }
+
+object MsbBcm {
+  def apply(constant: BigInt, widthIn: Int, widthInvolved: Int, widthOut: Int, useCsd: Boolean) =
+    Bcm(constant, MsbMultiplier, widthIn, widthInvolved, widthOut, useCsd)
+}
+
+object LsbBcm {
+  def apply(constant: BigInt, widthIn: Int, widthOut: Int, useCsd: Boolean) =
+    Bcm(constant, LsbMultiplier, widthIn, widthOut, widthOut, useCsd)
+}

@@ -18,7 +18,7 @@ abstract class ModularMult {
     val pairCount = 1000000
     logger.info(s"self testing with $pairCount pairs of random input")
     val data = Seq.fill(pairCount)(BigInt(k, Random), BigInt(k, Random))
-    data.foreach { case (x, y) => assert(impl(x, y) == (x * y) % M )}
+    data.foreach { case (x, y) => assert(impl(x, y) == (x * y) % M) }
     logger.info(s"self testing done!")
   }
 }
@@ -66,15 +66,19 @@ case class BarrettFineAlgo(override val M: BigInt) extends ModularMult {
 
     require(x.bitLength <= k, y.bitLength <= k)
     val N = (x * y).toBitValue(2 * k) // mult0
+    val NLow = N.takeLow(widthComp)
 
     // truncated msb mult, which introduce extra error on E
     val E = multMsb.impl(N.takeHigh(k + 1)) // mult1
-    //
-    val r1 = multLsb.impl(E) // mult2
 
-    // fine reduction
-    val r0 = N.takeLow(widthComp) + (-errorMin) * M
-    val T = Zp(Pow2(widthComp))(r0 - r1).toBigInt
+    // truncated lsb mult
+    val F = multLsb.impl(E) // mult2
+
+    // TODO: analysis
+    // fine reduction, inputs of fine reduction are NLow, F and C
+    val C = Zp(Pow2(widthComp))((-errorMin) * M).toBigInt
+    val T = Zp(Pow2(widthComp))(NLow - F + C).toBigInt // no cost on hardware
+
     // bound verification
     assert(T < reductionMax * M && T >= 0, s"T = $T")
 

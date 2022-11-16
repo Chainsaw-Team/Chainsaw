@@ -5,10 +5,11 @@ import spinal.core._
 import spinal.lib._
 
 import java.io.File
+import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
-import scala.reflect.ClassTag
 import scala.math.BigInt
+import scala.reflect.ClassTag
 
 package object Chainsaw {
 
@@ -38,6 +39,7 @@ package object Chainsaw {
   val simWorkspace = new File("simWorkspace")
   val synthWorkspace = new File("synthWorkspace")
   val cplexJarPath = new File("/opt/ibm/ILOG/CPLEX_Studio1210/cplex/lib/cplex.jar")
+  val flopocoPath = new File("/home/ltr/flopoco/build/flopoco")
 
   /** --------
    * scala type utils
@@ -69,7 +71,7 @@ package object Chainsaw {
      * @example 10100.split(3) = (10,100)
      */
     def splitAt(lowWidth: Int): (BigInt, BigInt) = {
-      require(value >= 0)
+      require(value >= 0, s"$value")
       val base = BigInt(1) << lowWidth
       (value >> lowWidth, value % base)
     }
@@ -81,6 +83,24 @@ package object Chainsaw {
     def apply(range: Range) = {
       (value / Pow2(range.low)) % Pow2(range.length)
     }
+
+    /** split the BigInt uniformly into n segments, low to high
+     */
+    def splitN(n: Int):Seq[BigInt] = {
+      val padded = BitValue(value, width.nextMultiple(n))
+      val segmentWidth = width.divideAndCeil(n)
+      val segments = ArrayBuffer[BigInt]()
+      var current = padded
+      (0 until n - 1).foreach { i =>
+        val (high, low) = current.splitAt(segmentWidth)
+        segments += low
+        current = high.toBitValue(segmentWidth * (n - i - 1))
+      }
+      segments += current.value
+      segments
+    }
+
+    def ##(that:BitValue) = (this.value << that.width) + that.value
   }
 
   // TODO: make BigInt behaves just like Bits/UInt
@@ -130,10 +150,6 @@ package object Chainsaw {
   }
 
 
-  object Pow2 {
-    def apply(exp: Int) = BigInt(1) << exp
-  }
-
   import xilinx._
 
   def ChainsawSynth(gen: ChainsawGenerator, name: String, withRequirement: Boolean = false) = {
@@ -142,8 +158,30 @@ package object Chainsaw {
     report
   }
 
+  def ChainsawImpl(gen: ChainsawGenerator, name: String, withRequirement: Boolean = false) = {
+    val report = VivadoImpl(gen.implH, name)
+    if (withRequirement) report.require(gen.utilEstimation, gen.fmaxEstimation)
+    report
+  }
+
+
   implicit class intzUti(intz: IntZ) {
     def toBigInt = BigInt(intz.toByteArray)
   }
+
+  /** --------
+   * util functions
+   * -------- */
+  object Pow2 {
+    def apply(exp: Int) = BigInt(1) << exp
+  }
+
+  @tailrec
+  def gcd(a: Int, b: Int): Int = {
+    val (p, q) = if (a >= b) (a, b) else (b, a)
+    if (q == 0) p
+    else gcd(q, p % q)
+  }
+
 
 }
