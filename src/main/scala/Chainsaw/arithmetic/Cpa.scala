@@ -231,14 +231,14 @@ case class Cpa(adderType: AdderType, widths: Seq[Int], cpaMode: CpaMode, withCar
       .last
       ._1
 
-    def isNegative = adderType match {
+    def isNegative: Bool = adderType match {
       case BinarySubtractor   => ~finalCarryOut.head
       case TernarySubtractor1 => ~finalCarryOut.reduce(_ | _)
       case TernarySubtractor2 => ~finalCarryOut.reduce(_ & _)
       case _                  => False
     }
 
-    def isOverFlow = adderType match {
+    def isOverFlow: Bool = adderType match {
       case BinaryAdder        => if (withCarry) False else finalCarryOut.head
       case TernaryAdder       => if (withCarry) False else finalCarryOut.reduce(_ | _)
       case TernarySubtractor1 => if (withCarry) False else finalCarryOut.reduce(_ & _)

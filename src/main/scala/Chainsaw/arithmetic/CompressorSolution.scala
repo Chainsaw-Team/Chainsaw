@@ -7,7 +7,7 @@ import Chainsaw.{logger, verbose}
 case class CompressTreeSolution(solutions: Seq[StageSolution]) {
   def getLatency: Int = solutions.count(_.isPipeline)
 
-  def getBadLatency = solutions.count(_.isBadLatency)
+  def isRedundant = solutions.exists(_.isRedundant)
 
   def getAreaCostInStage(stage: Int): Double = solutions(stage).getAreaCost
 
@@ -25,7 +25,7 @@ case class CompressTreeSolution(solutions: Seq[StageSolution]) {
 
   def getWidthOutInStage(stage: Int) = solutions(stage).getWidthOut
 
-  def getNextBitHeapInStage(stage: Int) = BitHeap(solutions(stage).getNextBitHeapConfig: _*)
+  def getNextBitHeapInStage(stage: Int) = BitHeaps(solutions(stage).getNextBitHeapConfig: _*)
 
   def getTotalAreaCost = solutions.map(_.getAreaCost).sum
 
@@ -33,11 +33,11 @@ case class CompressTreeSolution(solutions: Seq[StageSolution]) {
 
   def getTotalEfficiency = getTotalCompressedBit.toDouble / getTotalAreaCost
 
-  def getFinalBitHeap = if (solutions.nonEmpty) new BitHeap(solutions.last.getNextBitHeapConfig: _*) else null
+  def getFinalBitHeap = if (solutions.nonEmpty) new BitHeaps(solutions.last.getNextBitHeapConfig: _*) else null
 
   def getFinalWidthOut = if (getFinalBitHeap != null) getFinalBitHeap.width + getFinalBitHeap.weightLow else 0
 
-  def printLog(srcBitHeap: BitHeap[Int]): Unit = {
+  def printLog(srcBitHeap: BitHeaps[Int]): Unit = {
     solutions.zipWithIndex.foreach { case (stageResolution, stage) =>
       if (verbose >= 1)
         logger.info(
@@ -48,11 +48,14 @@ case class CompressTreeSolution(solutions: Seq[StageSolution]) {
         )
       if (stageResolution.isFinalStage && verbose >= 1) logger.info(s"\n${getNextBitHeapInStage(stage).toString}")
     }
+    val actualWidth = if (getFinalWidthOut != 0) getFinalBitHeap.widths.max else srcBitHeap.width
     logger.info(
       s"\n----efficiency report of bit heap compressor----" +
         s"\n\tcost in total: ${getTotalAreaCost}, compressed in total: $getTotalCompressedBit" +
         s"\n\tefficiency in total: ${getTotalEfficiency}" +
-        s"\n\tideal widthOut: ${srcBitHeap.maxValue.bitLength}, actual widthOut: ${if (getFinalWidthOut != 0) getFinalBitHeap.widths.max else srcBitHeap.width}"
+        s"\n\tideal widthOut: ${srcBitHeap.maxValue.bitLength}, actual widthOut: $actualWidth" +
+        s"\n\t${if (isRedundant) "has redundant compressor" else "all compressor isn't redundant"}" +
+        s"\n\t${if (actualWidth > srcBitHeap.maxValue.bitLength) "output is redundant, need to be resized" else "output isn't redundant"}"
     )
   }
 }
@@ -74,9 +77,9 @@ case class StageSolution(compressorSolutions: Seq[CompressorSolution], considera
 
   def getWholeHeightDiff = stageInfo.wholeHeightDiff
 
-  def getWidthOut = BitHeap(getNextBitHeapConfig: _*).width
+  def getWidthOut = BitHeaps(getNextBitHeapConfig: _*).width
 
-  def getNextBitHeap = BitHeap(getNextBitHeapConfig: _*)
+  def getNextBitHeap = BitHeaps(getNextBitHeapConfig: _*)
 
   def getNextBitHeapConfig = stageInfo.nextBitHeapConfig
 
@@ -84,7 +87,9 @@ case class StageSolution(compressorSolutions: Seq[CompressorSolution], considera
 
   def isPipeline = stageInfo.isPipeline
 
-  def isBadLatency = stageInfo.isBadLatency
+  def isRedundant = stageInfo.isRedundant
+
+  def resizeNextHeap(width: Int) = StageSolution(compressorSolutions, consideration, stageInfo.resizeNextHeap(width))
 }
 
 case class CompressorSolution(compressorName: String, width: Int, startIndex: Int, consideration: Consideration) {
@@ -101,4 +106,6 @@ case class CompressorSolution(compressorName: String, width: Int, startIndex: In
 
 case class Consideration(areaCost: Double = 0.0, reductionEfficiency: Double = 0, reductionRatio: Double = 1, bitReduction: Int = 0, heightReduction: Int = 1)
 
-case class StageInfo(stageHeightDiff: String, wholeHeightDiff: String, nextBitHeapConfig: Seq[BitHeapConfigInfo[Int]], finalStage: Boolean, isPipeline: Boolean, isBadLatency: Boolean)
+case class StageInfo(stageHeightDiff: String, wholeHeightDiff: String, nextBitHeapConfig: Seq[BitHeapConfigInfo[Int]], finalStage: Boolean, isPipeline: Boolean, isRedundant: Boolean) {
+  def resizeNextHeap(width: Int) = StageInfo(stageHeightDiff, wholeHeightDiff, nextBitHeapConfig.take(width), finalStage, isPipeline, isRedundant)
+}

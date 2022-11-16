@@ -1,4 +1,3 @@
-
 import cc.redberry.rings.scaladsl.IntZ
 import org.slf4j.LoggerFactory
 import spinal.core._
@@ -11,37 +10,38 @@ import scala.reflect.ClassTag
 
 package object Chainsaw {
 
-  /** --------
-   * global run-time environment
-   * -------- */
-  val logger = LoggerFactory.getLogger("Chainsaw logger") // global logger
+  /** -------- global run-time environment
+    * --------
+    */
+  val logger  = LoggerFactory.getLogger("Chainsaw logger") // global logger
   var verbose = 0
 
-  val naiveSet = mutable.Set[String]()
+  val naiveSet  = mutable.Set[String]()
   var atSimTime = true
 
-  val dot = "■"
+  val dot       = "■"
+  val downArrow = "↓"
 
-  /** --------
-   * type def
-   * -------- */
-  type Metric = (Any, Any) => Boolean
+  /** -------- type def
+    * --------
+    */
+  type Metric      = (Any, Any)           => Boolean
   type FrameMetric = (Seq[Any], Seq[Any]) => Boolean
 
-  /** --------
-   * paths
-   * -------- */
-  val vivadoPath = new File("/tools/Xilinx/Vivado/2021.1/bin/vivado") // vivado executable path TODO: should be read from environment variables
-  val quartusDir = new File("/tools/quartus/bin")
-  val unisimDir = new File("src/main/resources/unisims")
-  val simWorkspace = new File("simWorkspace")
+  /** -------- paths
+    * --------
+    */
+  val vivadoPath     = new File("/tools/Xilinx/Vivado/2021.1/bin/vivado") // vivado executable path TODO: should be read from environment variables
+  val quartusDir     = new File("/tools/quartus/bin")
+  val unisimDir      = new File("src/main/resources/unisims")
+  val simWorkspace   = new File("simWorkspace")
   val synthWorkspace = new File("synthWorkspace")
-  val cplexJarPath = new File("/opt/ibm/ILOG/CPLEX_Studio1210/cplex/lib/cplex.jar")
-  val flopocoPath = new File("/home/ltr/flopoco/build/flopoco")
+  val cplexJarPath   = new File("/opt/ibm/ILOG/CPLEX_Studio1210/cplex/lib/cplex.jar")
+  val flopocoPath    = new File("/home/ltr/flopoco/build/flopoco")
 
-  /** --------
-   * scala type utils
-   * -------- */
+  /** -------- scala type utils
+    * --------
+    */
   implicit class IntUtil(int: Int) {
     def divideAndCeil(base: Int) = (int + base - 1) / base
 
@@ -65,9 +65,10 @@ package object Chainsaw {
   case class BitValue(value: BigInt, width: Int) {
 
     /** works the same as SpinalHDL splitAt
-     *
-     * @example 10100.split(3) = (10,100)
-     */
+      *
+      * @example
+      *   10100.split(3) = (10,100)
+      */
     def splitAt(lowWidth: Int): (BigInt, BigInt) = {
       require(value >= 0, s"$value")
       val base = BigInt(1) << lowWidth
@@ -91,9 +92,9 @@ package object Chainsaw {
     }
   }
 
-  /** --------
-   * spinal type utils
-   * -------- */
+  /** -------- spinal type utils
+    * --------
+    */
   // extension of Data
   implicit class DataUtil[T <: Data](data: T) {
     def d(cycle: Int = 1): T = Delay(data, cycle)
@@ -112,7 +113,7 @@ package object Chainsaw {
     }
 
     def vecShiftWrapper(bitsShift: UInt => Bits, that: UInt): Vec[T] = {
-      val ret = cloneOf(vec)
+      val ret               = cloneOf(vec)
       val shiftedBits: Bits = bitsShift((that * widthOf(vec.dataType)).resize(log2Up(widthOf(vec.asBits))))
       ret.assignFromBits(shiftedBits)
       ret
@@ -128,7 +129,6 @@ package object Chainsaw {
 
     def rotateRight(that: UInt): Vec[T] = vecShiftWrapper(bits.rotateLeft, that)
   }
-
 
   object Pow2 {
     def apply(exp: Int) = BigInt(1) << exp

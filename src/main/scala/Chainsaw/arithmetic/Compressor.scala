@@ -12,6 +12,8 @@ abstract class Compressor {
 
   val isFixed: Boolean // if the size is fixed, it is a GPC, otherwise, it is a row compressor
 
+  val redundant: Boolean // if the output maxValue is equal to input maxValue, it should be true
+
   val widthMax: Int // for delay consideration
 
   val widthMin: Int
@@ -52,7 +54,8 @@ abstract class Compressor {
 
   def reductionRatio(width: Int): Double = inputBitsCount(width).toDouble / outputBitsCount(width)
 
-  def reductionEfficiency(width: Int, considerCarry8: Boolean = true, isPipeline: Boolean = true): Double = if (areaCost(width, considerCarry8, isPipeline) != 0.0) bitReduction(width).toDouble / areaCost(width, considerCarry8, isPipeline) else 0.0
+  def reductionEfficiency(width: Int, considerCarry8: Boolean = true, isPipeline: Boolean = true): Double =
+    if (areaCost(width, considerCarry8, isPipeline) != 0.0) bitReduction(width).toDouble / areaCost(width, considerCarry8, isPipeline) else 0.0
 
   def utilRequirement(width: Int): VivadoUtil
 
@@ -63,7 +66,7 @@ abstract class Compressor {
     val dotsIn    = BitHeaps.getHeapFromHeights(Seq(inputFormat(width)), Seq(0), Seq(0)).toString
     val dotsOut   = BitHeaps.getHeapFromHeights(Seq(outputFormat(width)), Seq(0), Seq(0)).toString
     val length    = outputFormat(width).length
-    val arrowLine = s"${" " * (length / 2) * 2}↓"
+    val arrowLine = s"${" " * (length / 2) * 2}$downArrow"
     val shiftedDotsIn =
       dotsIn.split("\n").head + "\n" + dotsIn.split("\n").tail.map(_.padToLeft(length * 2 - 1, ' ')).mkString("\n")
     s"$shiftedDotsIn\n$arrowLine\n$dotsOut"
