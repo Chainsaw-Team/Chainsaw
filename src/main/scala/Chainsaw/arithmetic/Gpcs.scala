@@ -255,7 +255,7 @@ object Compressor1to1 extends Compressor {
     if (isPipeline) width.toDouble / 2 else 0.0
 
   override def impl(bitsIn: BitHeap[Bool], width: Int): BitHeap[Bool] =
-    BitHeap(bitsIn.newBitHeapConfigInfos.map(config => BitHeapConfigInfo(config.bitHeap, config.weightLow, config.time)): _*)
+    BitHeap(bitsIn.newBitHeapConfigInfo.map(config => BitHeapConfigInfo(config.bitHeap, config.weightLow, config.time)): _*)
 
   override def utilRequirement(width: Int) = VivadoUtilRequirement(ff = width)
 
