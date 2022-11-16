@@ -7,7 +7,6 @@ import spinal.lib._
 
 import java.io.File
 import scala.io.Source
-import scala.sys.process.Process
 
 abstract class Flopoco extends ChainsawGenerator {
 
@@ -15,6 +14,7 @@ abstract class Flopoco extends ChainsawGenerator {
   val operatorName: String
   val frequency: HertzNumber
   val family: XilinxDeviceFamily
+
   // optional parameters
   val params: Seq[(String, Any)]
 

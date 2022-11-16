@@ -86,7 +86,7 @@ case class KaraBase(widthA: Int, widthB: Int, multType: MultiplierType) extends 
         DSPMultFull.io.d := bLow.resize(widthA)
         uintDataOut := Seq(DSPMultFull.io.ret)
 
-      case SquareMultiplier =>    // FIXME: 暂时用着dsp-full, 之后再修改成dsp-square
+      case SquareMultiplier =>    // FIXME: currently this is the same as Full version
         val Seq(aHigh, aLow, bHigh, bLow) = uintDataIn
         val DSPMultFull = new DSPMultFull(widthA)
         DSPMultFull.io.a := aHigh.resize(widthA)
