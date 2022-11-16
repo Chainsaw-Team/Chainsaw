@@ -43,6 +43,5 @@ case class IntMultiAdder(widthIn: Int, n: Int, signed: Boolean) extends Flopoco 
 
 object IntMultiAdder extends App {
   ChainsawSynth(IntMultiAdder(100, 20, signed = false), "synthFlopocoMultiAdder")
+//  ChainsawImpl(IntMultiAdder(100, 20, signed = false), "FlopocoMultiAdder")
 }
-
-
