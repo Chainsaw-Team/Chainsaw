@@ -22,7 +22,8 @@ class BitHeapCompressorTest extends AnyFlatSpec {
         ArithInfo(16, 15)
       )
       verbose = 1
-      val compressorTreeGen = BitHeapCompressor(operands)
+      //      val compressorTreeGen = BitHeapCompressor(operands, outputAsCsa = true)
+      val compressorTreeGen = BitHeapCompressor(operands, outputAsCsa = false)
       val data = Seq.fill(400)(BigInt(16, Random))
 
       val test = ChainsawTest(
@@ -59,16 +60,16 @@ class BitHeapCompressorTest extends AnyFlatSpec {
     //      timeStrategy = Randomly,
     //      upBound = 8
     //    ),
-    RectangularInfos(widthRange = Range.inclusive(100, 200, 100), heightRange = Range.inclusive(10, 100, 20)),
-    RectangularInfos(widthRange = Range.inclusive(100, 200, 100), heightRange = Range.inclusive(10, 100, 20), shift = Random.nextInt(2) + 1, withNoise = true),
+    //    RectangularInfos(widthRange = Range.inclusive(100, 200, 100), heightRange = Range.inclusive(10, 100, 20)),
+    //    RectangularInfos(widthRange = Range.inclusive(100, 200, 100), heightRange = Range.inclusive(10, 100, 20), shift = Random.nextInt(2) + 1, withNoise = true),
     RectangularInfos(widthRange = Range.inclusive(100, 200, 100), heightRange = Range.inclusive(10, 100, 20), shift = 2, withNoise = true, mixSign = true),
-    TriangleInfos(widthRange = Range.inclusive(99, 199, 10)),
-    TriangleInfos(
-      widthRange = Range.inclusive(99, 199, 10),
-      stairRowShapeRange = Range.inclusive(1, 5),
-      stairColShapeRange = Range.inclusive(1, 5),
-      truncate = Range.inclusive(50, 98)
-    ),
+    //    TriangleInfos(widthRange = Range.inclusive(99, 199, 10)),
+    //    TriangleInfos(
+    //      widthRange = Range.inclusive(99, 199, 10),
+    //      stairRowShapeRange = Range.inclusive(1, 5),
+    //      stairColShapeRange = Range.inclusive(1, 5),
+    //      truncate = Range.inclusive(50, 98)
+    //    ),
     TriangleInfos(
       widthRange = Range.inclusive(99, 199, 10),
       stairRowShapeRange = Range.inclusive(2, 5),
@@ -363,7 +364,8 @@ class BitHeapCompressorTest extends AnyFlatSpec {
     val data = (0 until testCount) flatMap (_ => infos.map(info => BigInt(info.width, Random)))
     target match {
       case Basic =>
-        val compressorGen = BitHeapCompressor(infos)
+        val compressorGen = BitHeapCompressor(infos, outputAsCsa = false)
+        //        val compressorGen = BitHeapCompressor(infos, outputAsCsa = true)
         println(s"weight min = ${infos.map(_.weight).min}")
         println(s"weight sum = ${infos.map(_.weight).sum}")
         val test = ChainsawTest("testCompressor", compressorGen, data)
@@ -374,7 +376,8 @@ class BitHeapCompressorTest extends AnyFlatSpec {
   def testPerfForInfosOnce(infos: Seq[ArithInfo], target: TestTarget): VivadoReport = {
     target match {
       case Basic =>
-        val compressorGen = BitHeapCompressor(infos)
+        val compressorGen = BitHeapCompressor(infos, outputAsCsa = false)
+        //        val compressorGen = BitHeapCompressor(infos, outputAsCsa = true)
         VivadoSynth(compressorGen.implH, "synthCompressor")
     }
   }
