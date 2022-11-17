@@ -12,9 +12,10 @@ import scala.util.control._
 import org.json4s._
 import org.json4s.jackson.Serialization._
 import BitHeap._
-
 import Chainsaw._
 import Chainsaw.xilinx._
+
+import scala.collection.mutable
 
 /** @tparam T
  * a bit heap can be initialized by a non-hardware type, so it can be run outside a component
@@ -183,7 +184,7 @@ case class BitHeap[T](bitHeapConfigInfo: BitHeapConfigInfo[T]*) {
 
   var lastPipeline = true
 
-  val carryRecords = Map[Int, Int]()
+  val carryRecords = mutable.Map[Int, Int]()
 
   /** -------- methods for compression-------- */
 
@@ -225,7 +226,7 @@ case class BitHeap[T](bitHeapConfigInfo: BitHeapConfigInfo[T]*) {
   }
 
   def implCompressTree(compressors: Seq[Compressor], compressTreeSolution: CompressTreeSolution, pipeline: Bool => Bool, name: String): BitHeap[Bool] = {
-    logger.info(s"begin to implement the hardware compress tree of $name")
+    //    logger.info(s"begin to implement the hardware compress tree of $name")
     var currentHeap = this
     compressTreeSolution.solutions.foreach(stageSolution => currentHeap = currentHeap.implCompressOneStage(compressors, stageSolution, pipeline).asInstanceOf[BitHeap[T]])
     currentHeap.asInstanceOf[BitHeap[Bool]]
@@ -567,7 +568,7 @@ case class BitHeap[T](bitHeapConfigInfo: BitHeapConfigInfo[T]*) {
 
     var stageAreaCost = 0.0
     val results = ArrayBuffer[BitHeap[T]]()
-    val compressorTypes = Set[String]()
+    val compressorTypes = mutable.Set[String]()
     val compressorSolutions = ArrayBuffer[CompressorSolution]()
 
     // compress until all bits are covered
@@ -659,8 +660,8 @@ case class BitHeap[T](bitHeapConfigInfo: BitHeapConfigInfo[T]*) {
     if (solutionsFile.exists() && useHistorySolutions) {
       val solutionsReader = new BufferedReader(new FileReader(solutionsFile))
       val compressTreeSolution = read[CompressTreeSolution](solutionsReader.readLine())
-      logger.info(s"Find a history solution in path: $compressorSolutionDir/${this.toString.hashCode()}, load this solution.")
-      compressTreeSolution.printLog(srcBitHeap = this.asInstanceOf[BitHeap[Int]])
+      logger.info(s"found a history solution in path: $compressorSolutionDir/${this.toString.hashCode()}, load this solution.")
+      //      compressTreeSolution.printLog(srcBitHeap = this.asInstanceOf[BitHeap[Int]])
       (if (compressTreeSolution.getFinalBitHeap != null) compressTreeSolution.getFinalBitHeap.asInstanceOf[BitHeap[T]] else this, compressTreeSolution)
     } else {
       val bitsInTotal = this.bitsCount

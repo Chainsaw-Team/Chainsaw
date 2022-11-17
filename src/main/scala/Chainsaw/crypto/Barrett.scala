@@ -3,6 +3,7 @@ package Chainsaw.crypto
 import Chainsaw._
 import Chainsaw.arithmetic._
 import Chainsaw.dag._
+import Chainsaw.xilinx._
 
 /** barrett modular multiplier
  *
@@ -10,7 +11,8 @@ import Chainsaw.dag._
  * @param constantModulus Some when modulus is fixed, None when it is not
  * @see [[BarrettFineAlgo]]
  */
-case class Barrett(widthIn: Int, constantModulus: Option[BigInt] = None) extends Dag {
+case class Barrett(widthIn: Int, constantModulus: Option[BigInt] = None)
+  extends Dag {
 
   val k = widthIn
 
@@ -29,58 +31,41 @@ case class Barrett(widthIn: Int, constantModulus: Option[BigInt] = None) extends
     Seq(ret)
   }
 
-  implicit class karatsubaUtil(port: DagPort) {
-    def splitAt(width: Int) = {
-      val s = Split(port.width, width).asVertex
-      s := port
-      (s.out(0), s.out(1))
-    }
-
-    def takeLow(width: Int) = port.splitAt(width)._2
-
-    def takeHigh(width: Int) = port.splitAt(port.width - width)._1
-  }
-
   /** --------
    * dag implementation
    * -------- */
-
   constantModulus match {
     case Some(modulus) => // constant modulus version
-      val Seq(a, b) = Seq.fill(2)(InputVertex(UIntInfo(k)))
-      val o = OutputVertex(UIntInfo(k))
-
-      val mPrime = (BigInt(1) << (2 * modulus.bitLength)) / modulus
 
       val algo = BarrettFineAlgo(modulus)
       val msbWidthInvolved = algo.multMsb.widthInvolved
       val lsbWidthInvolved = algo.multLsb.widthInvolved
 
-      // declaration
-      val multFull = Karatsuba(k, constantModulus).asVertex
-      //      val multFull = KaratsubaFake(k, constantModulus).asVertex
-      val multMsb = MsbBcm(mPrime, widthIn = k + 1, widthInvolved = msbWidthInvolved, widthOut = k + 1, useCsd = true).asVertex
-      val add0 = CpaS2S(BinaryAdder, k + 1, withCarry = false).asVertex // cpa after multMsb
+      // declaration of I/Os
+      val Seq(a, b) = Seq.fill(2)(InputVertex(UIntInfo(k)))
+      val constantC = ConstantVertex(UIntInfo(lsbWidthInvolved), algo.C)
+      val o = OutputVertex(UIntInfo(k))
 
-      val multLsb = LsbBcm(mPrime, widthIn = k + 1, widthOut = lsbWidthInvolved, useCsd = true).asVertex
-      val add1 = CpaS2S(BinaryAdder, lsbWidthInvolved, withCarry = false).asVertex // cpa after multLsb
-      val sub = CpaS2S(BinarySubtractor, lsbWidthInvolved, withCarry = false).asVertex // cpa before reduction
-
+      // declaration of operators
+      val multFull = Karatsuba(k, strategy = DspFirst).asVertex
+      val multMsb = MsbBcm(algo.MPrime, widthIn = k + 1, widthInvolved = msbWidthInvolved, widthOut = k + 1, useCsd = true).asVertex
+      val multLsb = LsbBcm(modulus, widthIn = k + 1, widthOut = lsbWidthInvolved, useCsd = true).asVertex
+      val sub = CpaS2S(TernarySubtractor1, lsbWidthInvolved, withCarry = false).asVertex // cpa before reduction
       val reduction = FineReduction(modulus, 10).asVertex // fine reduction
 
-      // connection
+      // connection\
+
+
       multFull := (a, b)
       multMsb := multFull.out(0).takeHigh(k + 1)
-
-      val F = multMsb >> add0 >> multLsb >> add1
+      multLsb <-< multMsb
+      val F = multLsb.out(0)
       val NLow = multFull.out(0).takeLow(lsbWidthInvolved)
-
-      sub := (NLow, F.out(0))
-
-      sub >> reduction
+      sub := (NLow, constantC, F) // NLow + C - F
+      reduction := sub.out(0).resize(k + 4)
 
       o := reduction.out(0)
-    case None => ???
+    // TODO: when modulus is not a constant
   }
 
   this.exportPng("barrett")
@@ -91,6 +76,5 @@ case class Barrett(widthIn: Int, constantModulus: Option[BigInt] = None) extends
 
 object Barrett extends App {
   val barrettGen = Barrett(377, Some(project.zprize.ZPrizeMSM.baseModulus))
-  barrettGen.setVerticesAsNaive()
   ChainsawSynth(barrettGen, "synthBarrett")
 }
