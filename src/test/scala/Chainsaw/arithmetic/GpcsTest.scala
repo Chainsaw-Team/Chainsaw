@@ -191,7 +191,7 @@ class GpcsTest extends AnyFlatSpec {
 
   def testCompressorPerfOnce(compressor: Compressor, width: Int): VivadoReport = {
     val report = VivadoSynth(getModule(compressor, width, RegNext(_)), name = s"${compressor.getClass.getSimpleName.init}_$width")
-    report.require(compressor.utilRequirement(width) + VivadoUtil(lut = 0, ff = compressor.inputFormat(width).sum, dsp = 0, bram36 = 0), compressor.fMaxRequirement)
+    report.require(compressor.utilRequirement(width) + VivadoUtil(lut = 0, ff = compressor.inputFormat(width).sum, dsp = 0, bram36 = 0, uram288 = 0, carry8 = 0), compressor.fMaxRequirement)
     report
   }
 
