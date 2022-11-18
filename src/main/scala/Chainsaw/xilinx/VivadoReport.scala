@@ -15,6 +15,8 @@ class VivadoReport(
                     deviceFamily: XilinxDeviceFamily
                   ) {
 
+  // TODO: report number of URAM
+
   val log = Source.fromFile(logFile)
   val lines = log.getLines.toSeq
   private val report = lines.mkString("\n")
@@ -53,7 +55,7 @@ class VivadoReport(
                              separator: Char = '|'
                            ) = {
     val regex =
-      s"\\${separator}?\\s*$header\\s*\\${separator}?\\s*($pattern)\\s*\\${separator}?"
+      s"\\$separator?\\s*$header\\s*\\$separator?\\s*($pattern)\\s*\\$separator?"
     Try(regex.r.findFirstMatchIn(report).get.group(1))
   }
 
@@ -77,6 +79,8 @@ class VivadoReport(
 
   val DSP = getIntAfterHeader("DSPs")
   val BRAM = getIntAfterHeader("Block RAM Tile")
+  // FIXME: extract uram correctly
+  val URAM = getIntAfterHeader("URAM288")
   val CARRY8 = getIntAfterHeader("CARRY8")
 
   val ConstraintPeriod = getDoubleAfterHeader("Requirement")
@@ -84,10 +88,10 @@ class VivadoReport(
 
   val Frequency = 1.0 / (ConstraintPeriod - Slack) * 1e9
 
-  val util = VivadoUtil(LUT, FF, DSP, BRAM, CARRY8)
+  val util = VivadoUtil(LUT, FF, DSP, BRAM, URAM, CARRY8)
 
   def printArea(): Unit = logger.info(
-    s"\nLUT: ${LUT}\nFF: ${FF}\nDSP: ${DSP}\nBRAM: ${BRAM}\nCARRY8: ${CARRY8}\n"
+    s"\nLUT: $LUT\nFF: $FF\nDSP: $DSP\nBRAM: $BRAM\nCARRY8: $CARRY8\n"
   )
 
   def printFMax(): Unit = logger.info(s"\nfmax = ${Frequency / 1e6} MHz\n")
@@ -97,13 +101,14 @@ class VivadoReport(
     FF.toString,
     DSP.toString,
     BRAM.toString,
+    URAM.toString,
     Frequency.toString
   )
 
   def getUtil = util
 
   override def toString: String =
-    s"LUT $LUT, FF $FF, DSP $DSP, BRAM $BRAM, CARRY8 $CARRY8, Freq $Frequency"
+    s"LUT $LUT, FF $FF, DSP $DSP, BRAM $BRAM, URAM $URAM, CARRY8 $CARRY8, Freq $Frequency"
 
   def require(utilRequirement: VivadoUtil, fmaxRequirement: HertzNumber): Unit = {
     assert(

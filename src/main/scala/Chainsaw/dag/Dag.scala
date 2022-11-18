@@ -9,6 +9,7 @@ import spinal.core._
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
+import scala.language.postfixOps
 
 // TODO: appropriate metadata for consistency
 case class IoGenerator(numericType: NumericType, direction: Direction)
@@ -24,7 +25,6 @@ case class IoGenerator(numericType: NumericType, direction: Direction)
   override var latency = 0
 
   override def implH = null // this shouldn't be called anyway
-
 }
 
 object InputVertex {
@@ -44,6 +44,32 @@ object OutputVertex {
     ref.addVertex(vertex)
     ref.outputs += vertex
     vertex.in(0)
+  }
+}
+
+case class ConstantGenerator(numericType: NumericType, constant: Any)
+  extends Combinational {
+
+  val constantBits = numericType.toBigInt(constant)
+
+  override def name = s"constant_${constant.hashCode()}".replace('-', 'N')
+
+  override def comb(dataIn: Seq[Bits]) = Seq(B(constantBits, numericType.bitWidth bits))
+
+  override def impl(dataIn: Seq[Any]) = Seq(constant)
+
+  override var inputTypes = Seq(numericType)
+  override var outputTypes = Seq(numericType)
+
+  override var inputFormat = inputNoControl
+  override var outputFormat = outputNoControl
+}
+
+object ConstantVertex {
+  def apply(numericType: NumericType, constant: Any)(implicit ref: Dag) = {
+    val vertex = ConstantGenerator(numericType, constant).asVertex
+    ref.addVertex(vertex)
+    vertex.out(0)
   }
 }
 

@@ -39,12 +39,12 @@ class DagVertex(val gen: ChainsawGenerator)(implicit ref: Dag) {
     ports.zip(inPorts).foreach { case (port, inPort) => ref.addEdge(port, inPort) }
   }
 
-  def <<(source: DagVertex)(implicit ref: Dag) = {
+  def <-<(source: DagVertex)(implicit ref: Dag) = {
     :=(source.outPorts: _*)
     this
   }
 
-  def >>(target: DagVertex)(implicit ref: Dag) = target << this
+  def >->(target: DagVertex)(implicit ref: Dag) = target <-< this
 
   /** --------
    * methods for accessing neighbors

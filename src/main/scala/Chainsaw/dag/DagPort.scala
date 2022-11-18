@@ -3,7 +3,10 @@ package Chainsaw.dag
 case class DagPort(vertex: DagVertex, order: Int, direction: Direction) {
 
   // TODO: more utils for connection
-  def :=(that: DagPort)(implicit ref: Dag): Unit = ref.addEdge(that, this)
+  def :=(that: DagPort)(implicit ref: Dag): Unit = {
+    require(that.width == this.width, s"width mismatch ${this.width} bits := ${that.width} bits ")
+    ref.addEdge(that, this)
+  }
 
   def relativeTime = direction match {
     case In => vertex.gen.actualInTimes(order)

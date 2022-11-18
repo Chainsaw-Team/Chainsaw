@@ -10,8 +10,6 @@ package object dag {
 
   object Out extends Direction
 
-  implicit def gen2vertex(gen: ChainsawGenerator)(implicit dag: Dag): DagVertex = DagVertex(gen)
-
   implicit class ChainsawGeneratorUtil(gen: ChainsawGenerator) {
 
     // by this, we don't need to implement asVertex inside ChainsawGenerator, avoiding two-way dependence
