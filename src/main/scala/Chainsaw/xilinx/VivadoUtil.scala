@@ -1,17 +1,16 @@
 package Chainsaw.xilinx
 
 
-
-
 case class VivadoUtil(
                        lut: Int,
                        ff: Int,
                        dsp: Int,
                        bram36: Int,
-                       carry8: Int = 0
+                       uram288: Int,
+                       carry8: Int
                      ) {
 
-  def getValues = Seq(lut, ff, dsp, bram36, carry8)
+  def getValues = Seq(lut, ff, dsp, bram36, uram288, carry8)
 
   def +(that: VivadoUtil) = VivadoUtil(
     this.getValues.zip(that.getValues).map { case (a, b) => a + b }
@@ -41,9 +40,10 @@ case class VivadoUtil(
     val ratioBetter = getDet(this.normalizedCost(clbPerDsp), that.normalizedCost(clbPerDsp))
 
     /** judge whether a solution is better than another by multiple determinants with decresing priorities
+     *
      * @param betters 1 for better, 0 for equally good, -1 for worst
      */
-    def betterWithPriority(betters: Int*): Boolean = betters.reverse.zipWithIndex.map{ case (better, i) => better << i}.sum > 0
+    def betterWithPriority(betters: Int*): Boolean = betters.reverse.zipWithIndex.map { case (better, i) => better << i }.sum > 0
 
     strategy match {
       case DspFirst => betterWithPriority(dspBetter, clbBetter, ratioBetter)
@@ -56,7 +56,7 @@ case class VivadoUtil(
     if (value == Int.MaxValue) "unlimited" else value.toString
 
   override def toString = {
-    Seq("lut", "ff", "dsp", "bram36", "carry8")
+    Seq("lut", "ff", "dsp", "bram36", "uram288", "carry8")
       .map(_.toUpperCase)
       .zip(getValues.map(showInt))
       .map { case (name, value) => s"$name = $value" }
@@ -65,7 +65,7 @@ case class VivadoUtil(
 
   object VivadoUtil {
     def apply(values: Seq[Int]): VivadoUtil =
-      new VivadoUtil(values(0), values(1), values(2), values(3), values(4))
+      new VivadoUtil(values(0), values(1), values(2), values(3), values(4), values(5))
   }
 }
 
@@ -77,9 +77,10 @@ object VivadoUtilRequirement {
              ff: Int = limit,
              dsp: Int = limit,
              bram36: Int = limit,
+             uram288: Int = limit,
              carry8: Int = limit
            ) =
-    VivadoUtil(lut, ff, dsp, bram36, carry8)
+    VivadoUtil(lut, ff, dsp, bram36, uram288, carry8)
 }
 
 sealed trait UtilStrategy

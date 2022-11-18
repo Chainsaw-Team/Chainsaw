@@ -9,7 +9,7 @@ import scala.language.postfixOps
 
 case class KaraBase(widthA: Int, widthB: Int, multType: MultiplierType) extends ChainsawGenerator {
 
-  require(Seq(widthA, widthB).sorted.zip(Seq(16, 25)).forall { case (yours, limit) => yours <= limit })
+  require(Seq(widthA, widthB).sorted.zip(Seq(16, 25)).forall { case (yours, limit) => yours <= limit }, s"your width: $widthA, $widthB")
 
   override def name = s"karabase_${widthA}_${widthB}_type"
 
@@ -37,7 +37,7 @@ case class KaraBase(widthA: Int, widthB: Int, multType: MultiplierType) extends 
   override var outputTypes = multType match {
     case FullMultiplier => Seq(UIntInfo(widthA * 4))
     case SquareMultiplier => Seq(UIntInfo(widthA * 4))
-    case MsbMultiplier => Seq(UIntInfo(widthA * 2 + 1))    // TODO: to be checked
+    case MsbMultiplier => Seq(UIntInfo(widthA * 2 + 1)) // TODO: to be checked
     case LsbMultiplier => Seq(UIntInfo(widthA * 2))
     case Kara => Seq(widthCross, widthCross + 1, widthCross).map(UIntInfo(_))
   }
@@ -47,17 +47,17 @@ case class KaraBase(widthA: Int, widthB: Int, multType: MultiplierType) extends 
 
   override val outputTimes = Some(
     multType match {
-      case Kara => Seq(0, 2, 1)    // old: Seq(0, 3, 0)
+      case Kara => Seq(0, 2, 1) // old: Seq(0, 3, 0)
       case _ => Seq(0)
     }
   )
 
-  override var latency = multType match {    // TODO
+  override var latency = multType match { // TODO
     case FullMultiplier => 6
     case SquareMultiplier => 6
     case MsbMultiplier => 7
     case LsbMultiplier => 7
-    case Kara => 3    // old: 2
+    case Kara => 3 // old: 2
   }
 
   utilEstimation = VivadoUtilRequirement(dsp = 3)
@@ -77,7 +77,7 @@ case class KaraBase(widthA: Int, widthB: Int, multType: MultiplierType) extends 
   override def implH: ChainsawModule = new ChainsawModule(this) {
 
     multType match {
-      case FullMultiplier =>    // Done
+      case FullMultiplier => // Done
         val Seq(aHigh, aLow, bHigh, bLow) = uintDataIn
         val DSPMultFull = new DSPMultFull(widthA)
         DSPMultFull.io.a := aHigh.resize(widthA)
@@ -86,7 +86,7 @@ case class KaraBase(widthA: Int, widthB: Int, multType: MultiplierType) extends 
         DSPMultFull.io.d := bLow.resize(widthA)
         uintDataOut := Seq(DSPMultFull.io.ret)
 
-      case SquareMultiplier =>    // FIXME: currently this is the same as Full version
+      case SquareMultiplier => // FIXME: currently this is the same as Full version
         val Seq(aHigh, aLow, bHigh, bLow) = uintDataIn
         val DSPMultFull = new DSPMultFull(widthA)
         DSPMultFull.io.a := aHigh.resize(widthA)
@@ -113,17 +113,17 @@ case class KaraBase(widthA: Int, widthB: Int, multType: MultiplierType) extends 
         DSPMultLow.io.BL := bLow
         uintDataOut := Seq(DSPMultLow.io.ret)
 
-      case Kara =>    // Done
-          val Seq(aHigh, aLow, bHigh, bLow) = uintDataIn
-          val DSPMultKara = new DSPMultKara(widthA, widthB)
-          DSPMultKara.io.AH := aHigh
-          DSPMultKara.io.AL := aLow
-          DSPMultKara.io.BH := bHigh
-          DSPMultKara.io.BL := bLow
-          val high = DSPMultKara.io.AHBH
-          val mid  = DSPMultKara.io.AHBLALBH
-          val low  = DSPMultKara.io.ALBL
-          uintDataOut := Seq(high.resized, mid.resized, low.resized)
+      case Kara => // Done
+        val Seq(aHigh, aLow, bHigh, bLow) = uintDataIn
+        val DSPMultKara = new DSPMultKara(widthA, widthB)
+        DSPMultKara.io.AH := aHigh
+        DSPMultKara.io.AL := aLow
+        DSPMultKara.io.BH := bHigh
+        DSPMultKara.io.BL := bLow
+        val high = DSPMultKara.io.AHBH
+        val mid = DSPMultKara.io.AHBLALBH
+        val low = DSPMultKara.io.ALBL
+        uintDataOut := Seq(high.resized, mid.resized, low.resized)
     }
   }
 }

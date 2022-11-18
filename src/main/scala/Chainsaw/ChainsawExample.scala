@@ -96,8 +96,8 @@ case class CpaGraph() extends Dag {
   val add2 = Cpa(BinaryAdder, widths, M2S, withCarry = true).asVertex // diff -> aligned
 
   add0.in(0) := i
-  add1.<<(add0)
-  add2.<<(add1)
+  add1.<-<(add0)
+  add2.<-<(add1)
   o := add2.out(0)
 
   graphDone() // this must be invoked explicitly

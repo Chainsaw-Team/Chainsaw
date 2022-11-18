@@ -77,8 +77,7 @@ case class TruncatedConstantMult(constant: BigInt, multiplierType: MultiplierTyp
 
     val ret = multiplierType match {
       case FullMultiplier => raw
-      case MsbMultiplier =>
-        raw >> widthNotOutputted
+      case MsbMultiplier => raw >> widthNotOutputted
       case LsbMultiplier => Zp(Pow2(widthInvolved))(raw).toBigInt
     }
 

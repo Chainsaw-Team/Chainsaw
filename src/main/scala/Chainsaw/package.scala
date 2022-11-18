@@ -20,6 +20,9 @@ package object Chainsaw {
   var verbose = 0
 
   val naiveSet = mutable.Set[String]()
+
+  def setAsNaive(generator: Any) = naiveSet += generator.getClass.getSimpleName.replace("$", "")
+
   var atSimTime = true
 
   val dot = "■"
@@ -86,7 +89,7 @@ package object Chainsaw {
 
     /** split the BigInt uniformly into n segments, low to high
      */
-    def splitN(n: Int):Seq[BigInt] = {
+    def splitN(n: Int): Seq[BigInt] = {
       val padded = BitValue(value, width.nextMultiple(n))
       val segmentWidth = width.divideAndCeil(n)
       val segments = ArrayBuffer[BigInt]()
@@ -100,7 +103,7 @@ package object Chainsaw {
       segments
     }
 
-    def ##(that:BitValue) = (this.value << that.width) + that.value
+    def ##(that: BitValue) = (this.value << that.width) + that.value
   }
 
   // TODO: make BigInt behaves just like Bits/UInt
@@ -114,6 +117,13 @@ package object Chainsaw {
   /** --------
    * spinal type utils
    * -------- */
+
+  implicit class MemUtil(mem: Mem[_]) {
+    def setAsBlockRam() = mem.addAttribute("ram_style", "block")
+
+    def setAsUltraRam() = mem.addAttribute("ram_style", "ultra")
+  }
+
   // extension of Data
   implicit class DataUtil[T <: Data](data: T) {
     def d(cycle: Int = 1): T = Delay(data, cycle)
