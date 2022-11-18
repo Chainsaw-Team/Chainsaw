@@ -150,6 +150,7 @@ case class NumericType(integral: Int, fractional: Int, signed: Boolean, complex:
    * resize/truncate
    * -------- */
   def resize(bits: Bits) = {
+    if(bits.getBitsWidth > bitWidth) logger.info(s"${bits.getBitsWidth} bits -> $bitWidth bits")
     numericEnum match {
       case UIntType => if (bits.getBitsWidth > bitWidth) None else Some(bits.resize(bitWidth))
       case SIntType => if (bits.getBitsWidth > bitWidth) None else Some(bits.resize(bitWidth))

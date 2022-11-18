@@ -6,6 +6,7 @@ import spire.math.{NumberTag, log}
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 import Chainsaw._
+import Chainsaw.memory._
 
 object DagImplH {
 
@@ -22,13 +23,25 @@ object DagImplH {
     def getNextStage: Seq[DagVertex] = getRemained.filter(v => v.sources.forall(getImplemented.contains(_))) // vertices ready to be implemented
 
     def implVertex(target: DagVertex): Unit = {
+      if (verbose >= 1) logger.info(s"implementing ${target.vertexName}")
       if (target.isIo) signalMap(target.out(0)) = signalMap(target.sourcePorts.head)
       else {
         val incomingEdges = target.incomingEdges.sortBy(_.inOrder)
         val drivingSignals = target.sourcePorts.map(signalMap)
-        val pipelinedSignals = drivingSignals.zip(incomingEdges).map { case (signal, e) => signal.d(e.weight.toInt) }
+        val pipelinedSignals = drivingSignals.zip(incomingEdges).map { case (signal, e) =>
+          val level = e.weight.toInt
+          if (level >= 16 && signal.getBitsWidth >= 32) {
+            logger.info(s"big delay conversion -> $level X ${signal.getBitsWidth} bit RAM")
+            DelayByRam(signal.getBitsWidth, level).asFunc(Seq(signal)).head
+          }
+          else signal.d(level)
+        }
+
         // TODO: better resize strategy for implH
-        val resizedSignals = pipelinedSignals.zip(target.gen.inputTypes).map{ case (bits, info) => info.resize(bits).get}
+        val resizedSignals = pipelinedSignals.zip(target.gen.inputTypes).map { case (bits, info) =>
+          if (verbose >= 1 && bits.getBitsWidth != info.bitWidth) logger.info(s"resize: ${bits.getBitsWidth} -> ${info.bitWidth}")
+          info.resize(bits).get
+        }
         target.gen match {
           case combinational: Combinational =>
             val dataOut = combinational.comb(resizedSignals)

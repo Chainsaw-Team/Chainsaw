@@ -22,6 +22,8 @@ class CpaTest extends AnyFlatSpec {
 
   val adderTypes = Seq(BinaryAdder, BinarySubtractor, TernaryAdder, TernarySubtractor1, TernarySubtractor2)
   val cpaModes   = Seq(M2M, M2S, S2M, S2S)
-  cpaModes.foreach { mode => adderTypes.foreach(adder => testCpaFuncInMode(adder, mode, useNaive = false)) }
+  cpaModes.foreach { mode => adderTypes.foreach(adder => testCpaFuncInMode(adder, mode)) }
+
+  it should "synth for ultra big width" in ChainsawSynth(CpaS2S(BinaryAdder, 2000, withCarry = true), "synthCpa2000")
 
 }

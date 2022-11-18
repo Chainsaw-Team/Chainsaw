@@ -15,7 +15,8 @@ abstract class ModularMult {
 
   def selfTest(): Unit = {
     val k = M.bitLength
-    val pairCount = 1000000
+    //    val pairCount = 1000000
+    val pairCount = 1000
     logger.info(s"self testing with $pairCount pairs of random input")
     val data = Seq.fill(pairCount)(BigInt(k, Random), BigInt(k, Random))
     data.foreach { case (x, y) => assert(impl(x, y) == (x * y) % M) }
@@ -46,12 +47,15 @@ case class BarrettAlgo(override val M: BigInt) extends ModularMult {
 
 case class BarrettFineAlgo(override val M: BigInt) extends ModularMult {
 
-  // preparation
+  /** --------
+   * preparation
+   * -------- */
   val k = M.bitLength
   val MPrime = (BigInt(1) << (2 * k)) / M
 
+  val accuracy = 10
   val multMsb = (k + 1 until k + 10).map(width => TruncatedConstantMult(MPrime, MsbMultiplier, k + 1, width, k + 1, useCsd = true))
-    .dropWhile(mult => (mult.upperBound - mult.lowerBound) > 10)
+    .dropWhile(mult => (mult.upperBound - mult.lowerBound) > accuracy)
     .head
   logger.info(s"width involved in msbMult: ${multMsb.widthInvolved}")
 
@@ -59,6 +63,7 @@ case class BarrettFineAlgo(override val M: BigInt) extends ModularMult {
   val errorMin = multMsb.lowerBound
   val reductionMax = 3 + errorMax - errorMin // 3 from the original implementation
   val widthComp = k + 2 + log2Up(reductionMax)
+  val C = Zp(Pow2(widthComp))((-errorMin) * M).toBigInt
   val multLsb = TruncatedConstantMult(M, LsbMultiplier, k + 1, widthComp, widthComp, useCsd = true)
   logger.info(s"width involved in lsbMult: ${multLsb.widthInvolved}")
 
@@ -76,11 +81,10 @@ case class BarrettFineAlgo(override val M: BigInt) extends ModularMult {
 
     // TODO: analysis
     // fine reduction, inputs of fine reduction are NLow, F and C
-    val C = Zp(Pow2(widthComp))((-errorMin) * M).toBigInt
     val T = Zp(Pow2(widthComp))(NLow - F + C).toBigInt // no cost on hardware
 
     // bound verification
-    assert(T < reductionMax * M && T >= 0, s"T = $T")
+    assert(T < reductionMax * M && T >= 0, s"\nT = $T \nT/M = ${T / M}")
 
     Zp(M)(T).toBigInt
   }

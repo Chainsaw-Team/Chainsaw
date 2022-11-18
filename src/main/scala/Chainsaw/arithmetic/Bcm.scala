@@ -21,42 +21,41 @@ case class Bcm(constant: BigInt, multiplierType: MultiplierType, widthIn: Int, w
   override def name = s"bcm_${constant.hashCode()}_${targetSlice.start}_until_${targetSlice.end}".replace("-", "N")
 
   override var inputTypes = Seq(UIntInfo(widthIn))
-  override var outputTypes = Seq.fill(2)(UIntInfo(widthOut))
+  override var outputTypes = Seq.fill(1)(UIntInfo(widthOut))
 
   override var inputFormat = inputNoControl
   override var outputFormat = outputNoControl
 
-  val compressorGen = BitHeapCompressor(sliceAndInfos.map(_._2))
-  override var latency = compressorGen.latency
+  val compressorGen = BitHeapCompressor(sliceAndInfos.map(_._2), outputAsCsa = true)
+  val cpaGen = CpaS2S(TernarySubtractor1, widthOut, withCarry = false)
+
+  override var latency = compressorGen.latency + cpaGen.latency
 
   override def impl(dataIn: Seq[Any]): Seq[BigInt] = {
     val data = dataIn.asInstanceOf[Seq[BigInt]].head
     val ret = model.impl(data)
-    Seq(ret, BigInt(0)) // to match the output size
+    Seq(ret)
   }
 
-  val compensation = compressorGen.compensation >> model.widthNotOutputted
+  val outputModulus = Pow2(widthOut)
+  val compensation = (compressorGen.compensation >> model.widthNotOutputted).mod(outputModulus)
 
   val frameWiseMetric = (yours: Seq[Any], golden: Seq[Any]) => {
 
-    val goldenSum = golden.asInstanceOf[Seq[BigInt]].sum
-
-    val yourSum = yours.asInstanceOf[Seq[BigInt]].sum - compensation // can be implemented by a following CPA
+    val goldenData = golden.head.asInstanceOf[BigInt]
+    val yourData = yours.head.asInstanceOf[BigInt] // can be implemented by a following CPA
 
     val det = multiplierType match {
-      case FullMultiplier => yourSum == goldenSum
-      case MsbMultiplier =>
-        (yourSum - goldenSum).abs <= 1 // introduced by compensation shift
-      case LsbMultiplier =>
-        val modulus = Pow2(widthInvolved)
-        Zp(modulus)(yourSum) == Zp(modulus)(goldenSum)
+      case FullMultiplier => yourData == goldenData
+      case MsbMultiplier => (yourData - goldenData).abs <= 1 // introduced by compensation shift
+      case LsbMultiplier => yourData.mod(outputModulus) == goldenData.mod(outputModulus)
     }
 
     if (!det) logger.info(
       s"\n----bcm error report----" +
         s"\n\t constant = $constant" +
-        s"\n\t yourSum = $yourSum" +
-        s"\n\t goldenSum = $goldenSum"
+        s"\n\t yourSum = $yourData" +
+        s"\n\t goldenSum = $goldenData"
     )
     det
   }
@@ -80,13 +79,40 @@ case class Bcm(constant: BigInt, multiplierType: MultiplierType, widthIn: Int, w
     val core = compressorGen.getImplH
     core.dataIn := operands.map(_.asBits)
 
-    val ret = multiplierType match {
+    val rows = multiplierType match {
       case MsbMultiplier => core.dataOut.map(_ >> widthNotOutputted).map(_.resize(widthOut))
       case _ => core.dataOut.map(_.resize(widthOut))
     }
 
-    dataOut := ret
+    val cpa = cpaGen.implH
+    cpa.dataIn := rows :+ B(compensation, widthOut bits)
+
+    dataOut := cpa.dataOut
   }
+
+  override def implNaiveH = Some(new ChainsawModule(this) {
+
+    val x = uintDataIn.head
+
+    val positive = sliceAndInfos.filter(_._2.isPositive)
+      .map { case (slice, info) => x(slice.last downto slice.head) << info.weight }.reduce(_ +^ _)
+
+    val negative =
+      if (sliceAndInfos.exists(!_._2.isPositive))
+        sliceAndInfos.filterNot(_._2.isPositive)
+          .map { case (slice, info) => x(slice.last downto slice.head) << info.weight }.reduce(_ +^ _)
+      else U(0)
+
+    val raw = (positive - negative).resize(widthFull)
+
+    val ret = multiplierType match {
+      case FullMultiplier => raw
+      case MsbMultiplier => raw >> widthNotOutputted
+      case LsbMultiplier => raw.resize(widthInvolved)
+    }
+
+    uintDataOut.head := ret.d(latency)
+  })
 }
 
 object MsbBcm {

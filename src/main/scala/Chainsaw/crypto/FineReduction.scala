@@ -11,17 +11,14 @@ case class FineReduction(M: BigInt, upperBound: Int) extends ChainsawGenerator {
 
   override def name = s"FineReduction_upper_$upperBound"
 
-  override def impl(dataIn: Seq[Any]): Seq[BigInt] = {
-    val ret = Zp(M)(dataIn.head.asInstanceOf[BigInt]).toBigInt
-    Seq(ret)
-  }
+  override def impl(dataIn: Seq[Any]): Seq[BigInt] = Seq(dataIn.head.asInstanceOf[BigInt].mod(M))
 
   val k = M.bitLength
   val widthIn = log2Up(upperBound) + k
   val widthOut = k
   val detWidth = log2Up(upperBound) + 1 // downto k-1
   val detTable: Seq[BigInt] = (0 until 1 << detWidth).map(msbValue => (BigInt(msbValue) << (k - 1)) / M)
-  val sub0Gen, sub1Gen = Cpa(BinarySubtractor, Seq(widthIn), S2S, withCarry = true)
+  val sub0Gen, sub1Gen = CpaS2S(BinarySubtractor, widthIn, withCarry = true)
 
   override var inputTypes = Seq(UIntInfo(widthIn))
   override var outputTypes = Seq(UIntInfo(widthOut))
@@ -30,6 +27,7 @@ case class FineReduction(M: BigInt, upperBound: Int) extends ChainsawGenerator {
   override var outputFormat = outputNoControl
   override var latency = sub0Gen.latency + 4
 
+  // TODO: optimization for [0, 2M) and (-M, M)
   override def implH: ChainsawModule = new ChainsawModule(this) {
 
     val multipleCount = detTable.distinct.length // number of different multiples needed
@@ -49,5 +47,9 @@ case class FineReduction(M: BigInt, upperBound: Int) extends ChainsawGenerator {
 
     dataOut.head := Mux(ret1.msb, ret0, ret1).d().resize(widthOut)
   }
+
+  override def implNaiveH = Some(new ChainsawModule(this) {
+    uintDataOut.head := (uintDataIn.head % M).d(latency)
+  })
 }
 
