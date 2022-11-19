@@ -10,6 +10,8 @@ object Comb extends ImplMode
 
 object StateMachine extends ImplMode
 
+object Infinite extends ImplMode
+
 import xilinx._
 
 trait ChainsawGenerator {
@@ -39,6 +41,7 @@ trait ChainsawGenerator {
   val inputTimes: Option[Seq[Int]]  = None // when this is empty, inputs are aligned
   val outputTimes: Option[Seq[Int]] = None
   var latency: Int // defined as the latency from the head of inputs to the head of outputs
+  var offset: Int = 0
 
   /** -------- performance information
     * --------
@@ -51,13 +54,17 @@ trait ChainsawGenerator {
     */
   def implH: ChainsawModule // core module, that is, the datapath
 
-  def implNaiveH: Option[ChainsawModule] = None // naive RTL implementation for simulation & top-down design
+  def implNaiveH: Option[ChainsawModule] = None // naive RTL implementation for simulation & top-down design, optional
 
   def implPass: ChainsawModule = new ChainsawModule(this) {
     dataIn.foreach(_.addAttribute("dont_touch", "yes"))
     dataOut.foreach(_.assignDontCare())
     dataOut.foreach(_.addAttribute("dont_touch", "yes"))
   }
+
+  def generateTestCases: Seq[Any] = null
+
+  def selfTest() = ChainsawTest(s"test$name", this, generateTestCases).doTest()
 
   def setAsNaive(): Unit = naiveSet += this.getClass.getSimpleName
 

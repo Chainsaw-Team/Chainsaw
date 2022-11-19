@@ -2,7 +2,7 @@ package Chainsaw.dag
 
 import spinal.core.Data
 
-class DagEdge(val inOrder: Int, val outOrder: Int) {
+class DagEdge(val inOrder: Int, val outOrder: Int)(implicit ref: Dag ) {
 
   def source(implicit ref: Dag): DagVertex = ref.getEdgeSource(this)
 
@@ -17,5 +17,5 @@ class DagEdge(val inOrder: Int, val outOrder: Int) {
   def toStringInGraph[THard <: Data](implicit ref: Dag): String =
     s"$source -> $weight -> $target"
 
-  override def toString = ""
+  override def toString = weight.toString
 }

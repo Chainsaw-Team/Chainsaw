@@ -1,12 +1,20 @@
+import com.mathworks.matlab.types
+import com.mathworks.engine.MatlabEngine
+
 import cc.redberry.rings.scaladsl.IntZ
 import org.slf4j.LoggerFactory
 import spinal.core._
 import spinal.lib._
 
 import java.io.File
+import scala.annotation.tailrec
 import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 import scala.math.BigInt
 import scala.reflect.ClassTag
+
+import breeze.math._
+import scala.language.implicitConversions
 
 package object Chainsaw {
 
@@ -16,7 +24,10 @@ package object Chainsaw {
   val logger  = LoggerFactory.getLogger("Chainsaw logger") // global logger
   var verbose = 0
 
-  val naiveSet  = mutable.Set[String]()
+  val naiveSet = mutable.Set[String]()
+
+  def setAsNaive(generator: Any*) = naiveSet += generator.getClass.getSimpleName.replace("$", "")
+
   var atSimTime = true
 
   val dot       = "■"
@@ -82,6 +93,24 @@ package object Chainsaw {
     def apply(range: Range) = {
       (value / Pow2(range.low)) % Pow2(range.length)
     }
+
+    /** split the BigInt uniformly into n segments, low to high
+      */
+    def splitN(n: Int): Seq[BigInt] = {
+      val padded       = BitValue(value, width.nextMultiple(n))
+      val segmentWidth = width.divideAndCeil(n)
+      val segments     = ArrayBuffer[BigInt]()
+      var current      = padded
+      (0 until n - 1).foreach { i =>
+        val (high, low) = current.splitAt(segmentWidth)
+        segments += low
+        current = high.toBitValue(segmentWidth * (n - i - 1))
+      }
+      segments += current.value
+      segments
+    }
+
+    def ##(that: BitValue) = (this.value << that.width) + that.value
   }
 
   // TODO: make BigInt behaves just like Bits/UInt
@@ -95,9 +124,18 @@ package object Chainsaw {
   /** -------- spinal type utils
     * --------
     */
+
+  implicit class MemUtil(mem: Mem[_]) {
+    def setAsBlockRam() = mem.addAttribute("ram_style", "block")
+
+    def setAsUltraRam() = mem.addAttribute("ram_style", "ultra")
+  }
+
   // extension of Data
   implicit class DataUtil[T <: Data](data: T) {
     def d(cycle: Int = 1): T = Delay(data, cycle)
+
+    def d(cycle: Int, init: T): T = Delay(data, cycle, init = init)
   }
 
   // extension of Bool
@@ -130,9 +168,9 @@ package object Chainsaw {
     def rotateRight(that: UInt): Vec[T] = vecShiftWrapper(bits.rotateLeft, that)
   }
 
-  object Pow2 {
-    def apply(exp: Int) = BigInt(1) << exp
-  }
+  /** -------- Flows
+    * --------
+    */
 
   import xilinx._
 
@@ -142,8 +180,44 @@ package object Chainsaw {
     report
   }
 
+  def ChainsawImpl(gen: ChainsawGenerator, name: String, withRequirement: Boolean = false) = {
+    val report = VivadoImpl(gen.implH, name)
+    if (withRequirement) report.require(gen.utilEstimation, gen.fmaxEstimation)
+    report
+  }
+
+  /** -------- util functions
+    * --------
+    */
+  object Pow2 {
+    def apply(exp: Int) = BigInt(1) << exp
+  }
+
+  @tailrec
+  def gcd(a: BigInt, b: BigInt): BigInt = {
+    val (p, q) = if (a >= b) (a, b) else (b, a)
+    if (q == 0) p
+    else gcd(q, p % q)
+  }
+
+  def lcm(a: BigInt, b: BigInt): BigInt = a * b / gcd(a, b)
+
   implicit class intzUti(intz: IntZ) {
     def toBigInt = BigInt(intz.toByteArray)
   }
+
+  /** -------- matlab utils
+    * --------
+    */
+  //  type MComplex = types.Complex
+  lazy val matlabEngine = MatlabEngine.startMatlab()
+  //
+  //  /** implicit conversion from Matlab Complex to Breeze Complex
+  //   */
+  //  implicit def ComplexConversion(mcomplex: MComplex): Complex = Complex(mcomplex.real, mcomplex.imag)
+
+  //  implicit class mcomplexConversion(mcomplex: MComplex){
+  //    def toComplex = Complex(mcomplex.real, mcomplex.imag)
+  //  }
 
 }

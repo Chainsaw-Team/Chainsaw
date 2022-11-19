@@ -40,6 +40,8 @@ case class KaratsubaAlgo(width: Int, strategy: UtilStrategy, layerMax: Int = 10,
     }
 
     def iter(solution: KaratsubaSolution): Unit = {
+
+      var isKara = true
       var splitNext = 2
 
       def solutionNext: KaratsubaSolution = solution * splitNext

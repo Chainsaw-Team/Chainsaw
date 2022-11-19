@@ -29,9 +29,9 @@ object S2S extends CpaMode
   */
 case class Cpa(adderType: AdderType, widths: Seq[Int], cpaMode: CpaMode, withCarry: Boolean) extends ChainsawGenerator {
 
-  override def name = s"cpa_${widths.mkString("_")}_${cpaMode.getClass.getSimpleName.init}_${adderType.getClass.getSimpleName.init}_${withCarry}"
+  override def name = s"cpa_${widths.mkString("_")}_${cpaMode.getClass.getSimpleName.init}_${adderType.getClass.getSimpleName.init}_$withCarry"
 
-  if (widths.exists(_ > 96)) logger.warn(s"way too long single carry chain: ${widths.max}")
+  if (widths.exists(_ > cpaWidthMax)) logger.warn(s"way too long single carry chain: ${widths.max}")
 
   val widthInc = adderType match {
     case BinaryAdder => 1
@@ -98,7 +98,6 @@ case class Cpa(adderType: AdderType, widths: Seq[Int], cpaMode: CpaMode, withCar
     val c: BigInt = if (data.length > 2) data(2) else BigInt(0)
     require(Seq(a, b, c).forall(_ < upper))
 
-    //
     val ret = adderType match {
       case BinaryAdder        => addWrapAround(a + b)
       case BinarySubtractor   => subWrapAround(a - b)
@@ -146,6 +145,8 @@ case class Cpa(adderType: AdderType, widths: Seq[Int], cpaMode: CpaMode, withCar
   val outputCompensations = outputTimesExtended.zip(widths.indices).map { case (target, actual) => target + latency - actual }
 
   override def implH: ChainsawModule = new ChainsawModule(this) {
+
+    logger.info(s"implementing CPA, width = $widthFull, latency = $latency")
 
     val dataWords: Seq[Seq[UInt]] = { // a mesh of dataWords where each column contains all words of an operand
       {
@@ -225,7 +226,6 @@ case class Cpa(adderType: AdderType, widths: Seq[Int], cpaMode: CpaMode, withCar
             core.z      := z
             sumWords(i) := core.sumsOut.takeLow(x.getBitsWidth).asUInt.d(outputCompensations(i))
             (Seq(core.cOut1.d(), core.cOut0.d()), i + 1)
-          case _ => ???
         }
       }
       .last
@@ -315,12 +315,11 @@ case class Cpa(adderType: AdderType, widths: Seq[Int], cpaMode: CpaMode, withCar
             val downFlow   = !ret(x.getBitsWidth)
             sumWords(i) := ret.takeLow(x.getBitsWidth).asUInt.d(outputCompensations(i))
             (Seq.fill(2)(downFlow.d()), isNegative.d(), i + 1)
-          case _ => ???
         }
       }
       .last
 
-//    def isNegative = ~uintDataOut.head.msb
+    //    def isNegative = ~uintDataOut.head.msb
 
     def isNegative = adderType match {
       case BinarySubtractor   => negative
@@ -353,6 +352,7 @@ case class Cpa(adderType: AdderType, widths: Seq[Int], cpaMode: CpaMode, withCar
     Seq.tabulate(operandCount, inputWidths.length / operandCount)((i, j) => uintDataIn(i * inputWidths.length / operandCount + j).setName(s"operand_${i}_$j"))
   })
 }
+
 object CpaS2S {
   def apply(adderType: AdderType, width: Int, withCarry: Boolean) =
     Cpa(adderType, getBinaryWidths(width), S2S, withCarry)
