@@ -1,4 +1,7 @@
 
+import com.mathworks.matlab.types
+import com.mathworks.engine.MatlabEngine
+
 import cc.redberry.rings.scaladsl.IntZ
 import org.slf4j.LoggerFactory
 import spinal.core._
@@ -11,6 +14,9 @@ import scala.collection.mutable.ArrayBuffer
 import scala.math.BigInt
 import scala.reflect.ClassTag
 
+import breeze.math._
+import scala.language.implicitConversions
+
 package object Chainsaw {
 
   /** --------
@@ -21,7 +27,7 @@ package object Chainsaw {
 
   val naiveSet = mutable.Set[String]()
 
-  def setAsNaive(generator: Any) = naiveSet += generator.getClass.getSimpleName.replace("$", "")
+  def setAsNaive(generator: Any*) = naiveSet += generator.getClass.getSimpleName.replace("$", "")
 
   var atSimTime = true
 
@@ -127,6 +133,8 @@ package object Chainsaw {
   // extension of Data
   implicit class DataUtil[T <: Data](data: T) {
     def d(cycle: Int = 1): T = Delay(data, cycle)
+
+    def d(cycle: Int, init: T): T = Delay(data, cycle, init = init)
   }
 
   // extension of Bool
@@ -160,6 +168,10 @@ package object Chainsaw {
   }
 
 
+  /** --------
+   * Flows
+   * -------- */
+
   import xilinx._
 
   def ChainsawSynth(gen: ChainsawGenerator, name: String, withRequirement: Boolean = false) = {
@@ -174,11 +186,6 @@ package object Chainsaw {
     report
   }
 
-
-  implicit class intzUti(intz: IntZ) {
-    def toBigInt = BigInt(intz.toByteArray)
-  }
-
   /** --------
    * util functions
    * -------- */
@@ -187,11 +194,30 @@ package object Chainsaw {
   }
 
   @tailrec
-  def gcd(a: Int, b: Int): Int = {
+  def gcd(a: BigInt, b: BigInt): BigInt = {
     val (p, q) = if (a >= b) (a, b) else (b, a)
     if (q == 0) p
     else gcd(q, p % q)
   }
 
+  def lcm(a: BigInt, b: BigInt): BigInt = a * b / gcd(a, b)
+
+  implicit class intzUti(intz: IntZ) {
+    def toBigInt = BigInt(intz.toByteArray)
+  }
+
+  /** --------
+   * matlab utils
+   * -------- */
+  //  type MComplex = types.Complex
+  lazy val matlabEngine = MatlabEngine.startMatlab()
+  //
+  //  /** implicit conversion from Matlab Complex to Breeze Complex
+  //   */
+  //  implicit def ComplexConversion(mcomplex: MComplex): Complex = Complex(mcomplex.real, mcomplex.imag)
+
+  //  implicit class mcomplexConversion(mcomplex: MComplex){
+  //    def toComplex = Complex(mcomplex.real, mcomplex.imag)
+  //  }
 
 }

@@ -15,12 +15,11 @@ package object arithmetic {
 
   val defaultCompressorPerfGraphPath = new File("src/main/resources/compressorPerfs")
 
-  val ternaryWidthMax = 96
-  val binaryWidthMax = 96
+  val cpaWidthMax = 64
 
   def getBinaryWidths(fullWidth: Int) = {
-    val n = fullWidth.divideAndCeil(binaryWidthMax)
-    (fullWidth - (n - 1) * binaryWidthMax) +: Seq.fill(n - 1)(binaryWidthMax)
+    val n = fullWidth.divideAndCeil(cpaWidthMax)
+    (fullWidth - (n - 1) * cpaWidthMax) +: Seq.fill(n - 1)(cpaWidthMax)
   }
 
   implicit class karatsubaPortUtil(port: DagPort)(implicit dag: Dag) {
