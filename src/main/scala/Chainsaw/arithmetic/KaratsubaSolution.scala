@@ -60,13 +60,16 @@ case class KaratsubaSolution(dsp: (Int, Int), splits: Seq[Int]) {
 
 /** description of a rectangular n-split Karatsuba
  *
+ * @param isKara     use Karatsuba/School book decomposition
  * @param split      number of splits
  * @param baseHeight ''height'' of a basic multiplier
  * @param baseWidth  ''width'' of a basic multiplier
  */
-case class Decomposition(split: Int, baseHeight: Int, baseWidth: Int) {
+case class Decomposition(split: Int, baseHeight: Int, baseWidth: Int, isKara: Boolean = true) {
 
-  val w = gcd(baseHeight, baseWidth) // common base width
+  if (!isKara) require(baseHeight == baseWidth)
+
+  val w = gcd(baseHeight, baseWidth).toInt // common base width
 
   val factorA = baseHeight / w // factor a
   val factorB = baseWidth / w // factor b
@@ -89,17 +92,26 @@ case class Decomposition(split: Int, baseHeight: Int, baseWidth: Int) {
 
   val segmentWidth = baseHeight + baseWidth
 
-  def subMultCount = split * (split + 1) / 2 * factorA * factorB
+  def subMultCount =
+    if (isKara) split * (split + 1) / 2 * factorA * factorB
+    else split * split
 
-  def karaCount = split * (split - 1) / 2 * factorA * factorB
+  def karaCount =
+    if (isKara) split * (split - 1) / 2 * factorA * factorB
+    else 0
 
-  def splitCost: Int = karaCount * segmentWidth
+  def splitCost: Int =
+    if (isKara) karaCount * segmentWidth
+    else 0
 
   def mergeCost: Double = {
-    val minusCost = karaCount * 2 * segmentWidth // reduce high & low
-    val plusCost = subMultCount * segmentWidth
-    val sideCount = karaCount * (segmentWidth + 1) // for tiling
-    (minusCost + plusCost + sideCount - widthNext) / compressorEff // reduce = all - remained
+    if (isKara) {
+      val minusCost = karaCount * 2 * segmentWidth // reduce high & low
+      val plusCost = subMultCount * segmentWidth
+      val sideCount = karaCount * (segmentWidth + 1) // for tiling
+      (minusCost + plusCost + sideCount - widthNext) / compressorEff // reduce = all - remained
+    }
+    else subMultCount * segmentWidth - widthNext
   }
 
   def clbCost: Double = splitCost + mergeCost

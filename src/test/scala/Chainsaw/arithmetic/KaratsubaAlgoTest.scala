@@ -12,14 +12,15 @@ class KaratsubaAlgoTest extends AnyFlatSpec {
   //  testKaraAlgo(96)
   //  testKaraAlgo(256)
   //  testKaraAlgo(377)
-  testKaraAlgo(1024)
+  //  testKaraAlgo(1024)
+  testKaraAlgo(4096)
 
   behavior of "karatsuba search algo"
   //  testKaraSearchStrategy(377)
   //  testKaraSearchStrategy(1024)
   //  testKaraSearchLayer(4)
   //  testKaraSearchLayer(10)
-  testKaraSearchAll()
+  //  testKaraSearchAll()
 
   def testKaraAlgo(width: Int): Unit = {
     val data = Seq.fill(1000)(BigInt(width, Random), BigInt(width, Random))
