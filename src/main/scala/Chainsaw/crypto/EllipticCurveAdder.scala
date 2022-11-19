@@ -87,6 +87,4 @@ case class EllipticCurveAdder(ecCurve: EllipticCurve, width: Int, constantModulu
    * golden model
    * -------- */
   override def impl(dataIn: Seq[Any]): Seq[Any] = null
-
-
 }

@@ -4,6 +4,7 @@ import Chainsaw._
 import Chainsaw.arithmetic._
 import Chainsaw.dag._
 import Chainsaw.xilinx._
+import scala.util.Random
 
 /** barrett modular multiplier
  *
@@ -31,6 +32,11 @@ case class Barrett(widthIn: Int, constantModulus: Option[BigInt] = None)
     Seq(ret)
   }
 
+  override def generateTestCases = {
+    val candidates = Seq.fill(1000)(BigInt(widthIn, Random)).filter(_ < constantModulus.get)
+    candidates.take((candidates.length.divideAndCeil(2) - 1) * 2)
+  }
+
   /** --------
    * dag implementation
    * -------- */
@@ -53,9 +59,7 @@ case class Barrett(widthIn: Int, constantModulus: Option[BigInt] = None)
       val sub = CpaS2S(TernarySubtractor1, lsbWidthInvolved, withCarry = false).asVertex // cpa before reduction
       val reduction = FineReduction(modulus, 10).asVertex // fine reduction
 
-      // connection\
-
-
+      // connection
       multFull := (a, b)
       multMsb := multFull.out(0).takeHigh(k + 1)
       multLsb <-< multMsb
