@@ -25,5 +25,4 @@ class CpaTest extends AnyFlatSpec {
   cpaModes.foreach { mode => adderTypes.foreach(adder => testCpaFuncInMode(adder, mode)) }
 
   it should "synth for ultra big width" in ChainsawSynth(CpaS2S(BinaryAdder, 2000, withCarry = true), "synthCpa2000")
-
 }

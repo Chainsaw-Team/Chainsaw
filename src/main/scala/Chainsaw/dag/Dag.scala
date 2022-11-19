@@ -1,6 +1,7 @@
 package Chainsaw.dag
 
 import Chainsaw._
+import Chainsaw.dsp.{FilterGraph, SingleFilterGraph}
 import org.jetbrains.annotations.Debug.Renderer
 import org.jgrapht._
 import org.jgrapht.alg.connectivity._
@@ -13,7 +14,7 @@ import scala.language.postfixOps
 
 // TODO: appropriate metadata for consistency
 case class IoGenerator(numericType: NumericType, direction: Direction)
-  extends ChainsawGenerator {
+  extends Combinational {
   override def name = if (direction == In) "in" else "out"
 
   override def impl(dataIn: Seq[Any]) = dataIn
@@ -22,9 +23,8 @@ case class IoGenerator(numericType: NumericType, direction: Direction)
   override var outputTypes = Seq(numericType)
   override var inputFormat = inputNoControl
   override var outputFormat = outputNoControl
-  override var latency = 0
 
-  override def implH = null // this shouldn't be called anyway
+  override def comb(dataIn: Seq[Bits]) = dataIn
 }
 
 object InputVertex {
@@ -162,7 +162,7 @@ abstract class Dag()
    */
   def retiming(solution: Map[V, Int]): Unit = edgeSet().asScala.foreach { e =>
     val (targetValue, sourceValue) = (solution(getEdgeTarget(e)), solution(getEdgeSource(e)))
-    val weight = targetValue + e.targetPort.relativeTime - (sourceValue + e.sourcePort.relativeTime)
+    val weight = targetValue + e.targetPort.relativeTime - (sourceValue + e.sourcePort.relativeTime) + e.weight
     setEdgeWeight(e, weight)
   }
 
@@ -218,6 +218,8 @@ abstract class Dag()
 
   def updateLatency(): Unit = {
     autoPipeline()
+    //    val path = new alg.shortestpath.BFSShortestPath(this).getPath(inputs.head, outputs.head)
+    //    latency = path.getVertexList.asScala.prevAndNext { case (prev, next) => getEdge(prev, next).weight.toInt }.sum
     latency = retimingInfo(outputs.head) - retimingInfo(inputs.head)
   }
 
@@ -228,7 +230,8 @@ abstract class Dag()
     doDrc()
   }
 
-  def assureAcyclic(): Unit = assert(!new alg.cycle.CycleDetector(this).detectCycles(), "dag must be acyclic")
+  def assureAcyclic(): Unit = if (!this.isInstanceOf[FilterGraph])
+    assert(!new alg.cycle.CycleDetector(this).detectCycles(), "dag must be acyclic")
 
   def assureConnected(): Unit = {
     val ins = new ConnectivityInspector(this)

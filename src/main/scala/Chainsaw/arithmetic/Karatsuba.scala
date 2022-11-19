@@ -29,8 +29,8 @@ case class Karatsuba(width: Int, constant: Option[BigInt] = None,
   logger.info(s"${algo.solution}")
 
   def getValidWidths(width: Int) = {
-    val total = width.divideAndCeil(binaryWidthMax)
-    Seq.fill(total - 1)(binaryWidthMax) :+ (width - (total - 1) * binaryWidthMax)
+    val total = width.divideAndCeil(cpaWidthMax)
+    Seq.fill(total - 1)(cpaWidthMax) :+ (width - (total - 1) * cpaWidthMax)
   }
 
   /** --------

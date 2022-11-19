@@ -162,32 +162,48 @@ case class ChainsawTest(
      * analysis after simulation
      * -------- */
 
-    val yours: Seq[Seq[Any]] = dataRecord
-      .grouped(outputFormat.period).toSeq // frames
-      .map(outputFormat.toRawData) // frames -> raw data
+    val yours: Seq[Seq[Any]] = implMode match {
+      case Comb =>
+        logger.info("here, comb")
+        dataRecord
+          .grouped(outputFormat.period).toSeq // frames
+          .map(outputFormat.toRawData) // frames -> raw data
+      case StateMachine => ???
+      case Infinite =>
+        logger.info(s"offset = $offset")
+        Seq(dataRecord.flatten.drop(gen.offset))
+    }
 
     val goldenInUse: Seq[Seq[Any]] =
-      if (golden == null) raws.map(impl)
+      if (golden == null) implMode match {
+        case Comb =>
+          val ret = raws.map(impl)
+          require(ret.head.length == outputFormat.rawDataCount,
+            s"golden model format mismatch, expected: ${outputFormat.rawDataCount}, actual:${ret.head.length}")
+          ret
+        case StateMachine => ???
+        case Infinite => Seq(impl(data))
+      }
       else golden.grouped(outputFormat.rawDataCount).toSeq
 
-    require(goldenInUse.head.length == outputFormat.rawDataCount,
-      s"golden model format mismatch, expected: ${outputFormat.rawDataCount}, actual:${goldenInUse.head.length}")
-
-    val success = implMode match {
-      case Comb => // get and compare golden & yours slice by slice
-        // compare yours with the golden frame by frame until the first mismatch
-        val remained = yours.zip(goldenInUse).zipWithIndex.dropWhile { case ((y, g), _) => metric.frameWise(y, g) }
-        if (remained.nonEmpty && !silentTest) {
-          val ((y, g), i) = remained.head
-          showErrorMap(gen, raws(i), y, g, i, metric)
-        }
-        remained.isEmpty
-      case StateMachine => ???
+    val success = {
+      // get and compare golden & yours slice by slice
+      // compare yours with the golden frame by frame until the first mismatch
+      val remained = yours.zip(goldenInUse).zipWithIndex.dropWhile { case ((y, g), _) => metric.frameWise(y, g) }
+      if (remained.nonEmpty && !silentTest) {
+        val ((y, g), i) = remained.head
+        showErrorMap(gen, raws(i), y, g, i, metric)
+      }
+      remained.isEmpty
     }
 
     if (!silentTest) {
 
-      if (success) logger.info(s"test for generator ${gen.name} passed\n${showAllData(gen, raws.last, yours.last, goldenInUse.last, raws.length)}")
+      if (success) implMode match {
+        case Comb => logger.info(s"test for generator ${gen.name} passed\n${showAllData(gen, raws.last, yours.last, goldenInUse.last, raws.length)}")
+        case StateMachine =>
+        case Infinite => logger.info(s"test for generator ${gen.name} passed\n${showInfiniteData(raws.flatten, yours.flatten, goldenInUse.flatten)}")
+      }
       else logger.error(s"test for generator ${gen.name} failed")
 
       assert(success)
@@ -252,5 +268,11 @@ object ChainsawTest {
         s"\nelementWise errors:\n$errorMap" +
         s"\n${showAllData(gen, inputs, y, g, i)}"
     )
+  }
+
+  def showInfiniteData[T](input: Seq[T], yours: Seq[T], golden: Seq[T]) = {
+    s"\ninput :\n${input.mkString(" ")}" +
+      s"\nyours :\n${yours.mkString(" ")}" +
+      s"\ngolden:\n${golden.mkString(" ")}"
   }
 }
