@@ -16,10 +16,10 @@ class KaratsubaTest extends AnyFlatSpec {
 
   testFunction(64)
   //  testFunction(96)
-  //  testFunction(377)
+  testFunction(377)
   //  testFunction(512)
   //  testImplementation(96)
-  testImplementation(377)
+  //  testImplementation(377)
   //  testImplementation(512)
 
   //  testFunction(1024)

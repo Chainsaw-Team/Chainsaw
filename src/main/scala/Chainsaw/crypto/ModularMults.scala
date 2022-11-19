@@ -45,7 +45,12 @@ case class BarrettAlgo(override val M: BigInt) extends ModularMult {
   }
 }
 
-case class BarrettFineAlgo(override val M: BigInt) extends ModularMult {
+/**
+ * @param M
+ * @see ''Langhammer, Martin and Bogdan Mihai Pasca. “Efficient FPGA Modular Multiplication Implementation.” The 2021 ACM/SIGDA International Symposium on Field-Programmable Gate Arrays (2021): n. pag.''
+ */
+case class BarrettFineAlgo(override val M: BigInt)
+  extends ModularMult {
 
   /** --------
    * preparation
