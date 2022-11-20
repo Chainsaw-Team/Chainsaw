@@ -32,7 +32,7 @@ package object Chainsaw {
   var atSimTime = true
 
   val dot = "■"
-
+  val downArrow = "↓"
   /** --------
    * type def
    * -------- */

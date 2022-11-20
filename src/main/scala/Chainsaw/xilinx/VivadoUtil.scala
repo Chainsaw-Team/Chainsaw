@@ -1,5 +1,7 @@
 package Chainsaw.xilinx
 
+import ilog.concert._
+import ilog.cplex._
 
 case class VivadoUtil(
                        lut: Int,
@@ -41,19 +43,43 @@ case class VivadoUtil(
 
     /** judge whether a solution is better than another by multiple determinants with decresing priorities
      *
-     * @param betters 1 for better, 0 for equally good, -1 for worst
+     * @param betters
+     *   1 for better, 0 for equally good, -1 for worst
      */
     def betterWithPriority(betters: Int*): Boolean = betters.reverse.zipWithIndex.map { case (better, i) => better << i }.sum > 0
 
     strategy match {
-      case DspFirst => betterWithPriority(dspBetter, clbBetter, ratioBetter)
-      case ClbFirst => betterWithPriority(clbBetter, dspBetter, ratioBetter)
+      case DspFirst   => betterWithPriority(dspBetter, clbBetter, ratioBetter)
+      case ClbFirst   => betterWithPriority(clbBetter, dspBetter, ratioBetter)
       case RatioFirst => betterWithPriority(ratioBetter, dspBetter, clbBetter)
     }
   }
 
+  def solveBestScheme(schemes: Seq[VivadoUtil], solveVars: Seq[Int]) = {
+    val cplex = new IloCplex()
 
+    val upBounds = solveVars
+      .map(i => this.getValues(i))
+      .zip(schemes.map(scheme => solveVars.map(i => scheme.getValues(i))).transpose)
+      .map { case (budget, consumes) => consumes.map(consume => budget / consume).max }
 
+    val weights = solveVars.map(i => schemes.map(scheme => scheme.getValues(i)).toArray)
+    val budgets = solveVars.map(i => this.getValues(i))
+
+    val variables: Array[IloIntVar] = upBounds.flatMap(upBound => cplex.intVarArray(1, 0, upBound)).toArray
+
+    var equation = ""
+    weights.zip(budgets).foreach { case (weight, budget) =>
+      equation += weight.zip(Seq.tabulate(weights.length)(i => s"x$i")).map { case (i, str) => s"$i * $str" }.mkString(" + ") + s" = $budget\n"
+      cplex.addLe(cplex.scalProd(variables, weight), budget)
+    }
+    println(s"Solve:\n$equation")
+
+    cplex.addMaximize(cplex.scalProd(variables, Array.fill(variables.length)(1)))
+
+    cplex.solve()
+    variables.map(cplex.getValue).map(_.toInt)
+  }
 
   def showInt(value: Int) =
     if (value == Int.MaxValue) "unlimited" else value.toString
@@ -76,12 +102,12 @@ object VivadoUtilRequirement {
   val limit = Int.MaxValue
 
   def apply(
-             lut: Int = limit,
-             ff: Int = limit,
-             dsp: Int = limit,
-             bram36: Int = limit,
+             lut: Int     = limit,
+             ff: Int      = limit,
+             dsp: Int     = limit,
+             bram36: Int  = limit,
              uram288: Int = limit,
-             carry8: Int = limit
+             carry8: Int  = limit
            ) =
     VivadoUtil(lut, ff, dsp, bram36, uram288, carry8)
 }
