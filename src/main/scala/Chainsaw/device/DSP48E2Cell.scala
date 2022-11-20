@@ -13,10 +13,10 @@ import spinal.lib.History
  * @param ExtDelayAB  ExtraDelay for AB
  * @param ExtDelayC  ExtraDelay for C
  */
-// DSP48E2 Configuration for Multiply-Addition (A * B + C)
+// DSP48E2 Configuration for Mult-Add (A * B + C)
 class DSP48E2Cell_MultAdd(nameIdx: Int, InnerDelayAB:Int = 1, ExtDelayAB: Int = 0, ExtDelayC: Int = 1) extends Component {
   val io = new Bundle {
-    // 直接输入输出信号
+    // Direct In Out signal
     val A = in  UInt(30 bits)
     val B = in  UInt(18 bits)
     val C = in  UInt(48 bits)
@@ -27,8 +27,8 @@ class DSP48E2Cell_MultAdd(nameIdx: Int, InnerDelayAB:Int = 1, ExtDelayAB: Int = 
 
   val attr = DSPAttrBuilder().setMult(MULTMODE.AB1).build    // AB1 for A * B
   // TODO: pay attention to here
-  attr.AREG          = 2    // A1: AREG = 2 or INMODE[0] = 1;  A2: AREG = 1 or 2 and INMODE[0] = 0
-  attr.BREG          = 2    // B1: BREG = 2 or INMODE[4] = 1;  B2: BREG = 1 or 2 and INMODE[4] = 0
+  attr.AREG          = 2    // A1: AREG = 2 and INMODE[0] = 1, or AREG = 1 and INMODE[0] = 0;  A2: AREG = 2 and INMODE[0] = 0
+  attr.BREG          = 2    // B1: BREG = 2 and INMODE[4] = 1, or BREG = 1 and INMODE[4] = 0;  B2: BREG = 2 and INMODE[4] = 0
   attr.ACASCREG      = 1
   attr.BCASCREG      = 1
   attr.DREG          = 1
@@ -44,7 +44,7 @@ class DSP48E2Cell_MultAdd(nameIdx: Int, InnerDelayAB:Int = 1, ExtDelayAB: Int = 
   attr.PREADDINSEL   = "A"
   attr.USE_MULT      = "MULTIPLY"
   attr.MREG          = 1
-  // TODO: 模式识别的配置: 检测46号bit
+  // TODO: for pattern recognition
   attr.MASK          = B"101111111111111111111111111111111111111111111111"    // 48bits, 置1的bit被忽略
   attr.PATTERN       = B"010000000000000000000000000000000000000000000000"    // 48bits, 想要匹配的模式
   attr.SEL_MASK      = "MASK"
@@ -55,7 +55,7 @@ class DSP48E2Cell_MultAdd(nameIdx: Int, InnerDelayAB:Int = 1, ExtDelayAB: Int = 
   dsp.RSTs.all.foreach(_.clear())
   dsp.CEs.all.foreach(_.set())
 
-  // 对信号的延迟
+  // The delaying of input signals
   val delayedA = History(io.A, ExtDelayAB+1, init=U(0, 30 bits))    // shift registers
   val lastA = delayedA(delayedA.length-1)
 
@@ -65,22 +65,22 @@ class DSP48E2Cell_MultAdd(nameIdx: Int, InnerDelayAB:Int = 1, ExtDelayAB: Int = 
   val delayedC = History(io.C, ExtDelayC+1, init=U(0, 48 bits))    // shift registers
   val lastC = delayedC(delayedC.length-1)
 
-  // ******** 乘法加法: A * B + C ******** //
-  // 直接输入
+  // ******** Mult-Add: A * B + C ******** //
+  // direct input
   dsp.DATAIN.A       := lastA          // link to the end of shift registers
   dsp.DATAIN.B       := lastB          // link to the end of shift registers
   dsp.DATAIN.C       := lastC          // link to the end of shift registers
   dsp.DATAIN.D       := U(0)
   dsp.DATAIN.CARRYIN := False          // TODO: consider later
 
-  // 级联输入置零
+  // cascade input (all set as 0)
   dsp.CASCDATAIN.A        := U(0)
   dsp.CASCDATAIN.B        := U(0)
   dsp.CASCDATAIN.P        := U(0)
   dsp.CASCDATAIN.CARRY    := False    // TODO: consider later
   dsp.CASCDATAIN.MULTSIGN := False    // TODO: consider later
 
-  // 控制信号设置
+  // dynamic control signal
   dsp.INST.ALUMODE    := B"0000"
   dsp.INST.OPMODE     := B"110000101"
   dsp.INST.CARRYINSEL := B"000"
@@ -95,11 +95,11 @@ class DSP48E2Cell_MultAdd(nameIdx: Int, InnerDelayAB:Int = 1, ExtDelayAB: Int = 
     dsp.INST.INMODE := B"10001"
   }
 
-  // 直接输出
+  // direct output
   io.P := dsp.DATAOUT.P
 
-  // 模式识别输出
-  io.PATTERNDETECT := dsp.DATAOUT.PATTERNDETECT    // TODO: 验证一下这个
+  // pattern detect output
+  io.PATTERNDETECT := dsp.DATAOUT.PATTERNDETECT
 
 }
 
@@ -113,10 +113,10 @@ object DSP48E2Cell_MultAdd_Main {
 
 
 
-// 加法乘法减法: (A + D) * B - C
+// DSP48E2 Configuration for Add-Mult-Minus: (A + D) * B - C
 class DSP48E2Cell_AddMultMinus(nameIdx: Int, ExtDelayABD: Int = 0, ExtDelayC: Int = 1) extends Component {
   val io = new Bundle {
-    // 直接输入输出信号
+    // Direct In Out signal
     val A = in  UInt (30 bits)
     val B = in  UInt (18 bits)
     val C = in  UInt (48 bits)
@@ -149,7 +149,7 @@ class DSP48E2Cell_AddMultMinus(nameIdx: Int, ExtDelayABD: Int = 0, ExtDelayC: In
   dsp.RSTs.all.foreach(_.clear())
   dsp.CEs.all.foreach(_.set())
 
-  // The delaying of signals
+  // The delaying of input signals
   val delayedA = History(io.A, ExtDelayABD+1, init=U(0, 30 bits))    // shift registers
   val lastA = delayedA(delayedA.length-1)
 
@@ -162,28 +162,28 @@ class DSP48E2Cell_AddMultMinus(nameIdx: Int, ExtDelayABD: Int = 0, ExtDelayC: In
   val delayedD = History(io.D, ExtDelayABD+1, init=U(0, 27 bits))    // shift registers
   val lastD = delayedD(delayedD.length-1)
 
-  // ******** 加法乘法减法: (A + D) * B - C ******** //
-  // 直接输入
+  // ******** Add-Mult-Minus: (A + D) * B - C ******** //
+  // direct input
   dsp.DATAIN.A       := lastA          // link to the end of shift registers
   dsp.DATAIN.B       := lastB          // link to the end of shift registers
   dsp.DATAIN.C       := lastC          // link to the end of shift registers
   dsp.DATAIN.D       := lastD          // link to the end of shift registers
   dsp.DATAIN.CARRYIN := False          //
 
-  // 级联输入置零
+  // cascade input (all set as 0)
   dsp.CASCDATAIN.A        := U(0)
   dsp.CASCDATAIN.B        := U(0)
   dsp.CASCDATAIN.P        := U(0)
   dsp.CASCDATAIN.CARRY    := False     //
   dsp.CASCDATAIN.MULTSIGN := False     //
 
-  // 控制信号设置
+  // dynamic control signal
   dsp.INST.ALUMODE    := B"0001"       // - Z + (W + X + Y + CIN) - 1
   dsp.INST.OPMODE     := B"000110101"  // W=0, Z=C, X=Y=M
   dsp.INST.INMODE     := B"00100"      // for A1,D1,AD,B2
-  dsp.INST.CARRYINSEL := B"001"        // Important
+  dsp.INST.CARRYINSEL := B"110"        // Seems to work. Old one with DRC error is "001"
 
-  // 直接输出
+  // direct output
   io.P := dsp.DATAOUT.P
 
 }
