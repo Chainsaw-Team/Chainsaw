@@ -14,7 +14,7 @@ class KaratsubaTest extends AnyFlatSpec {
   //  testFunction(30)
   // TODO: improve bitHeap performance on small input
 
-  testFunction(64)
+//  testFunction(64)
   //  testFunction(96)
   testFunction(377)
   //  testFunction(512)
@@ -32,11 +32,9 @@ class KaratsubaTest extends AnyFlatSpec {
     it should s"work at width $width" in ChainsawTest(s"testKara$width", Karatsuba(width, None, DspFirst), data).doTest()
   }
 
-
   def testImplementation(width: Int): Unit = {
 
     it should s"synth at width $width" in ChainsawSynth(Karatsuba(width, None, DspFirst), s"synthKara$width")
   }
-
 
 }
