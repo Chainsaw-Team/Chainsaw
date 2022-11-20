@@ -55,7 +55,7 @@ abstract class Compressor {
   def reductionRatio(width: Int): Double = inputBitsCount(width).toDouble / outputBitsCount(width)
 
   def reductionEfficiency(width: Int, considerCarry8: Boolean = true, isPipeline: Boolean = true): Double =
-    if (areaCost(width, considerCarry8, isPipeline) != 0.0) bitReduction(width).toDouble / areaCost(width, considerCarry8, isPipeline) else 0.0
+    if (areaCost(width, considerCarry8, isPipeline) != 0.0) bitReduction(width).toDouble / areaCost(width, considerCarry8, isPipeline) else bitReduction(width).toDouble
 
   def utilRequirement(width: Int): VivadoUtil
 

@@ -18,15 +18,15 @@ class BitHeapCompressorTest extends AnyFlatSpec {
     it should "work at a certain corner case" in {
       val operands =
         Seq( // a testcase including weighted, signed and delayed input
-          ArithInfo(16, 0),
-          ArithInfo(16, 5),
-          ArithInfo(16, 9),
-          ArithInfo(16, 12, isPositive = false),
-          ArithInfo(16, 15)
+          ArithInfo(64, 0),
+          ArithInfo(64, 5),
+          ArithInfo(64, 9),
+          ArithInfo(64, 12, isPositive = false),
+          ArithInfo(64, 15)
         )
       verbose = 1
-      val compressorTreeGen = BitHeapCompressor(operands)
-      val data              = Seq.fill(400)(BigInt(16, Random))
+      val compressorTreeGen = BitHeapCompressor(operands, outputAsCsa = true)
+      val data              = Seq.fill(400)(BigInt(64, Random))
 
       val test = ChainsawTest(
         "testCorner",
@@ -59,9 +59,9 @@ class BitHeapCompressorTest extends AnyFlatSpec {
       timeStrategy = IncreaseTimeDiff,
       upBound      = 8
     ),
-    RectangularInfos(widthRange = Range.inclusive(100, 200, 100), heightRange = Range.inclusive(50, 100, 50)),
-    RectangularInfos(widthRange = Range.inclusive(50, 100, 50), heightRange   = Range.inclusive(50, 75, 25), shift = Random.nextInt(2) + 1, withNoise = true),
-    RectangularInfos(widthRange = Range.inclusive(50, 100, 50), heightRange   = Range.inclusive(50, 75, 25), shift = 2, withNoise                     = true, mixSign = true),
+    RectangularInfos(widthRange = Range.inclusive(100, 100), heightRange = Range.inclusive(50, 100, 50)),
+    RectangularInfos(widthRange = Range.inclusive(100, 100), heightRange = Range.inclusive(50, 75, 25), shift = Random.nextInt(2) + 1, withNoise = true),
+    RectangularInfos(widthRange = Range.inclusive(100, 100), heightRange = Range.inclusive(50, 75, 25), shift = 2, withNoise                     = true, mixSign = true),
     TriangleInfos(widthRange    = Range.inclusive(99, 199, 100)),
     TriangleInfos(
       widthRange         = Range.inclusive(69, 99, 30),
@@ -105,18 +105,22 @@ class BitHeapCompressorTest extends AnyFlatSpec {
     //    )
   )
 
-  //    testNaive()
+//  testNaive()
 
-  bitHeapCompressorFuncTest(BasicCompressTree, 100)
+  bitHeapCompressorFuncTest(BasicCompressTree, 100, detail = true)
 
   //  bitHeapCompressorPerfTest(BasicCompressTree, false)
 
-  def testFuncForInfosOnce(infos: Seq[ArithInfo], target: CompressTreeType, testCount: Int = 1000) = {
+  def testFuncForInfosOnce(infos: Seq[ArithInfo], target: CompressTreeType, testCount: Int = 1000, detail: Boolean = false) = {
+    if (detail) verbose = 1
     val data = (0 until testCount) flatMap (_ => infos.map(info => BigInt(info.width, Random)))
     target match {
       case BasicCompressTree =>
-        val compressorGen = BitHeapCompressor(infos)
-        val test          = ChainsawTest("testCompressor", compressorGen, data)
+        val compressorGenWithCsa = BitHeapCompressor(infos, outputAsCsa = true)
+        val compressorGen        = BitHeapCompressor(infos, outputAsCsa = false)
+        val testCsa              = ChainsawTest("testCompressorByCsa", compressorGenWithCsa, data)
+        val test                 = ChainsawTest("testCompressor", compressorGen, data)
+        testCsa.doTest()
         test.doTest()
     }
   }
@@ -124,14 +128,16 @@ class BitHeapCompressorTest extends AnyFlatSpec {
   def testPerfForInfosOnce(infos: Seq[ArithInfo], target: CompressTreeType): VivadoReport = {
     target match {
       case BasicCompressTree =>
-        val compressorGen = BitHeapCompressor(infos)
+        val compressorGenWithCsa = BitHeapCompressor(infos, outputAsCsa = true)
+        val compressorGen        = BitHeapCompressor(infos, outputAsCsa = false)
+        VivadoSynth(compressorGenWithCsa.implH, "synthCompressorWithCsa")
         VivadoSynth(compressorGen.implH, "synthCompressor")
     }
   }
 
-  def bitHeapCompressorFuncTest(target: CompressTreeType, testCount: Int = 1000): Unit = {
+  def bitHeapCompressorFuncTest(target: CompressTreeType, testCount: Int = 1000, detail: Boolean = false): Unit = {
     behavior of s"BitHeap Compressor functional test for ${target.getClass.getSimpleName.init}"
-    testcases.flatten.foreach { case (infos, name) => it should s"work correctly on $name" in testFuncForInfosOnce(infos, target, testCount) }
+    testcases.flatten.foreach { case (infos, name) => it should s"work correctly on $name" in testFuncForInfosOnce(infos, target, testCount, detail) }
   }
 
   def bitHeapCompressorPerfTest(target: CompressTreeType, genPerfReportGraph: Boolean = true): Unit = {

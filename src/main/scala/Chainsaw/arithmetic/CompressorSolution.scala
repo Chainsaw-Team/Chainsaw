@@ -107,5 +107,5 @@ case class CompressorSolution(compressorName: String, width: Int, startIndex: In
 case class Consideration(areaCost: Double = 0.0, reductionEfficiency: Double = 0, reductionRatio: Double = 1, bitReduction: Int = 0, heightReduction: Int = 1)
 
 case class StageInfo(stageHeightDiff: String, wholeHeightDiff: String, nextBitHeapConfig: Seq[BitHeapConfigInfo[Int]], finalStage: Boolean, isPipeline: Boolean, isRedundant: Boolean) {
-  def resizeNextHeap(width: Int) = StageInfo(stageHeightDiff, wholeHeightDiff, nextBitHeapConfig.take(width), finalStage, isPipeline, isRedundant)
+  def resizeNextHeap(width: Int) = StageInfo(stageHeightDiff, wholeHeightDiff, nextBitHeapConfig.map(_.resize(width)), finalStage, isPipeline, isRedundant)
 }
