@@ -41,29 +41,29 @@ class GpcsTest extends AnyFlatSpec {
 
   def getModule(compressor: Compressor, width: Int, pipeline: Bool => Bool = bool => bool) = new Module {
 
-    val inputShape = compressor.inputFormat(width)
+    val inputShape  = compressor.inputFormat(width)
     val outputShape = compressor.outputFormat(width)
 
-    val dataIn = in Bits (inputShape.sum bits)
+    val dataIn  = in Bits (inputShape.sum bits)
     val dataOut = out Bits (outputShape.sum bits)
 
     val bitHeap = ArrayBuffer.fill(inputShape.length)(ArrayBuffer[Bool]())
-    val bits = ArrayBuffer(dataIn.asBools.reverse: _*)
+    val bits    = ArrayBuffer(dataIn.asBools.reverse: _*)
     inputShape.zip(bitHeap).foreach { case (i, container) =>
       val column = bits.take(i)
       container ++= column
       bits --= column
     }
-    val ret = compressor.impl(BitHeap(bitHeap, 0, 0).d(pipeline), width)
+    val ret = compressor.impl(BitHeaps(bitHeap, 0, 0).d(pipeline), width)
     dataOut := ret.d(pipeline).bitHeaps.head.reverse.flatten.asBits()
   }
 
   case class CompressorPerfReportGraph() {
-    val elements = mutable.Set[(Compressor, Int, VivadoReport)]()
+    val elements                = mutable.Set[(Compressor, Int, VivadoReport)]()
     val fmaxGraphDataInRowAdder = mutable.Set[(String, (String, ArrayBuffer[Int]), (String, ArrayBuffer[Double]))]()
     val areaGraphDataInRowAdder = mutable.Set[(String, (String, ArrayBuffer[Int]), (String, ArrayBuffer[Int]))]()
-    val fmaxGraphDataInGPC = mutable.Set[((String, ArrayBuffer[String]), (String, ArrayBuffer[Double]))]()
-    val areaGraphDataInGPC = mutable.Set[((String, ArrayBuffer[String]), (String, ArrayBuffer[Int]))]()
+    val fmaxGraphDataInGPC      = mutable.Set[((String, ArrayBuffer[String]), (String, ArrayBuffer[Double]))]()
+    val areaGraphDataInGPC      = mutable.Set[((String, ArrayBuffer[String]), (String, ArrayBuffer[Int]))]()
 
     def addElement(compressor: Compressor, width: Int, vivadoReport: VivadoReport): elements.type = {
       elements += Tuple3(compressor, width, vivadoReport)
@@ -71,12 +71,12 @@ class GpcsTest extends AnyFlatSpec {
     }
 
     private def parseElements(): Unit = {
-      val gpcElements = elements.filter(_._1.isFixed)
+      val gpcElements      = elements.filter(_._1.isFixed)
       val rowAdderElements = elements.filterNot(_._1.isFixed).groupBy(_._1).toSet
 
       val compressorNames = ArrayBuffer[String]()
-      val fmaxData = ArrayBuffer[Double]()
-      val areaData = ArrayBuffer[Int]()
+      val fmaxData        = ArrayBuffer[Double]()
+      val areaData        = ArrayBuffer[Int]()
       gpcElements.foreach { case (compressor, _, report) =>
         compressorNames += compressor.name
         fmaxData += report.Frequency
@@ -86,7 +86,9 @@ class GpcsTest extends AnyFlatSpec {
       areaGraphDataInGPC += Tuple2(("row adders", compressorNames), ("area", areaData))
 
       rowAdderElements.foreach { case (compressor, infos) =>
-        val infoPairs = infos.toSeq.map { case (compressor, w, report) => Tuple3(w, report.Frequency, Seq(report.LUT, report.CARRY8 * 8, (report.FF - compressor.inputBitsCount(w)).divideAndCeil(2)).max) }
+        val infoPairs = infos.toSeq.map { case (compressor, w, report) =>
+          Tuple3(w, report.Frequency, Seq(report.LUT, report.CARRY8 * 8, (report.FF - compressor.inputBitsCount(w)).divideAndCeil(2)).max)
+        }
         val sortedInfoPairs = infoPairs.map(_._1).zip(infoPairs.map(_._2).zip(infoPairs.map(_._3))).sortBy(_._1)
         fmaxGraphDataInRowAdder += Tuple3(compressor.name, ("width", ArrayBuffer(sortedInfoPairs.map(_._1): _*)), ("fmax", ArrayBuffer(sortedInfoPairs.map(_._2._1): _*)))
         areaGraphDataInRowAdder += Tuple3(compressor.name, ("width", ArrayBuffer(sortedInfoPairs.map(_._1): _*)), ("area", ArrayBuffer(sortedInfoPairs.map(_._2._2): _*)))
@@ -155,7 +157,7 @@ class GpcsTest extends AnyFlatSpec {
 
   def testCompressorFuncOnce(compressor: Compressor, width: Int, testCount: Int = 1000, debug: Boolean = false): Unit = {
 
-    val inputShape = compressor.inputFormat(width)
+    val inputShape  = compressor.inputFormat(width)
     val outputShape = compressor.outputFormat(width)
 
     def getValueByShape(bigInt: BigInt, shape: Seq[Int]) = {
@@ -177,7 +179,7 @@ class GpcsTest extends AnyFlatSpec {
           dut.dataIn #= value
           sleep(1)
           val golden = getValueByShape(value, inputShape)
-          val yours = getValueByShape(dut.dataOut.toBigInt, outputShape)
+          val yours  = getValueByShape(dut.dataOut.toBigInt, outputShape)
           assert(yours == golden, s"yours: $yours, golden: $golden")
           if (debug) {
             println(s"in : ${value.toString(2)}")

@@ -5,12 +5,14 @@ import Chainsaw.xilinx._
 import spinal.core._
 
 /** define necessary properties for a basic compressor which can be used to build a compressor tree
-  */
+ */
 abstract class Compressor {
 
   val name = getClass.getSimpleName.init
 
   val isFixed: Boolean // if the size is fixed, it is a GPC, otherwise, it is a row compressor
+
+  val redundant: Boolean // if the output maxValue is equal to input maxValue, it should be true
 
   val widthMax: Int // for delay consideration
 
@@ -19,28 +21,28 @@ abstract class Compressor {
   require(widthMax >= widthMin, s"The widthMax should be greater than or equal to widMin")
 
   /** -------- definitions
-    * --------
-    */
+   * --------
+   */
 
   /** number of bits in input columns, low to high
-    */
+   */
   def inputFormat(width: Int): Seq[Int]
 
   /** number of bits in output columns, low to high
-    */
+   */
   def outputFormat(width: Int): Seq[Int]
 
   /** number of CLBs
-    */
+   */
   def areaCost(width: Int, considerCarry8: Boolean = true, isPipeline: Boolean = true): Double
 
   /** hardware implementation, the compressor is responsible for padding zeros
-    */
-  def impl(bitsIn: BitHeap[Bool], width: Int): BitHeap[Bool]
+   */
+  def impl(bitsIn: BitHeaps[Bool], width: Int): BitHeaps[Bool]
 
   /** -------- attributes
-    * --------
-    */
+   * --------
+   */
   def inputBitsCount(width: Int) = inputFormat(width).sum
 
   def outputBitsCount(width: Int) = outputFormat(width).sum
@@ -52,7 +54,8 @@ abstract class Compressor {
 
   def reductionRatio(width: Int): Double = inputBitsCount(width).toDouble / outputBitsCount(width)
 
-  def reductionEfficiency(width: Int, considerCarry8: Boolean = true, isPipeline: Boolean = true): Double = if (areaCost(width, considerCarry8, isPipeline) != 0.0) bitReduction(width).toDouble / areaCost(width, considerCarry8, isPipeline) else 0.0
+  def reductionEfficiency(width: Int, considerCarry8: Boolean = true, isPipeline: Boolean = true): Double =
+    if (areaCost(width, considerCarry8, isPipeline) != 0.0) bitReduction(width).toDouble / areaCost(width, considerCarry8, isPipeline) else bitReduction(width).toDouble
 
   def utilRequirement(width: Int): VivadoUtil
 
@@ -60,10 +63,10 @@ abstract class Compressor {
 
   // visualization
   def toString(width: Int) = {
-    val dotsIn    = BitHeap.getHeapFromHeights(Seq(inputFormat(width)), Seq(0), Seq(0)).toString
-    val dotsOut   = BitHeap.getHeapFromHeights(Seq(outputFormat(width)), Seq(0), Seq(0)).toString
+    val dotsIn    = BitHeaps.getHeapFromHeights(Seq(inputFormat(width)), Seq(0), Seq(0)).toString
+    val dotsOut   = BitHeaps.getHeapFromHeights(Seq(outputFormat(width)), Seq(0), Seq(0)).toString
     val length    = outputFormat(width).length
-    val arrowLine = s"${" " * (length / 2) * 2}↓"
+    val arrowLine = s"${" " * (length / 2) * 2}$downArrow"
     val shiftedDotsIn =
       dotsIn.split("\n").head + "\n" + dotsIn.split("\n").tail.map(_.padToLeft(length * 2 - 1, ' ')).mkString("\n")
     s"$shiftedDotsIn\n$arrowLine\n$dotsOut"
