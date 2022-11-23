@@ -215,6 +215,8 @@ package object Chainsaw {
     def toBigInt = BigInt(intz.toByteArray)
   }
 
+  def className(any: Any) = any.getClass.getSimpleName.replace("$", "")
+
   /** --------
    * matlab utils
    * -------- */
