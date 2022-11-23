@@ -164,11 +164,9 @@ case class ChainsawTest(
 
     val yours: Seq[Seq[Any]] = implMode match {
       case Comb =>
-        logger.info("here, comb")
         dataRecord
           .grouped(outputFormat.period).toSeq // frames
           .map(outputFormat.toRawData) // frames -> raw data
-      case StateMachine => ???
       case Infinite =>
         logger.info(s"offset = $offset")
         Seq(dataRecord.flatten.drop(gen.offset))
@@ -181,7 +179,6 @@ case class ChainsawTest(
           require(ret.head.length == outputFormat.rawDataCount,
             s"golden model format mismatch, expected: ${outputFormat.rawDataCount}, actual:${ret.head.length}")
           ret
-        case StateMachine => ???
         case Infinite => Seq(impl(data))
       }
       else golden.grouped(outputFormat.rawDataCount).toSeq

@@ -17,7 +17,7 @@ case class DedicatedMult(widthA: Int, widthB: Int, multType: MultiplierType, isK
   val allowRectangular = multType == Kara || (multType == FullMultiplier && !isKara)
   if (!allowRectangular) require(widthA == widthB, "rectangular is not supported for current mode")
 
-  override def name = s"karabase_${widthA}_${widthB}_type"
+  override def name = s"karabase_${widthA}_${widthB}_${multType.getClass.getSimpleName.replace("$", "")}"
 
   val widthCross = widthA + widthB
 

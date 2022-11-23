@@ -1,7 +1,7 @@
 package Chainsaw
 
 import spinal.core._
-
+import org.scalatest.flatspec._
 import scala.language.postfixOps
 
 sealed trait ImplMode
@@ -38,7 +38,7 @@ trait ChainsawGenerator {
    */
   var inputFormat: FrameFormat
   var outputFormat: FrameFormat
-  val inputTimes: Option[Seq[Int]]  = None // when this is empty, inputs are aligned
+  val inputTimes: Option[Seq[Int]] = None // when this is empty, inputs are aligned
   val outputTimes: Option[Seq[Int]] = None
   var latency: Int // defined as the latency from the head of inputs to the head of outputs
   var offset: Int = 0
@@ -46,7 +46,7 @@ trait ChainsawGenerator {
   /** -------- performance information
    * --------
    */
-  var utilEstimation: VivadoUtil  = VivadoUtilRequirement()
+  var utilEstimation: VivadoUtil = VivadoUtilRequirement()
   var fmaxEstimation: HertzNumber = 600 MHz
 
   /** -------- implementations
@@ -64,7 +64,8 @@ trait ChainsawGenerator {
 
   def generateTestCases: Seq[Any] = null
 
-  def selfTest() = ChainsawTest(s"test$name", this, generateTestCases).doTest()
+  def selfTest() = ChainsawTest(s"test_$name", this, generateTestCases).doTest()
+
 
   def setAsNaive(): Unit = naiveSet += this.getClass.getSimpleName
 
@@ -144,19 +145,19 @@ trait ChainsawGenerator {
 
       override val metric = that.metric
 
-      override var inputTypes  = old.inputTypes
+      override var inputTypes = old.inputTypes
       override var outputTypes = that.outputTypes
 
-      override var inputFormat  = old.inputFormat
+      override var inputFormat = old.inputFormat
       override var outputFormat = that.outputFormat
-      override var latency      = old.latency + that.latency
+      override var latency = old.latency + that.latency
 
       override def implH: ChainsawModule = new ChainsawModule(this) {
         val core0 = old.implH
         val core1 = that.implH
         core0.flowIn := flowIn
-        core0        >> core1
-        flowOut      := core1.flowOut
+        core0 >> core1
+        flowOut := core1.flowOut
       }
     }
   }
