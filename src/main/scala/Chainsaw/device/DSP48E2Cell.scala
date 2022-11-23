@@ -2,9 +2,7 @@ package Chainsaw.device
 
 import spinal.core._
 import spinal.lib.History
-
 import scala.language.postfixOps
-
 
 /**
  * @param nameIdx      Index for the specified dsp
@@ -25,7 +23,7 @@ class DSP48E2Cell_MultAdd(nameIdx: Int, InnerDelayAB: Int = 1, ExtDelayAB: Int =
   noIoPrefix()
 
   val attr = DSPAttrBuilder().setMult(MULTMODE.AB1).build // AB1 for A * B
-  // TODO: pay attention to here
+  // TODO: pay attention here
   attr.AREG = 2 // A1: AREG = 2 and INMODE[0] = 1, or AREG = 1 and INMODE[0] = 0;  A2: AREG = 2 and INMODE[0] = 0
   attr.BREG = 2 // B1: BREG = 2 and INMODE[4] = 1, or BREG = 1 and INMODE[4] = 0;  B2: BREG = 2 and INMODE[4] = 0
   attr.ACASCREG = 1
@@ -176,5 +174,3 @@ class DSP48E2Cell_AddMultMinus(nameIdx: Int, ExtDelayABD: Int = 0, ExtDelayC: In
   io.P := dsp.DATAOUT.P
 
 }
-
-object NewSpinalConfig extends SpinalConfig(defaultConfigForClockDomains = ClockDomainConfig(resetKind = SYNC))
