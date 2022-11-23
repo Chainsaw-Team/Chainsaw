@@ -43,3 +43,19 @@ object Direct extends SopStructure
 object Transpose extends SopStructure
 
 object Systolic extends SopStructure
+
+sealed trait Strategy
+
+sealed trait TimeDiffStrategy extends Strategy
+
+object IncreaseTimeDiff extends TimeDiffStrategy
+
+object DecreaseTimeDiff extends TimeDiffStrategy
+
+object RandomTimeDiff extends TimeDiffStrategy
+
+object NoneTimeDiff extends TimeDiffStrategy
+
+sealed trait CompressTreeType
+
+object BasicCompressTree extends CompressTreeType

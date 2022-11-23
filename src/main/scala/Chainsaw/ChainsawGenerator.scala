@@ -10,54 +10,61 @@ object Comb extends ImplMode
 
 object StateMachine extends ImplMode
 
+object Infinite extends ImplMode
+
 import xilinx._
 
 trait ChainsawGenerator {
 
   def name: String
 
-  /** --------
-   * golden model
-   * -------- */
+  /** -------- golden model
+   * --------
+   */
   def impl(dataIn: Seq[Any]): Seq[Any] // golden model
 
   val implMode: ImplMode = Comb
 
   val metric: ChainsawMetric = ChainsawMetric.defaultMetric
 
-  /** --------
-   * size information
-   * -------- */
+  /** -------- size information
+   * --------
+   */
   var inputTypes: Seq[NumericType]
   var outputTypes: Seq[NumericType]
 
-  /** --------
-   * timing information
-   * -------- */
+  /** -------- timing information
+   * --------
+   */
   var inputFormat: FrameFormat
   var outputFormat: FrameFormat
-  val inputTimes: Option[Seq[Int]] = None // when this is empty, inputs are aligned
+  val inputTimes: Option[Seq[Int]]  = None // when this is empty, inputs are aligned
   val outputTimes: Option[Seq[Int]] = None
   var latency: Int // defined as the latency from the head of inputs to the head of outputs
+  var offset: Int = 0
 
-  /** --------
-   * performance information
-   * -------- */
-  var utilEstimation: VivadoUtil = VivadoUtilRequirement()
+  /** -------- performance information
+   * --------
+   */
+  var utilEstimation: VivadoUtil  = VivadoUtilRequirement()
   var fmaxEstimation: HertzNumber = 600 MHz
 
-  /** --------
-   * implementations
-   * -------- */
+  /** -------- implementations
+   * --------
+   */
   def implH: ChainsawModule // core module, that is, the datapath
 
-  def implNaiveH: Option[ChainsawModule] = None // naive RTL implementation for simulation & top-down design
+  def implNaiveH: Option[ChainsawModule] = None // naive RTL implementation for simulation & top-down design, optional
 
   def implPass: ChainsawModule = new ChainsawModule(this) {
     dataIn.foreach(_.addAttribute("dont_touch", "yes"))
     dataOut.foreach(_.assignDontCare())
     dataOut.foreach(_.addAttribute("dont_touch", "yes"))
   }
+
+  def generateTestCases: Seq[Any] = null
+
+  def selfTest() = ChainsawTest(s"test$name", this, generateTestCases).doTest()
 
   def setAsNaive(): Unit = naiveSet += this.getClass.getSimpleName
 
@@ -70,9 +77,9 @@ trait ChainsawGenerator {
     else implH
   }
 
-  /** --------
-   * utils
-   * -------- */
+  /** -------- utils
+   * --------
+   */
   // when a module need no control, you can use it as a function
   def asFunc: Seq[Bits] => Seq[Bits] = (dataIn: Seq[Bits]) => {
     require(needNoControl)
@@ -84,6 +91,8 @@ trait ChainsawGenerator {
 
   def doDrc(): Unit = {
     assert(inputFormat.period == outputFormat.period, s"input: ${inputFormat.period}, output: ${outputFormat.period}")
+    assert(inputFormat.portSize == inputTypes.length, s"inputFrame port number: ${inputFormat.portSize}, actual input port number: ${inputTypes.length}")
+    assert(outputFormat.portSize == outputTypes.length, s"outputFrame port number: ${outputFormat.portSize}, actual output port number: ${outputTypes.length}")
 
     assert(actualInTimes.head == 0, s"${actualInTimes.mkString(" ")}")
     assert(actualInTimes.length == inputWidths.length)
@@ -92,13 +101,17 @@ trait ChainsawGenerator {
     assert(actualOutTimes.length == outputWidths.length)
     assert(actualOutTimes.forall(_ >= 0))
 
-    assert(latency >= 0, "invalid generator with negative latency, " +
-      "do you forgot to invoke GraphDone at the end of Dag construction?")
+    assert(
+      latency >= 0,
+      "invalid generator with negative latency, " +
+        "do you forgot to invoke GraphDone at the end of Dag construction?"
+    )
+
   }
 
-  final def inputWidths = inputTypes.map(_.bitWidth)
+  final def inputWidths: Seq[Int] = inputTypes.map(_.bitWidth)
 
-  final def outputWidths = outputTypes.map(_.bitWidth)
+  final def outputWidths: Seq[Int] = outputTypes.map(_.bitWidth)
 
   def sizeIn: Int = inputWidths.length
 
@@ -131,19 +144,19 @@ trait ChainsawGenerator {
 
       override val metric = that.metric
 
-      override var inputTypes = old.inputTypes
+      override var inputTypes  = old.inputTypes
       override var outputTypes = that.outputTypes
 
-      override var inputFormat = old.inputFormat
+      override var inputFormat  = old.inputFormat
       override var outputFormat = that.outputFormat
-      override var latency = old.latency + that.latency
+      override var latency      = old.latency + that.latency
 
       override def implH: ChainsawModule = new ChainsawModule(this) {
         val core0 = old.implH
         val core1 = that.implH
         core0.flowIn := flowIn
-        core0 >> core1
-        flowOut := core1.flowOut
+        core0        >> core1
+        flowOut      := core1.flowOut
       }
     }
   }
