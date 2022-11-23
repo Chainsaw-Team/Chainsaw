@@ -1,19 +1,15 @@
 package Chainsaw.xilinx
 
+import Chainsaw._
 import org.apache.commons.io.FileUtils
 import spinal.core._
+import spinal.lib._
 
 import java.io.File
 import scala.collection.mutable
 import scala.io.Source
-import scala.language.postfixOps
-import scala.sys.process._
-import spinal.core._
-import spinal.core.sim._
-import spinal.lib._
-import spinal.lib.fsm._
-
-import Chainsaw._
+import scala.language.{existentials, postfixOps}
+import scala.util.{Failure, Success, Try}
 
 
 /** used to generate sources for a Vivado flow and invoke Vivado to run it
@@ -43,34 +39,41 @@ class VivadoFlow[T <: Component](
     val logFile = new File(workspacePath, "doit.log")
 
     // generate sources from dut
-    val spinalReport = SpinalConfig(targetDirectory = workspacePath.getAbsolutePath + "/", oneFilePerComponent = true)
-      .generateVerilog(design.setDefinitionName(topModuleName))
+    Try {
+      SpinalConfig(targetDirectory = workspacePath.getAbsolutePath + "/", oneFilePerComponent = true)
+        .generateVerilog(design.setDefinitionName(topModuleName))
+    } match {
+      case Failure(exception) =>
+        atSimTime = true // recover
+        throw exception
+      case Success(spinalReport) =>
+        // generate xdc & tcl file
+        val simpleLine = {
+          val targetPeriod = xilinxDevice.fMax.toTime
+          s"""create_clock -period ${(targetPeriod * 1e9) toBigDecimal} [get_ports clk]"""
+        }
+        FileUtils.write(simpleXdcFile, simpleLine)
 
-    // generate xdc & tcl file
-    val simpleLine = {
-      val targetPeriod = xilinxDevice.fMax.toTime
-      s"""create_clock -period ${(targetPeriod * 1e9) toBigDecimal} [get_ports clk]"""
+        // priority: specific xdc > device xdc > simple xdc
+        val xdcCandidates = Seq(xdcFile, xilinxDevice.xdcFile, Some(simpleXdcFile))
+        val xdcFileInUse = xdcCandidates.flatten.head
+
+        FileUtils.write(tclFile, getTcl(spinalReport.rtlSourcesPaths, xdcFileInUse))
+
+        // run vivado
+        DoCmd.doCmd(
+          s"${vivadoPath.getAbsolutePath} -stack 2000 -nojournal -log ${logFile.getAbsolutePath} -mode batch -source ${tclFile.getAbsolutePath}",
+          workspacePath.getAbsolutePath
+        )
+
+        /** --------
+         * report
+         * -------- */
+        val report = new VivadoReport(logFile, xilinxDevice.family) // parse log file to get report
+        logger.info(s"\n----vivado flow report----\n" + report.toString)
+        atSimTime = true
+        report
     }
-    FileUtils.write(simpleXdcFile, simpleLine)
-
-    // priority: specific xdc > device xdc > simple xdc
-    val xdcCandidates = Seq(xdcFile, xilinxDevice.xdcFile, Some(simpleXdcFile))
-    val xdcFileInUse = xdcCandidates.flatten.head
-
-    FileUtils.write(tclFile, getTcl(spinalReport.rtlSourcesPaths, xdcFileInUse))
-
-    // run vivado
-    DoCmd.doCmd(
-      s"${vivadoPath.getAbsolutePath} -stack 2000 -nojournal -log ${logFile.getAbsolutePath} -mode batch -source ${tclFile.getAbsolutePath}",
-      workspacePath.getAbsolutePath
-    )
-
-    /** --------
-     * report
-     * -------- */
-    val report = new VivadoReport(logFile, xilinxDevice.family) // parse log file to get report
-    logger.info(s"\n----vivado flow report----\n" + report.toString)
-    report
   }
 
   /** generate tcl script content for Vivado Flow

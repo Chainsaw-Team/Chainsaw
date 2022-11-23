@@ -8,6 +8,7 @@ class DedicatedMultTest extends ChainsawFlatSpec {
     val widthA = 16
     val widthB = if (mode == Kara) 25 else 16
     val gen = DedicatedMult(widthA, widthB, mode)
-    testGenerator(gen, synth = true)
+    //    testGenerator(gen, synth = true, impl = true)
+    testGenerator(gen)
   }
 }
