@@ -12,7 +12,7 @@ class ModularAddTest extends AnyFlatSpec {
   val M = Chainsaw.project.zprize.ZPrizeMSM.baseModulus
 
   def testModularAdd(): Unit = {
-    val gen = ModularAdd(377, Some(M), BinaryAdder)
+    val gen = ModularAdd(Some(M), false)
     val data = Seq.fill(testCount)(BigInt(377, Random)).filter(_ < M)
     "modular add" should "work" in ChainsawTest("testModularAdd", gen, data).doTest()
   }

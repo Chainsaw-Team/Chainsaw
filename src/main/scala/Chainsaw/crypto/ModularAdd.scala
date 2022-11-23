@@ -2,40 +2,29 @@ package Chainsaw.crypto
 
 import Chainsaw._
 import Chainsaw.arithmetic._
+import Chainsaw.dag._
 
-case class ModularAdd(width: Int, constantModulus: Option[BigInt], adderType: AdderType)
-  extends ChainsawGenerator {
+case class ModularAdd(constantModulus: Option[BigInt], sub: Boolean)
+  extends Dag {
+  val k = constantModulus.get.bitLength
 
-  override def name = s"modularAdd_$width"
+  override def name = s"modularAdd_$k"
 
   override def impl(dataIn: Seq[Any]) = {
     val data = dataIn.asInstanceOf[Seq[BigInt]]
-    val ret = adderType match {
-      case BinaryAdder => data.sum.mod(constantModulus.get)
-      case BinarySubtractor => (data(0) - data(1)).mod(constantModulus.get)
-    }
+    val ret = if (sub) (data(0) - data(1)).mod(constantModulus.get) else data.sum.mod(constantModulus.get)
     Seq(ret)
   }
 
-  override var inputTypes = Seq.fill(2)(UIntInfo(width))
-  override var outputTypes = Seq(UIntInfo(width))
+  val adder = Cpa(if (sub) BinarySubtractor else BinaryAdder, Seq(k), S2S, withCarry = true).asVertex
+  val moder = (if (sub) FineReduction(constantModulus.get, 1, -1) else FineReduction(constantModulus.get, 2, 0)).asVertex
 
-  override var inputFormat = inputNoControl
-  override var outputFormat = outputNoControl
+  val a, b = InputVertex(UIntInfo(k))
+  val s = OutputVertex(UIntInfo(k))
 
-  val cpaGen = CpaS2S(adderType, width, withCarry = true)
-  val redcGen = FineReduction(constantModulus.get, 2)
+  adder := (a, b)
+  moder := adder.out(0)
+  s := moder.out(0)
 
-  override var latency = cpaGen.latency + redcGen.latency
-
-  override def implH = new ChainsawModule(this) {
-
-    val cpa = cpaGen.implH
-    val redc = redcGen.implH
-
-    cpa.dataIn := dataIn
-    redc.dataIn := cpa.dataOut
-    dataOut := redc.dataOut
-  }
-
+  graphDone()
 }

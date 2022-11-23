@@ -36,20 +36,20 @@ case class EllipticCurveAdder(ecCurve: EllipticCurve, width: Int, constantModulu
   val r1CMul = Barrett(width, constantModulus).asVertex
   val k = ConstantVertex(UIntInfo(width), BigInt("0196bab03169a4f2ca0b7670ae65fc7437786998c1a32d217f165b2fe0b32139735d947870e3d3e4e02c125684d6e016", 16))
 
-  val R1Sub = modularAdder(constantModulus.get, true).asVertex
-  val R2Sub = modularAdder(constantModulus.get, true).asVertex
-  val R3Add = modularAdder(constantModulus.get, false).asVertex
-  val R4Add = modularAdder(constantModulus.get, false).asVertex
+  val R1Sub = ModularAdd(constantModulus, true).asVertex
+  val R2Sub = ModularAdd(constantModulus, true).asVertex
+  val R3Add = ModularAdd(constantModulus, false).asVertex
+  val R4Add = ModularAdd(constantModulus, false).asVertex
 
   val R5Mul = Barrett(width, Option(constantModulus.get)).asVertex
   val R6Mul = Barrett(width, Option(constantModulus.get)).asVertex
   val R7Mul = Barrett(width, Option(constantModulus.get)).asVertex
-  val R8CMul = modularAdder(constantModulus.get, false).asVertex
+  val R8CMul = ModularAdd(constantModulus, false).asVertex
 
-  val R9Sub = modularAdder(constantModulus.get, true).asVertex
-  val R10Sub = modularAdder(constantModulus.get, true).asVertex
-  val R11Add = modularAdder(constantModulus.get, false).asVertex
-  val R12Add = modularAdder(constantModulus.get, false).asVertex
+  val R9Sub = ModularAdd(constantModulus, true).asVertex
+  val R10Sub = ModularAdd(constantModulus, true).asVertex
+  val R11Add = ModularAdd(constantModulus, false).asVertex
+  val R12Add = ModularAdd(constantModulus, false).asVertex
 
   val XMul = Barrett(width, Option(constantModulus.get)).asVertex
   val YMul = Barrett(width, Option(constantModulus.get)).asVertex
