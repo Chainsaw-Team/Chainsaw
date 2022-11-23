@@ -45,6 +45,7 @@ package object Chainsaw {
   val vivadoPath = new File("/tools/Xilinx/Vivado/2021.1/bin/vivado") // vivado executable path TODO: should be read from environment variables
   val quartusDir = new File("/tools/quartus/bin")
   val unisimDir = new File("src/main/resources/unisims")
+  val genWorkspace = new File("genWorkspace")
   val simWorkspace = new File("simWorkspace")
   val synthWorkspace = new File("synthWorkspace")
   val cplexJarPath = new File("/opt/ibm/ILOG/CPLEX_Studio1210/cplex/lib/cplex.jar")
@@ -173,6 +174,14 @@ package object Chainsaw {
    * -------- */
 
   import xilinx._
+
+  def ChainsawGen(gen: ChainsawGenerator, name: String) = {
+    SpinalConfig(
+      defaultConfigForClockDomains = ClockDomainConfig(resetKind = SYNC),
+      targetDirectory = genWorkspace.getAbsolutePath + "/",
+      oneFilePerComponent = true)
+      .generateVerilog(gen.implH.setDefinitionName(name))
+  }
 
   def ChainsawSynth(gen: ChainsawGenerator, name: String, withRequirement: Boolean = false) = {
     val report = VivadoSynth(gen.implH, name)
