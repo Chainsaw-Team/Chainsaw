@@ -1,17 +1,17 @@
 package Chainsaw.crypto
 
 import Chainsaw._
-import Chainsaw.arithmetic._
-import org.scalatest.flatspec.AnyFlatSpec
+import Chainsaw.testConfigurations._
 
-import scala.util.Random
+class BarrettTest extends ChainsawFlatSpec {
 
-class BarrettTest extends AnyFlatSpec {
+  val width = 64
+  val M = (BigInt(1) << 63) + 1
+  val constants = Seq(Some(M)) // FIXME: implement the mode using variable modulus
+  val multTypes = Seq(FullMultiplier, SquareMultiplier)
 
-
-    it should "work" in {
-      val data = Seq.fill(1000)(BigInt(64, Random))
-      val modulus = (BigInt(1) << 63) + 1
-      ChainsawTest("testBarrett64", Barrett(64, Some(modulus)), data).doTest()
-    }
+  constants.foreach(constant =>
+    multTypes.foreach(multType =>
+      testGenerator(Barrett(64, constant, multType), barrettSynth, barrettImpl)
+    ))
 }

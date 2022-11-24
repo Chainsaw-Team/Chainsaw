@@ -2,16 +2,14 @@ package Chainsaw.crypto
 
 import Chainsaw._
 import Chainsaw.arithmetic._
-import cc.redberry.rings.scaladsl._
 import spinal.core._
 
 import scala.language.postfixOps
+import scala.util.Random
 
 case class FineReduction(M: BigInt, upperBound: Int) extends ChainsawGenerator {
 
-  override def name = s"FineReduction_upper_$upperBound"
-
-  override def impl(dataIn: Seq[Any]): Seq[BigInt] = Seq(dataIn.head.asInstanceOf[BigInt].mod(M))
+  override def name = getAutoName(this)
 
   val k = M.bitLength
   val widthIn = log2Up(upperBound) + k
@@ -19,6 +17,10 @@ case class FineReduction(M: BigInt, upperBound: Int) extends ChainsawGenerator {
   val detWidth = log2Up(upperBound) + 1 // downto k-1
   val detTable: Seq[BigInt] = (0 until 1 << detWidth).map(msbValue => (BigInt(msbValue) << (k - 1)) / M)
   val sub0Gen, sub1Gen = CpaS2S(BinarySubtractor, widthIn, withCarry = true)
+
+  override def impl(dataIn: Seq[Any]): Seq[BigInt] = Seq(dataIn.head.asInstanceOf[BigInt].mod(M))
+
+  override def generateTestCases = Seq.fill(1000)(BigInt(widthIn, Random)).filter(_ < upperBound * M)
 
   override var inputTypes = Seq(UIntInfo(widthIn))
   override var outputTypes = Seq(UIntInfo(widthOut))
