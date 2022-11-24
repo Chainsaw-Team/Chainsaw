@@ -24,6 +24,5 @@ class FilterGraphTest extends AnyFlatSpec {
     ChainsawSynth(gen, "synthIIR")
     ChainsawTest("testIIR", Unfold(gen, 4), data).doTest()
     ChainsawSynth(Unfold(gen, 4), "synthIIR")
-
   }
 }
