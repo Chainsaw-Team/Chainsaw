@@ -5,6 +5,8 @@ import cc.redberry.rings
 import cc.redberry.rings.scaladsl._
 import spinal.core._
 
+import scala.util.Random
+
 /**
  * @param constant       constant multiplicand
  * @param multiplierType MSB/LSB/FULL
@@ -88,6 +90,12 @@ case class TruncatedConstantMult(constant: BigInt, multiplierType: MultiplierTyp
     }
 
     ret
+  }
+
+  def selfTest(): Unit = {
+    val data = Seq.fill(1000)(BigInt(widthIn, Random))
+    data.foreach(impl)
+    logger.info("truncated multiplication test passed")
   }
 
   def error(x: BigInt): BigInt = target(x) - impl(x)

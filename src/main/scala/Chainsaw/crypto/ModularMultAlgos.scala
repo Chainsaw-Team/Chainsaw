@@ -67,7 +67,7 @@ case class BarrettFineAlgo(override val M: BigInt)
   val errorMax = multMsb.upperBound
   val errorMin = multMsb.lowerBound
   val reductionMax = 3 + errorMax - errorMin // 3 from the original implementation
-  val widthComp = k + 2 + log2Up(reductionMax)
+  val widthComp = k + log2Up(reductionMax)
   val C = Zp(Pow2(widthComp))((-errorMin) * M).toBigInt
   val multLsb = TruncatedConstantMult(M, LsbMultiplier, k + 1, widthComp, widthComp, useCsd = true)
   logger.info(s"width involved in lsbMult: ${multLsb.widthInvolved}")

@@ -4,17 +4,7 @@ import Chainsaw._
 import spinal.core._
 import spinal.lib._
 
-import scala.collection.mutable.ArrayBuffer
-
-sealed trait CpaMode
-
-object M2M extends CpaMode
-
-object M2S extends CpaMode
-
-object S2M extends CpaMode
-
-object S2S extends CpaMode
+import scala.util.Random
 
 /** carry-propagation adder
  *
@@ -29,14 +19,14 @@ object S2S extends CpaMode
  */
 case class Cpa(adderType: AdderType, widths: Seq[Int], cpaMode: CpaMode, withCarry: Boolean) extends ChainsawGenerator {
 
-  override def name = s"cpa_${widths.mkString("_")}_${cpaMode.getClass.getSimpleName.init}_${adderType.getClass.getSimpleName.init}_$withCarry"
+  override def name = getAutoName(this)
 
   if (widths.exists(_ > cpaWidthMax)) logger.warn(s"way too long single carry chain: ${widths.max}")
 
   val widthInc = adderType match {
     case BinaryAdder => 1
     // when you want the sign of subtraction, set 1 bit more on width, then MSB = 1 means negative
-    case BinarySubtractor   => 0
+    case BinarySubtractor   => 0 // FIXME: with this, sign of difference won't be exposed
     case TernaryAdder       => 2
     case TernarySubtractor1 => 1
     case TernarySubtractor2 => 0
@@ -113,6 +103,8 @@ case class Cpa(adderType: AdderType, widths: Seq[Int], cpaMode: CpaMode, withCar
       case _   => slices.prevAndNext { case (prev, next) => ret.toBitValue()(next - 1 downto prev) }
     }
   }
+
+  override def generateTestCases: Seq[BigInt] = Seq.fill(1000)(inputWidths.map(BigInt(_, Random))).flatten
 
   override var inputFormat  = inputNoControl
   override var outputFormat = outputNoControl

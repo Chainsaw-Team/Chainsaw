@@ -3,6 +3,7 @@ package Chainsaw
 import org.scalatest.flatspec.AnyFlatSpec
 
 import scala.util.Try
+import org.apache.commons.io.FileUtils
 
 class ChainsawFlatSpec extends AnyFlatSpec {
 
@@ -10,15 +11,15 @@ class ChainsawFlatSpec extends AnyFlatSpec {
 
     behavior of gen.name
 
-    atSimTime = true
-
     it should "have a correct naive implementation" in {
       gen.setAsNaive()
-      gen.selfTest()
-      naiveSet.clear()
+      gen.doSelfTest()
     }
 
-    it should "have a correct implementation" in gen.selfTest()
+    it should "have a correct implementation" in {
+      naiveSet.clear()
+      gen.doSelfTest()
+    }
 
     if (synth)
       it should "meet the util requirement after synth" in

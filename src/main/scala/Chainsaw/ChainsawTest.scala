@@ -79,7 +79,8 @@ case class ChainsawTest(
     /** --------
      * do simulation
      * -------- */
-    SimConfig.workspaceName(testName).withFstWave.compile {
+    //    SimConfig.workspaceName(testName).withFstWave.compile {
+    SimConfig.withIVerilog.workspaceName(testName).withFstWave.compile {
       /** --------
        * wrapper for time diff
        * -------- */

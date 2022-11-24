@@ -33,22 +33,24 @@ class GpcsTest extends AnyFlatSpec {
 
   behavior of "performance test"
 
-  it should "synth on Compressor4to2 in expected" in (1 to Compressor4to2.widthMax by 4).foreach(testCompressorPerfOnce(Compressor4to2, _))
-  it should "synth on Compressor6to3 in expected" in (1 to Compressor6to3.widthMax by 4).foreach(testCompressorPerfOnce(Compressor6to3, _))
-  it should "synth on Compressor3to1 in expected" in (1 to Compressor3to1.widthMax by 4).foreach(testCompressorPerfOnce(Compressor3to1, _))
-  it should "synth on Compressor3to2 in expected" in (1 to Compressor3to2.widthMax by 4).foreach(testCompressorPerfOnce(Compressor3to2, _))
-  it should "synth on Compressor606To5 in expected" in (1 to Compressor606To5.widthMax by 4).foreach(testCompressorPerfOnce(Compressor606To5, _))
+  // TODO: move the graph generator to another file
+
+  //    it should "synth on Compressor4to2" in (1 to Compressor4to2.widthMax by 4).foreach(testCompressorPerfOnce(Compressor4to2, _))
+  //  it should "synth on Compressor6to3" in (1 to Compressor6to3.widthMax by 4).foreach(testCompressorPerfOnce(Compressor6to3, _))
+  //  it should "synth on Compressor3to1" in (1 to Compressor3to1.widthMax by 4).foreach(testCompressorPerfOnce(Compressor3to1, _))
+  //  it should "synth on Compressor3to2" in (1 to Compressor3to2.widthMax by 4).foreach(testCompressorPerfOnce(Compressor3to2, _))
+  //  it should "synth on Compressor606To5" in (1 to Compressor606To5.widthMax by 4).foreach(testCompressorPerfOnce(Compressor606To5, _))
 
   def getModule(compressor: Compressor, width: Int, pipeline: Bool => Bool = bool => bool) = new Module {
 
-    val inputShape  = compressor.inputFormat(width)
+    val inputShape = compressor.inputFormat(width)
     val outputShape = compressor.outputFormat(width)
 
-    val dataIn  = in Bits (inputShape.sum bits)
+    val dataIn = in Bits (inputShape.sum bits)
     val dataOut = out Bits (outputShape.sum bits)
 
     val bitHeap = ArrayBuffer.fill(inputShape.length)(ArrayBuffer[Bool]())
-    val bits    = ArrayBuffer(dataIn.asBools.reverse: _*)
+    val bits = ArrayBuffer(dataIn.asBools.reverse: _*)
     inputShape.zip(bitHeap).foreach { case (i, container) =>
       val column = bits.take(i)
       container ++= column
@@ -59,11 +61,11 @@ class GpcsTest extends AnyFlatSpec {
   }
 
   case class CompressorPerfReportGraph() {
-    val elements                = mutable.Set[(Compressor, Int, VivadoReport)]()
+    val elements = mutable.Set[(Compressor, Int, VivadoReport)]()
     val fmaxGraphDataInRowAdder = mutable.Set[(String, (String, ArrayBuffer[Int]), (String, ArrayBuffer[Double]))]()
     val areaGraphDataInRowAdder = mutable.Set[(String, (String, ArrayBuffer[Int]), (String, ArrayBuffer[Int]))]()
-    val fmaxGraphDataInGPC      = mutable.Set[((String, ArrayBuffer[String]), (String, ArrayBuffer[Double]))]()
-    val areaGraphDataInGPC      = mutable.Set[((String, ArrayBuffer[String]), (String, ArrayBuffer[Int]))]()
+    val fmaxGraphDataInGPC = mutable.Set[((String, ArrayBuffer[String]), (String, ArrayBuffer[Double]))]()
+    val areaGraphDataInGPC = mutable.Set[((String, ArrayBuffer[String]), (String, ArrayBuffer[Int]))]()
 
     def addElement(compressor: Compressor, width: Int, vivadoReport: VivadoReport): elements.type = {
       elements += Tuple3(compressor, width, vivadoReport)
@@ -71,12 +73,12 @@ class GpcsTest extends AnyFlatSpec {
     }
 
     private def parseElements(): Unit = {
-      val gpcElements      = elements.filter(_._1.isFixed)
+      val gpcElements = elements.filter(_._1.isFixed)
       val rowAdderElements = elements.filterNot(_._1.isFixed).groupBy(_._1).toSet
 
       val compressorNames = ArrayBuffer[String]()
-      val fmaxData        = ArrayBuffer[Double]()
-      val areaData        = ArrayBuffer[Int]()
+      val fmaxData = ArrayBuffer[Double]()
+      val areaData = ArrayBuffer[Int]()
       gpcElements.foreach { case (compressor, _, report) =>
         compressorNames += compressor.name
         fmaxData += report.Frequency
@@ -157,7 +159,7 @@ class GpcsTest extends AnyFlatSpec {
 
   def testCompressorFuncOnce(compressor: Compressor, width: Int, testCount: Int = 1000, debug: Boolean = false): Unit = {
 
-    val inputShape  = compressor.inputFormat(width)
+    val inputShape = compressor.inputFormat(width)
     val outputShape = compressor.outputFormat(width)
 
     def getValueByShape(bigInt: BigInt, shape: Seq[Int]) = {
@@ -179,7 +181,7 @@ class GpcsTest extends AnyFlatSpec {
           dut.dataIn #= value
           sleep(1)
           val golden = getValueByShape(value, inputShape)
-          val yours  = getValueByShape(dut.dataOut.toBigInt, outputShape)
+          val yours = getValueByShape(dut.dataOut.toBigInt, outputShape)
           assert(yours == golden, s"yours: $yours, golden: $golden")
           if (debug) {
             println(s"in : ${value.toString(2)}")
@@ -193,7 +195,9 @@ class GpcsTest extends AnyFlatSpec {
 
   def testCompressorPerfOnce(compressor: Compressor, width: Int): VivadoReport = {
     val report = VivadoSynth(getModule(compressor, width, RegNext(_)), name = s"${compressor.getClass.getSimpleName.init}_$width")
-    report.require(compressor.utilRequirement(width) + VivadoUtil(lut = 0, ff = compressor.inputFormat(width).sum, dsp = 0, bram36 = 0, uram288 = 0, carry8 = 0), compressor.fMaxRequirement)
+    report.require(compressor.utilRequirement(width) +
+      VivadoUtil(lut = 0, ff = compressor.inputFormat(width).sum, dsp = 0, bram36 = 0, uram288 = 0, carry8 = 0),
+      compressor.fMaxRequirement)
     report
   }
 

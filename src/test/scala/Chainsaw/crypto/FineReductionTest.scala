@@ -1,23 +1,17 @@
 package Chainsaw.crypto
 
 import Chainsaw._
+import testConfigurations._
 import org.scalatest.flatspec.AnyFlatSpec
 
 import scala.util.Random
 
-class FineReductionTest extends AnyFlatSpec {
+class FineReductionTest extends ChainsawFlatSpec {
 
-  val testCount = 10000
-  val upperBounds = 2 to 10
-  val M = Chainsaw.project.zprize.ZPrizeMSM.baseModulus
+  val Ms = Seq.fill(2)(BigInt(376, Random) + BigInt(1) << 376)
+  val upperBounds = Seq(2, 4, 6)
 
-  def testFineReduction(upperBound: Int): ChainsawTestReport = {
-    val gen = FineReduction(M, upperBound)
-    val data = Seq.fill(testCount)(BigInt(gen.widthIn, Random)).filter(_ < upperBound * M)
-    ChainsawTest("testFineReduction", gen, data).doTest()
-  }
-
-  "fine reduction module" should "work" in upperBounds.foreach(testFineReduction)
-
-  it should "synth" in ChainsawSynth(FineReduction(M, 10), "synthFineReduction")
+  Ms.foreach(M =>
+    upperBounds.foreach(upperBound =>
+      testGenerator(FineReduction(M, upperBound), fineReductionSynth, fineReductionImpl)))
 }

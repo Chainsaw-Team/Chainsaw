@@ -1,10 +1,11 @@
 package Chainsaw.arithmetic
 
 import Chainsaw._
-import cc.redberry.rings.scaladsl._
+import Chainsaw.xilinx.VivadoUtilEstimation
 import spinal.core._
 
 import scala.language.postfixOps
+import scala.util.Random
 
 /** implement big constant multiplication by compressor tree
  *
@@ -14,11 +15,11 @@ import scala.language.postfixOps
 case class Bcm(constant: BigInt, multiplierType: MultiplierType, widthIn: Int, widthInvolved: Int, widthOut: Int, useCsd: Boolean = false)
   extends ChainsawGenerator {
 
+  override def name = getAutoName(this)
+
   val model = TruncatedConstantMult(constant, multiplierType, widthIn, widthInvolved, widthOut, useCsd)
 
   import model._
-
-  override def name = s"bcm_${constant.hashCode()}_${targetSlice.start}_until_${targetSlice.end}".replace("-", "N")
 
   override var inputTypes = Seq(UIntInfo(widthIn))
   override var outputTypes = Seq.fill(1)(UIntInfo(widthOut))
@@ -28,6 +29,10 @@ case class Bcm(constant: BigInt, multiplierType: MultiplierType, widthIn: Int, w
 
   val compressorGen = BitHeapCompressor(sliceAndInfos.map(_._2), outputAsCsa = true)
   val cpaGen = CpaS2S(TernarySubtractor1, widthOut, withCarry = false)
+
+  // TODO: estimation on ff
+  val bitHeapEff = 1.8
+  utilEstimation = VivadoUtilEstimation(lut = (compressorGen.initBitHeap.bitsCount / bitHeapEff).toInt + cpaGen.widthFull)
 
   override var latency = compressorGen.latency + cpaGen.latency
 
@@ -61,6 +66,8 @@ case class Bcm(constant: BigInt, multiplierType: MultiplierType, widthIn: Int, w
   }
 
   override val metric = ChainsawMetric(frameWise = frameWiseMetric)
+
+  override def generateTestCases = Seq.fill(1000)(BigInt(widthIn, Random))
 
   if (multiplierType == MsbMultiplier) {
     logger.info(
