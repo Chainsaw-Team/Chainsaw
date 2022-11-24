@@ -1,8 +1,10 @@
 package Chainsaw
 
 import spinal.core._
-import org.scalatest.flatspec._
+
 import scala.language.postfixOps
+import scala.reflect.runtime.universe
+import scala.reflect.runtime.universe._
 
 sealed trait ImplMode
 
@@ -12,14 +14,43 @@ object StateMachine extends ImplMode
 
 object Infinite extends ImplMode
 
-import xilinx._
+import Chainsaw.xilinx._
 
 trait ChainsawGenerator {
 
-  def name: String
+  def name = getAutoName(this)
 
-  /** -------- golden model
-   * --------
+  def getAutoName[T: TypeTag](obj: T) = {
+    val fieldSymbols = typeOf[T].members.filter(_.isMethod).map(_.asTerm).filter(_.isCaseAccessor).toSeq.reverse
+    val fieldNames = fieldSymbols.map(_.name)
+    val instanceMirror: universe.InstanceMirror = mirror.reflect(this)
+    val valuesAndNames = fieldNames.map(_.toString).zip(fieldSymbols.map(instanceMirror.reflectField).map(_.get)).sortBy(_._1)
+
+    def getFieldName(name: String, value: Any) = {
+      value match {
+        case boolean: Boolean => if (boolean) name.trim else s"not${name.trim}"
+        case bigInt: BigInt => hashName(bigInt)
+        case seq: Seq[_] => hashName(seq)
+        case operatorType: OperatorType => className(operatorType)
+        case chainsawEnum: ChainsawEnum => className(chainsawEnum)
+        case _ => value.toString
+      }
+    }
+
+    val fieldName = valuesAndNames.map { case (name, value) =>
+      value match {
+        case option: Option[_] => option match {
+          case Some(some) => getFieldName(name, some)
+          case None => "none"
+        }
+        case _ => getFieldName(name, value)
+      }
+    }.mkString("_")
+    className(this) + "_" + fieldName
+  }
+
+  /** -------- golden model --------
+   *
    */
   def impl(dataIn: Seq[Any]): Seq[Any] // golden model
 
@@ -27,14 +58,16 @@ trait ChainsawGenerator {
 
   val metric: ChainsawMetric = ChainsawMetric.defaultMetric
 
-  /** -------- size information
-   * --------
+  def generateTestCases: Seq[Any] = null
+
+  /** -------- size information --------
+   *
    */
   var inputTypes: Seq[NumericType]
   var outputTypes: Seq[NumericType]
 
-  /** -------- timing information
-   * --------
+  /** -------- timing information --------
+   *
    */
   var inputFormat: FrameFormat
   var outputFormat: FrameFormat
@@ -43,14 +76,14 @@ trait ChainsawGenerator {
   var latency: Int // defined as the latency from the head of inputs to the head of outputs
   var offset: Int = 0
 
-  /** -------- performance information
-   * --------
+  /** -------- performance information --------
+   *
    */
   var utilEstimation: VivadoUtil = VivadoUtilRequirement()
   var fmaxEstimation: HertzNumber = 600 MHz
 
-  /** -------- implementations
-   * --------
+  /** -------- implementations --------
+   *
    */
   def implH: ChainsawModule // core module, that is, the datapath
 
@@ -62,10 +95,7 @@ trait ChainsawGenerator {
     dataOut.foreach(_.addAttribute("dont_touch", "yes"))
   }
 
-  def generateTestCases: Seq[Any] = null
-
-  def selfTest() = ChainsawTest(s"test_$name", this, generateTestCases).doTest()
-
+  def doSelfTest(): ChainsawTestReport = ChainsawTest(s"test_$name", this, generateTestCases).doTest()
 
   def setAsNaive(): Unit = naiveSet += this.getClass.getSimpleName
 
@@ -107,7 +137,6 @@ trait ChainsawGenerator {
       "invalid generator with negative latency, " +
         "do you forgot to invoke GraphDone at the end of Dag construction?"
     )
-
   }
 
   final def inputWidths: Seq[Int] = inputTypes.map(_.bitWidth)
@@ -133,36 +162,20 @@ trait ChainsawGenerator {
     inputFormat.period
   }
 
-  // TODO: this should be implemented in Dag
-  def ->(that: ChainsawGenerator) = {
-    require(that.inputFormat.portSize == this.outputFormat.portSize, s"out ${this.outputFormat.portSize} -> in ${that.inputFormat.portSize}")
-    //    require(that.inputFormat.period == this.outputFormat.period, s"prev period ${this.outputFormat.period} -> next period ${that.outputFormat.period}")
-    val old = this
-    new ChainsawGenerator {
-      override def name = old.name + "_" + that.name
-
-      override def impl(dataIn: Seq[Any]): Seq[Any] = that.impl(old.impl(dataIn))
-
-      override val metric = that.metric
-
-      override var inputTypes = old.inputTypes
-      override var outputTypes = that.outputTypes
-
-      override var inputFormat = old.inputFormat
-      override var outputFormat = that.outputFormat
-      override var latency = old.latency + that.latency
-
-      override def implH: ChainsawModule = new ChainsawModule(this) {
-        val core0 = old.implH
-        val core1 = that.implH
-        core0.flowIn := flowIn
-        core0 >> core1
-        flowOut := core1.flowOut
+  def getAutoName = {
+    val fieldSymbols = typeOf[this.type].members.map(_.asTerm).filter(_.isCaseAccessor).toSeq.reverse
+    val fieldNames = fieldSymbols.map(_.name)
+    val instanceMirror: universe.InstanceMirror = mirror.reflect(this)
+    val valuesAndNames = fieldSymbols.map(instanceMirror.reflectField).map(_.get).zip(fieldNames.map(_.toString)).toMap
+    val fieldName = valuesAndNames.map { case (value, name) =>
+      value match {
+        case boolean: Boolean => if (boolean) name else s"not$name"
+        case bigInt: BigInt => hashName(bigInt)
+        case operatorType: OperatorType => className(operatorType)
+        case _ => value.toString
       }
-    }
+    }.mkString("_")
+    logger.info(s"valAndName: ${valuesAndNames.mkString(" ")}")
+    className(this) + "_" + fieldName
   }
-
-  // TODO: flowConverters can test itself
-  //  def testItSelf() = ???
-
 }

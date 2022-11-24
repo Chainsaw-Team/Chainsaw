@@ -80,7 +80,7 @@ class VivadoReport(
   val DSP = getIntAfterHeader("DSPs")
   val BRAM = getIntAfterHeader("Block RAM Tile")
   // FIXME: extract uram correctly
-  val URAM = getIntAfterHeader("URAM288")
+  val URAM = getIntAfterHeader("URAM")
   val CARRY8 = getIntAfterHeader("CARRY8")
 
   val ConstraintPeriod = getDoubleAfterHeader("Requirement")
@@ -96,19 +96,8 @@ class VivadoReport(
 
   def printFMax(): Unit = logger.info(s"\nfmax = ${Frequency / 1e6} MHz\n")
 
-  def getReport = Array(
-    LUT.toString,
-    FF.toString,
-    DSP.toString,
-    BRAM.toString,
-    URAM.toString,
-    Frequency.toString
-  )
-
-  def getUtil = util
-
   override def toString: String =
-    s"LUT $LUT, FF $FF, DSP $DSP, BRAM $BRAM, URAM $URAM, CARRY8 $CARRY8, Freq $Frequency"
+    s"LUT $LUT, FF $FF, DSP $DSP, BRAM $BRAM, URAM $URAM, CARRY8 $CARRY8, Freq = ${Frequency / 1e6} MHz\n"
 
   def require(utilRequirement: VivadoUtil, fmaxRequirement: HertzNumber): Unit = {
     assert(

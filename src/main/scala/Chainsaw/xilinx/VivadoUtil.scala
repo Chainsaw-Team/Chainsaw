@@ -1,5 +1,6 @@
 package Chainsaw.xilinx
 
+import Chainsaw._
 import ilog.concert._
 import ilog.cplex._
 
@@ -24,6 +25,11 @@ case class VivadoUtil(
   def /(that: VivadoUtil): Seq[Double] =
     this.getValues.zip(that.getValues).map { case (a, b) => a.toDouble / b }
 
+  def <(that: VivadoUtil): Boolean =
+    this.getValues.zip(that.getValues).forall { case (a, b) => a.toDouble < b }
+
+  def >(that: VivadoUtil): Boolean = that < this
+
   def <=(that: VivadoUtil): Boolean =
     this.getValues.zip(that.getValues).forall { case (a, b) => a.toDouble <= b }
 
@@ -44,24 +50,25 @@ case class VivadoUtil(
     /** judge whether a solution is better than another by multiple determinants with decresing priorities
      *
      * @param betters
-     *   1 for better, 0 for equally good, -1 for worst
+     * 1 for better, 0 for equally good, -1 for worst
      */
     def betterWithPriority(betters: Int*): Boolean = betters.reverse.zipWithIndex.map { case (better, i) => better << i }.sum > 0
 
     strategy match {
-      case DspFirst   => betterWithPriority(dspBetter, clbBetter, ratioBetter)
-      case ClbFirst   => betterWithPriority(clbBetter, dspBetter, ratioBetter)
+      case DspFirst => betterWithPriority(dspBetter, clbBetter, ratioBetter)
+      case ClbFirst => betterWithPriority(clbBetter, dspBetter, ratioBetter)
       case RatioFirst => betterWithPriority(ratioBetter, dspBetter, clbBetter)
     }
   }
 
-  def solveBestScheme(schemes: Seq[VivadoUtil], solveVars: Seq[Int]) = {
+  def solveBestScheme(schemes: Seq[VivadoUtil], solveVars: Seq[Int]): Array[Int] = {
     val cplex = new IloCplex()
 
-    val upBounds = solveVars
-      .map(i => this.getValues(i))
-      .zip(schemes.map(scheme => solveVars.map(i => scheme.getValues(i))).transpose)
-      .map { case (budget, consumes) => consumes.map(consume => budget / consume).max }
+    val upBounds = schemes
+      .map(scheme => solveVars.map(v => scheme.getValues(v)))
+      .map { consumes =>
+        consumes.zip(solveVars.map(v => this.getValues(v))).map { case (consume, budget) => budget / consume }.min
+      }
 
     val weights = solveVars.map(i => schemes.map(scheme => scheme.getValues(i)).toArray)
     val budgets = solveVars.map(i => this.getValues(i))
@@ -70,15 +77,26 @@ case class VivadoUtil(
 
     var equation = ""
     weights.zip(budgets).foreach { case (weight, budget) =>
-      equation += weight.zip(Seq.tabulate(weights.length)(i => s"x$i")).map { case (i, str) => s"$i * $str" }.mkString(" + ") + s" = $budget\n"
+      equation += weight.zip(Seq.tabulate(weights.length)(i => s"x$i")).map { case (i, str) => s"$i * $str" }.mkString(" + ") + s" <= $budget\n"
       cplex.addLe(cplex.scalProd(variables, weight), budget)
     }
-    println(s"Solve:\n$equation")
 
     cplex.addMaximize(cplex.scalProd(variables, Array.fill(variables.length)(1)))
-
     cplex.solve()
-    variables.map(cplex.getValue).map(_.toInt)
+
+    val ret = variables.map(cplex.getValue).map(_.toInt)
+    val takes = ret.zip(schemes).map { case (i, solution) => s"take $i X $solution" }.mkString("\n")
+    val util = ret.zip(schemes).map { case (i, solution) => solution * i }.reduce(_ + _)
+    val utilInAll = s"LUT: ${util.lut} / ${this.lut}, DSP: ${util.dsp} / ${this.dsp}"
+
+    logger.info(
+      s"\n----schemes search report----" +
+        s"\nconstraints:\n$equation" +
+        s"maximize: \n${variables.indices.map(i => s"x$i").mkString(" + ")}" +
+        s"\nresults: \n$takes" +
+        s"\nutils: \n$utilInAll"
+    )
+    ret
   }
 
   def showInt(value: Int) =
@@ -102,12 +120,26 @@ object VivadoUtilRequirement {
   val limit = Int.MaxValue
 
   def apply(
-             lut: Int     = limit,
-             ff: Int      = limit,
-             dsp: Int     = limit,
-             bram36: Int  = limit,
+             lut: Int = limit,
+             ff: Int = limit,
+             dsp: Int = limit,
+             bram36: Int = limit,
              uram288: Int = limit,
-             carry8: Int  = limit
+             carry8: Int = limit
+           ) =
+    VivadoUtil(lut, ff, dsp, bram36, uram288, carry8)
+}
+
+object VivadoUtilEstimation {
+  val limit = Int.MaxValue
+
+  def apply(
+             lut: Int = 0,
+             ff: Int = 0,
+             dsp: Int = 0,
+             bram36: Int = 0,
+             uram288: Int = 0,
+             carry8: Int = 0
            ) =
     VivadoUtil(lut, ff, dsp, bram36, uram288, carry8)
 }

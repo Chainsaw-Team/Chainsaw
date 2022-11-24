@@ -2,7 +2,7 @@ package Chainsaw.dag
 
 import spinal.core.Data
 
-class DagEdge(val inOrder: Int, val outOrder: Int)(implicit ref: Dag ) {
+class DagEdge(val inOrder: Int, val outOrder: Int)(implicit ref: Dag) {
 
   def source(implicit ref: Dag): DagVertex = ref.getEdgeSource(this)
 

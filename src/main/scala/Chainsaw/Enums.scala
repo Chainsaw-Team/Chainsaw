@@ -59,3 +59,15 @@ object NoneTimeDiff extends TimeDiffStrategy
 sealed trait CompressTreeType
 
 object BasicCompressTree extends CompressTreeType
+
+sealed trait ChainsawEnum
+
+trait CpaMode extends ChainsawEnum
+
+object M2M extends CpaMode
+
+object M2S extends CpaMode
+
+object S2M extends CpaMode
+
+object S2S extends CpaMode

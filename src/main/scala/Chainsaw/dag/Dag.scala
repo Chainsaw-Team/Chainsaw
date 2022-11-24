@@ -218,9 +218,11 @@ abstract class Dag()
 
   def updateLatency(): Unit = {
     autoPipeline()
-    //    val path = new alg.shortestpath.BFSShortestPath(this).getPath(inputs.head, outputs.head)
-    //    latency = path.getVertexList.asScala.prevAndNext { case (prev, next) => getEdge(prev, next).weight.toInt }.sum
-    latency = retimingInfo(outputs.head) - retimingInfo(inputs.head)
+    if(implMode == Infinite) {
+      val path = new alg.shortestpath.BFSShortestPath(this).getPath(inputs.head, outputs.head)
+      latency = path.getVertexList.asScala.prevAndNext { case (prev, next) => getEdge(prev, next).weight.toInt }.sum
+    }
+    else latency = retimingInfo(outputs.head) - retimingInfo(inputs.head)
   }
 
   def graphDone(): Unit = {
@@ -253,7 +255,7 @@ abstract class Dag()
     //    }
     //    logger.info("all inports are driven!")
     vertexSet().asScala.toSeq.diff(outputs).foreach { v =>
-      v.outPorts.foreach(port => if (!edgeSet().asScala.exists(e => e.sourcePort == port)) logger.warn(s"outPort of ${v.outPorts.indexOf(port)} ${port.vertex.vertexName} is not used"))
+      v.outPorts.foreach(port => if (!edgeSet().asScala.exists(e => e.sourcePort == port)) logger.warn(s"outPort ${v.outPorts.indexOf(port)} of  ${port.vertex.vertexName} is not used"))
     }
     val notTimed = retimingInfo.keys.toSeq.diff(vertexSet().asScala.toSeq)
     assert(notTimed.isEmpty, s"vertices ${notTimed.mkString(" ")} have no retiming value")

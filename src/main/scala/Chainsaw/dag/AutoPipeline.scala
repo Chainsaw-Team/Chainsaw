@@ -21,7 +21,7 @@ object AutoPipeline {
     implicit val refDag: Dag = dag
 
     // prepare
-    dag.makeComb()
+    //    dag.makeComb()
 
     // declare model
     implicit val model: MPModel = MPModel(SolverLib.oJSolver)

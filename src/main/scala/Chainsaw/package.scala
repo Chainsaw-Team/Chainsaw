@@ -1,7 +1,6 @@
 
 import com.mathworks.matlab.types
 import com.mathworks.engine.MatlabEngine
-
 import cc.redberry.rings.scaladsl.IntZ
 import org.slf4j.LoggerFactory
 import spinal.core._
@@ -13,9 +12,12 @@ import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.math.BigInt
 import scala.reflect.ClassTag
-
 import breeze.math._
+
 import scala.language.implicitConversions
+import scala.reflect.runtime.universe
+import scala.reflect.runtime.universe.runtimeMirror
+import scala.util.Random
 
 package object Chainsaw {
 
@@ -184,6 +186,9 @@ package object Chainsaw {
   }
 
   def ChainsawSynth(gen: ChainsawGenerator, name: String, withRequirement: Boolean = false) = {
+    // TODO: with requirement, + ffs before and after the component, - ffs before comparison
+
+
     val report = VivadoSynth(gen.implH, name)
     if (withRequirement) report.require(gen.utilEstimation, gen.fmaxEstimation)
     report
@@ -202,6 +207,8 @@ package object Chainsaw {
     def apply(exp: Int) = BigInt(1) << exp
   }
 
+  def randBigInt(width:Int) = BigInt(width, Random)
+
   @tailrec
   def gcd(a: BigInt, b: BigInt): BigInt = {
     val (p, q) = if (a >= b) (a, b) else (b, a)
@@ -215,7 +222,13 @@ package object Chainsaw {
     def toBigInt = BigInt(intz.toByteArray)
   }
 
+  // to get unique name
+
+  val mirror: universe.Mirror = runtimeMirror(getClass.getClassLoader)
+
   def className(any: Any) = any.getClass.getSimpleName.replace("$", "")
+
+  def hashName(any: Any) = any.hashCode().toString.replace("-", "N")
 
   /** --------
    * matlab utils

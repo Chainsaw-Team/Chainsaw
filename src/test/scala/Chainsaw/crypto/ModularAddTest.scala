@@ -6,19 +6,15 @@ import Chainsaw.xilinx._
 import scala.util.Random
 import org.scalatest.flatspec.AnyFlatSpec
 
-class ModularAddTest extends AnyFlatSpec {
+class ModularAddTest extends ChainsawFlatSpec {
 
-  val testCount = 1000
-  val M = Chainsaw.project.zprize.ZPrizeMSM.baseModulus
+  val Ms = Seq.fill(3)(Some(randBigInt(376) + Pow2(376))) // :+ None TODO: variable modulus
+  val adderTypes = Seq(BinaryAdder) // BinarySubtractor,TernaryAdder, TernarySubtractor1, TernarySubtractor2 TODO: more adder modes
 
-  def testModularAdd(): Unit = {
-    val gen = ModularAdd(377, Some(M), BinaryAdder)
-    val data = Seq.fill(testCount)(BigInt(377, Random)).filter(_ < M)
-    "modular add" should "work" in ChainsawTest("testModularAdd", gen, data).doTest()
-  }
+  Ms.foreach(M =>
+    adderTypes.foreach(adderType =>
+      testGenerator(ModularAdd(377, M, adderType))
+    ))
 
-  behavior of "modular adder"
-
-  testModularAdd()
 
 }

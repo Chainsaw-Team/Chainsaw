@@ -5,6 +5,7 @@ import breeze.numerics.constants.Pi
 import spinal.core._
 
 import scala.language.postfixOps
+import scala.util.Random
 
 sealed trait AlgebraicMode
 
@@ -59,6 +60,22 @@ case class Cordic(algebraicMode: AlgebraicMode, rotationMode: RotationMode,
     }
 
   override val metric = ChainsawMetric(frameWise = cordicMetric(1e-3, 1e-3, Pi / 180))
+
+  override def generateTestCases: Seq[Double] = {
+    def getGroup: Seq[Double] = {
+      def getOne: Double = Random.nextDouble() * 2 - 1 // [-1,1]
+      algebraicMode match {
+        case CIRCULAR =>
+          val phase0 = getOne * Pi // [-Pi, Pi]
+          val length = getOne.abs
+          val phase1 = 0.0
+          Seq(cos(phase0) * length, sin(phase0) * length, phase1)
+        case HYPERBOLIC => ???
+        case LINEAR => ???
+      }
+    }
+    Seq.fill(1000)(getGroup).flatten
+  }
 
   val amplitudeType = SFixInfo(1, fraction)
   val phaseType = SFixInfo(2, fraction)
@@ -128,23 +145,28 @@ case class Cordic(algebraicMode: AlgebraicMode, rotationMode: RotationMode,
     val xyz = Vec(sfixDataIn.map(_.clone()))
 
     // TODO: extension for hyper and linear mode?
-    switch(determinant) { // range extension
-      is(U(1)) { // second quadrant
-        val phaseShift = rotationMode match {
-          case ROTATION => phaseType.fromConstant(Pi / 2)
-          case VECTORING => -phaseType.fromConstant(Pi / 2)
-        }
-        xyz := Seq(y, -x, z + phaseShift)
-      }
-      is(U(3)) { // third quadrant
-        val phaseShift = rotationMode match {
-          case ROTATION => -phaseType.fromConstant(Pi / 2)
-          case VECTORING => phaseType.fromConstant(Pi / 2)
-        }
-        xyz := Seq(-y, x, z + phaseShift)
-      }
+    algebraicMode match {
+      case CIRCULAR =>
+        switch(determinant) { // range extension
+          is(U(1)) { // second quadrant
+            val phaseShift = rotationMode match {
+              case ROTATION => phaseType.fromConstant(Pi / 2)
+              case VECTORING => -phaseType.fromConstant(Pi / 2)
+            }
+            xyz := Seq(y, -x, z + phaseShift)
+          }
+          is(U(3)) { // third quadrant
+            val phaseShift = rotationMode match {
+              case ROTATION => -phaseType.fromConstant(Pi / 2)
+              case VECTORING => phaseType.fromConstant(Pi / 2)
+            }
+            xyz := Seq(-y, x, z + phaseShift)
+          }
 
-      default(xyz := sfixDataIn)
+          default(xyz := sfixDataIn)
+        }
+      case HYPERBOLIC => ???
+      case LINEAR => ???
     }
 
     /** --------
