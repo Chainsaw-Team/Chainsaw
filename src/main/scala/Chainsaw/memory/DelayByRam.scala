@@ -4,6 +4,8 @@ import Chainsaw._
 import spinal.core._
 import spinal.lib._
 
+import scala.language.postfixOps
+
 case class DelayByRam(width: Int, length: Int) extends ChainsawGenerator {
 
   require(length >= 4, s"length too small: $length")
@@ -14,12 +16,15 @@ case class DelayByRam(width: Int, length: Int) extends ChainsawGenerator {
 
   override def impl(dataIn: Seq[Any]) = dataIn
 
-  override var inputTypes = Seq(UIntInfo(width))
-  override var outputTypes = Seq(UIntInfo(width))
+  override def inputTypes = Seq(UIntInfo(width))
 
-  override var inputFormat = inputNoControl
-  override var outputFormat = outputNoControl
-  override var latency = length
+  override def outputTypes = Seq(UIntInfo(width))
+
+  override def inputFormat = inputNoControl
+
+  override def outputFormat = outputNoControl
+
+  override def latency = length
 
   override def implH = new ChainsawModule(this) {
 

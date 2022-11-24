@@ -15,18 +15,18 @@ case class ChainsawAddGen(width: Int) extends ChainsawGenerator {
 
   override def impl(dataIn: Seq[Any]): Seq[BigInt] = Seq(dataIn.asInstanceOf[Seq[BigInt]].sum)
 
-  override var inputTypes = Seq.fill(2)(UIntInfo(width))
-  override var outputTypes = Seq(UIntInfo(width + 1))
-  override var inputFormat = inputNoControl
-  override var outputFormat = outputNoControl
-  override var latency = 1
+  override def inputTypes = Seq.fill(2)(UIntInfo(width))
+  override def outputTypes = Seq(UIntInfo(width + 1))
+  override def inputFormat = inputNoControl
+ override def outputFormat = outputNoControl
+  override def latency = 1
 
   override def implH: ChainsawModule = new ChainsawModule(this) {
     dataOut.head := dataIn.map(_.asUInt).reduce(_ +^ _).d().asBits
   }
 
-  utilEstimation = VivadoUtilRequirement(lut = width + 2, carry8 = width.divideAndCeil(8))
-  fmaxEstimation = 600 MHz
+  override def utilEstimation = VivadoUtilRequirement(lut = width + 2, carry8 = width.divideAndCeil(8))
+  override def fmaxEstimation = 600 MHz
 }
 
 // a simple Dag

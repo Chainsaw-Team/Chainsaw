@@ -4,6 +4,7 @@ import Chainsaw._
 import spinal.core._
 import spinal.lib._
 
+import scala.language.postfixOps
 import scala.util.Random
 
 /** carry-propagation adder
@@ -41,7 +42,7 @@ case class Cpa(adderType: AdderType, widths: Seq[Int], cpaMode: CpaMode, withCar
     case _                => 3
   }
 
-  override var inputTypes = {
+  override def inputTypes = {
     val temp = cpaMode match {
       case M2M => widths.map(UIntInfo(_))
       case M2S => widths.map(UIntInfo(_))
@@ -50,7 +51,7 @@ case class Cpa(adderType: AdderType, widths: Seq[Int], cpaMode: CpaMode, withCar
     Seq.fill(operandCount)(temp).flatten
   }
 
-  override var outputTypes = cpaMode match {
+  override def outputTypes = cpaMode match {
     case M2M => widthsWithInc.map(UIntInfo(_))
     case S2M => widthsWithInc.map(UIntInfo(_))
     case _   => Seq(widthsWithInc.sum).map(UIntInfo(_))
@@ -106,8 +107,8 @@ case class Cpa(adderType: AdderType, widths: Seq[Int], cpaMode: CpaMode, withCar
 
   override def generateTestCases: Seq[BigInt] = Seq.fill(1000)(inputWidths.map(BigInt(_, Random))).flatten
 
-  override var inputFormat  = inputNoControl
-  override var outputFormat = outputNoControl
+  override def inputFormat  = inputNoControl
+ override def outputFormat = outputNoControl
 
   override val inputTimes = Some({
     val temp = cpaMode match {
@@ -124,7 +125,7 @@ case class Cpa(adderType: AdderType, widths: Seq[Int], cpaMode: CpaMode, withCar
     case _   => Seq(0)
   })
 
-  override var latency = cpaMode match {
+  override def latency = cpaMode match {
     case M2M => 1
     case S2M => 1
     case _   => widths.length

@@ -11,7 +11,7 @@ import breeze.numerics.ceil
  * @param multiplierType multiplication target
  * @param isKaras        use Karatsuba/School book BmDecomposition for each layer, bottom-up
  */
-case class BmSolution(dsp: (Int, Int), splits: Seq[Int], multiplierType: MultiplierType, isKaras: Seq[Boolean]) {
+case class BmSolution(dsp: (Int, Int), splits: Seq[Int], multiplierType: MultiplierType, isKaras: Seq[Boolean]) extends ChainsawSolution {
 
   require(splits.length == isKaras.length)
 

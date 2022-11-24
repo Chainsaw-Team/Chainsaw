@@ -58,8 +58,8 @@ case class DedicatedMult(widthA: Int, widthB: Int, multType: MultiplierType, isK
     case _ => Seq.fill(1000)(Seq(BigInt(widthA, Random), BigInt(widthA, Random))).flatten
   }
 
-  override var inputTypes = Seq(widthA, widthA, widthB, widthB).map(UIntInfo(_))
-  override var outputTypes = multType match {
+  override def inputTypes = Seq(widthA, widthA, widthB, widthB).map(UIntInfo(_))
+  override def outputTypes = multType match {
     case FullMultiplier => Seq(UIntInfo((widthA + widthB) * 2))
     case SquareMultiplier => Seq(UIntInfo(widthA * 4))
     case MsbMultiplier => Seq(UIntInfo(widthA * 2))
@@ -67,10 +67,10 @@ case class DedicatedMult(widthA: Int, widthB: Int, multType: MultiplierType, isK
     case Kara => Seq(widthCross, widthCross + 1, widthCross).map(UIntInfo(_))
   }
 
-  override var inputFormat = inputNoControl
-  override var outputFormat = outputNoControl
+  override def inputFormat = inputNoControl
+ override def outputFormat = outputNoControl
 
-  override var latency = multType match {
+  override def latency = multType match {
     case FullMultiplier => 6
     case SquareMultiplier => 6
     case MsbMultiplier => 7
@@ -78,8 +78,8 @@ case class DedicatedMult(widthA: Int, widthB: Int, multType: MultiplierType, isK
     case Kara => 5
   }
 
-  utilEstimation = VivadoUtilRequirement(dsp = 3)
-  fmaxEstimation = 600 MHz
+  override def utilEstimation = VivadoUtilRequirement(dsp = 3)
+  override def fmaxEstimation = 600 MHz
 
   override def implH: ChainsawModule = new ChainsawModule(this) {
 

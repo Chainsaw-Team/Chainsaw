@@ -13,12 +13,12 @@ case class IntMultiAdder(widthIn: Int, n: Int, signed: Boolean) extends Flopoco 
   override val frequency = 800 MHz
   override val family = UltraScale
 
-  override var inputTypes = Seq.fill(n)(UIntInfo(widthIn))
+  override def inputTypes = Seq.fill(n)(UIntInfo(widthIn))
   val widthOut = inputTypes.head.bitWidth + log2Up(n)
-  override var outputTypes = Seq(UIntInfo(widthOut))
+  override def outputTypes = Seq(UIntInfo(widthOut))
 
-  override var inputFormat = inputNoControl
-  override var outputFormat = outputNoControl
+  override def inputFormat = inputNoControl
+ override def outputFormat = outputNoControl
 
   override def blackbox: FlopocoBlackBox = new FlopocoBlackBox {
     val X = in Vec(Bits(widthIn bits), n)

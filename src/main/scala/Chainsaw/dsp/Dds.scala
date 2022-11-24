@@ -55,12 +55,12 @@ case class Dds(ddsWave: DdsWave, dataType: NumericType) extends ChainsawGenerato
 
   override val metric = ChainsawMetric(frameWise = forallBound(doubleBound(1e-3)))
 
-  override var inputTypes = Seq(UIntInfo(1))
-  override var outputTypes = Seq(dataType)
+  override def inputTypes = Seq(UIntInfo(1))
+  override def outputTypes = Seq(dataType)
 
-  override var inputFormat = inputNoControl
-  override var outputFormat = outputNoControl
-  override var latency = 2
+  override def inputFormat = inputNoControl
+ override def outputFormat = outputNoControl
+  override def latency = 2
 
   override def implH = new ChainsawModule(this) {
     val data = ddsWave.wave.map(dataType.fromConstant)

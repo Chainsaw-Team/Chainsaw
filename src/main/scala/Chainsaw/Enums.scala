@@ -71,3 +71,5 @@ object M2S extends CpaMode
 object S2M extends CpaMode
 
 object S2S extends CpaMode
+
+trait ChainsawSolution

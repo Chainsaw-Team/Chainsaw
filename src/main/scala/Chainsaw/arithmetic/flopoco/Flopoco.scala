@@ -81,14 +81,16 @@ abstract class Flopoco extends ChainsawGenerator {
     (latency, defName)
   }
 
-  override var latency = 0
   var moduleName: String = ""
+  var flopocoLatency = 0
+
+  override def latency = flopocoLatency
 
   def flopocoDone(): Unit = {
     if (!rtlPath.exists()) flopocoRun()
     val info = getInfoFromRtl
     logger.info(s"flopoco latency = $latency")
-    latency = info._1
+    flopocoLatency = info._1
     logger.info(s"flopoco module name = $moduleName")
     moduleName = info._2
   }

@@ -31,6 +31,7 @@ trait ChainsawGenerator {
         case boolean: Boolean => if (boolean) name.trim else s"not${name.trim}"
         case bigInt: BigInt => hashName(bigInt)
         case seq: Seq[_] => hashName(seq)
+        case solution: ChainsawSolution => hashName(solution)
         case operatorType: OperatorType => className(operatorType)
         case chainsawEnum: ChainsawEnum => className(chainsawEnum)
         case _ => value.toString
@@ -63,24 +64,24 @@ trait ChainsawGenerator {
   /** -------- size information --------
    *
    */
-  var inputTypes: Seq[NumericType]
-  var outputTypes: Seq[NumericType]
+  def inputTypes: Seq[NumericType]
+  def outputTypes: Seq[NumericType]
 
   /** -------- timing information --------
    *
    */
-  var inputFormat: FrameFormat
-  var outputFormat: FrameFormat
+  def inputFormat: FrameFormat
+  def outputFormat: FrameFormat
   val inputTimes: Option[Seq[Int]] = None // when this is empty, inputs are aligned
   val outputTimes: Option[Seq[Int]] = None
-  var latency: Int // defined as the latency from the head of inputs to the head of outputs
-  var offset: Int = 0
+  def latency: Int // defined as the latency from the head of inputs to the head of outputs
+  def offset: Int = 0
 
   /** -------- performance information --------
    *
    */
-  var utilEstimation: VivadoUtil = VivadoUtilRequirement()
-  var fmaxEstimation: HertzNumber = 600 MHz
+  def utilEstimation: VivadoUtil = VivadoUtilRequirement()
+  def fmaxEstimation: HertzNumber = 600 MHz
 
   /** -------- implementations --------
    *
@@ -108,8 +109,8 @@ trait ChainsawGenerator {
     else implH
   }
 
-  /** -------- utils
-   * --------
+  /** -------- utils --------
+   *
    */
   // when a module need no control, you can use it as a function
   def asFunc: Seq[Bits] => Seq[Bits] = (dataIn: Seq[Bits]) => {
