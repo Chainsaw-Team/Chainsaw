@@ -80,12 +80,12 @@ case class Cordic(algebraicMode: AlgebraicMode, rotationMode: RotationMode,
   val amplitudeType = SFixInfo(1, fraction)
   val phaseType = SFixInfo(2, fraction)
 
-  override var inputTypes = Seq(amplitudeType, amplitudeType, phaseType)
-  override var outputTypes = inputTypes
+  override def inputTypes = Seq(amplitudeType, amplitudeType, phaseType)
+  override def outputTypes = inputTypes
 
-  override var inputFormat = inputNoControl
-  override var outputFormat = inputNoControl
-  override var latency = iteration + 1
+  override def inputFormat = inputNoControl
+ override def outputFormat = inputNoControl
+  override def latency = iteration + 1
 
   def getHyperbolicSequence(iteration: Int): Seq[Int] = {
     require(iteration < 54, "iteration times should be less than 54")

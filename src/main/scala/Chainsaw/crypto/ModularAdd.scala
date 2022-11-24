@@ -22,11 +22,11 @@ case class ModularAdd(width: Int, constantModulus: Option[BigInt], adderType: Ad
 
   override def impl(dataIn: Seq[Any]): Seq[BigInt] = redcGen.impl(cpaGen.impl(dataIn))
 
-  override var inputTypes = constantModulus match {
+  override def inputTypes = constantModulus match {
     case Some(_) => Seq.fill(2)(UIntInfo(width))
     case None => Seq.fill(3)(UIntInfo(width))
   }
-  override var outputTypes = Seq(UIntInfo(width))
+  override def outputTypes = Seq(UIntInfo(width))
 
   override def generateTestCases = constantModulus match {
     case Some(modulus) => Seq.fill(1000)(inputWidths.map(width => BigInt(width, Random)))
@@ -35,10 +35,10 @@ case class ModularAdd(width: Int, constantModulus: Option[BigInt], adderType: Ad
     case None => ???
   }
 
-  override var inputFormat = inputNoControl
-  override var outputFormat = outputNoControl
+  override def inputFormat = inputNoControl
+ override def outputFormat = outputNoControl
 
-  override var latency = cpaGen.latency + redcGen.latency
+  override def latency = cpaGen.latency + redcGen.latency
 
   override def implH = new ChainsawModule(this) {
     val cpa = cpaGen.implH

@@ -11,7 +11,8 @@ class BarrettTest extends ChainsawFlatSpec {
   val multTypes = Seq(FullMultiplier, SquareMultiplier)
 
   constants.foreach(constant =>
-    multTypes.foreach(multType =>
+    multTypes.foreach { multType =>
+      logger.warn(s"${Barrett(64, constant, multType).latency}")
       testGenerator(Barrett(64, constant, multType), barrettSynth, barrettImpl)
-    ))
+    })
 }

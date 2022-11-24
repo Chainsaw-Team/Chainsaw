@@ -54,19 +54,19 @@ case class BitHeapCompressor(operandInfos: Seq[ArithInfo], outputAsCsa: Boolean)
 
   override val metric = ignoreNegativeMetric(compensation)
 
-  override var inputTypes = operandInfos.map(info => UIntInfo(info.width))
+  override def inputTypes = operandInfos.map(info => UIntInfo(info.width))
 
   val widthOut = if (outputAsCsa) csaWidthOut else retBitHeap.weightLow + cpaWidthIn + (if (needCarryOut) 1 else 0)
 
-  override var outputTypes =
+  override def outputTypes =
     if (outputAsCsa) Seq.fill(2)(UIntInfo(widthOut))
     else Seq(UIntInfo(widthOut))
 
   override val inputTimes = Some(operandInfos.map(_.time))
 
-  override var inputFormat = inputNoControl
-  override var outputFormat = outputNoControl
-  override var latency = operandInfos.map(_.time).min + csaLatency + cpaLatency + 1
+  override def inputFormat = inputNoControl
+ override def outputFormat = outputNoControl
+  override def latency = operandInfos.map(_.time).min + csaLatency + cpaLatency + 1
 
   logger.info(s"---------csaLatency------------\ncsaLatency = $csaLatency")
 
@@ -82,7 +82,7 @@ case class BitHeapCompressor(operandInfos: Seq[ArithInfo], outputAsCsa: Boolean)
     val operands = uintDataIn
       .zip(operandInfos)
       .map { case (int, info) => if (info.isPositive) int else ~int }
-      .map(_.d(1).asBools)
+      .map(_.d().asBools)
 
     val heapIn = BitHeaps.getHeapFromInfos(Seq(operandInfos), Seq(operands))
     val heapOut = heapIn.implCompressTree(Gpcs(), solutions, pipeline, s"operands of CompressorTree_${operandInfos.hashCode()}".replace('-', 'N'))

@@ -36,13 +36,13 @@ case class Filter(bs: Seq[Double], as: Seq[Double], coeffType: NumericType, data
   /** --------
    * size & timing
    * -------- */
-  override var inputTypes = Seq(dataType)
-  override var outputTypes = Seq(dataType)
+  override def inputTypes = Seq(dataType)
+  override def outputTypes = Seq(dataType)
 
-  override var inputFormat = inputNoControl
-  override var outputFormat = outputNoControl
+  override def inputFormat = inputNoControl
+ override def outputFormat = outputNoControl
 
-  override var latency = 2
+  override def latency = 2
 
   override def implH = new ChainsawModule(this) {
 

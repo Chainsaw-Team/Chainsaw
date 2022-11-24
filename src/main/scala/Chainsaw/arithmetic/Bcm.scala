@@ -21,20 +21,20 @@ case class Bcm(constant: BigInt, multiplierType: MultiplierType, widthIn: Int, w
 
   import model._
 
-  override var inputTypes = Seq(UIntInfo(widthIn))
-  override var outputTypes = Seq.fill(1)(UIntInfo(widthOut))
+  override def inputTypes = Seq(UIntInfo(widthIn))
+  override def outputTypes = Seq.fill(1)(UIntInfo(widthOut))
 
-  override var inputFormat = inputNoControl
-  override var outputFormat = outputNoControl
+  override def inputFormat = inputNoControl
+ override def outputFormat = outputNoControl
 
   val compressorGen = BitHeapCompressor(sliceAndInfos.map(_._2), outputAsCsa = true)
   val cpaGen = CpaS2S(TernarySubtractor1, widthOut, withCarry = false)
 
   // TODO: estimation on ff
   val bitHeapEff = 1.8
-  utilEstimation = VivadoUtilEstimation(lut = (compressorGen.initBitHeap.bitsCount / bitHeapEff).toInt + cpaGen.widthFull)
+  override def utilEstimation = VivadoUtilEstimation(lut = (compressorGen.initBitHeap.bitsCount / bitHeapEff).toInt + cpaGen.widthFull)
 
-  override var latency = compressorGen.latency + cpaGen.latency
+  override def latency = compressorGen.latency + cpaGen.latency
 
   override def impl(dataIn: Seq[Any]): Seq[BigInt] = {
     val data = dataIn.asInstanceOf[Seq[BigInt]].head

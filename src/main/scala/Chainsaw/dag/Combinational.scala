@@ -10,7 +10,7 @@ import scala.language.postfixOps
  */
 abstract class Combinational extends ChainsawGenerator {
 
-  override var latency = 0
+  override def latency = 0
 
   override def implH = null // this should never be invoked, instead, method comb will be used for implementation
 
@@ -32,11 +32,11 @@ case class Split(width: Int, lowWidth: Int) extends Combinational {
     Seq(high, low)
   }
 
-  override var inputTypes = Seq(UIntInfo(width))
-  override var outputTypes = Seq(UIntInfo(width - lowWidth), UIntInfo(lowWidth))
+  override def inputTypes = Seq(UIntInfo(width))
+  override def outputTypes = Seq(UIntInfo(width - lowWidth), UIntInfo(lowWidth))
 
-  override var inputFormat = inputNoControl
-  override var outputFormat = outputNoControl
+  override def inputFormat = inputNoControl
+ override def outputFormat = outputNoControl
 }
 
 case class SplitN(width: Int, n: Int) extends Combinational {
@@ -48,11 +48,11 @@ case class SplitN(width: Int, n: Int) extends Combinational {
   override def impl(dataIn: Seq[Any]): Seq[BigInt] =
     dataIn.head.asInstanceOf[BigInt].toBitValue(width).splitN(n)
 
-  override var inputTypes = Seq(UIntInfo(width))
-  override var outputTypes = Seq.fill(n)(UIntInfo(width.divideAndCeil(n)))
+  override def inputTypes = Seq(UIntInfo(width))
+  override def outputTypes = Seq.fill(n)(UIntInfo(width.divideAndCeil(n)))
 
-  override var inputFormat = inputNoControl
-  override var outputFormat = outputNoControl
+  override def inputFormat = inputNoControl
+ override def outputFormat = outputNoControl
 }
 
 case class ShiftLeft(shift: Int, width: Int) extends Combinational {
@@ -63,11 +63,11 @@ case class ShiftLeft(shift: Int, width: Int) extends Combinational {
 
   override def impl(dataIn: Seq[Any]) = dataIn.asInstanceOf[Seq[BigInt]].map(_ << shift)
 
-  override var inputTypes = Seq(UIntInfo(width))
-  override var outputTypes = Seq(UIntInfo(width + shift))
+  override def inputTypes = Seq(UIntInfo(width))
+  override def outputTypes = Seq(UIntInfo(width + shift))
 
-  override var inputFormat = inputNoControl
-  override var outputFormat = outputNoControl
+  override def inputFormat = inputNoControl
+ override def outputFormat = outputNoControl
 }
 
 case class Resize(widthIn: Int, widthOut: Int) extends Combinational {
@@ -78,11 +78,11 @@ case class Resize(widthIn: Int, widthOut: Int) extends Combinational {
 
   override def impl(dataIn: Seq[Any]): Seq[BigInt] = dataIn.asInstanceOf[Seq[BigInt]]
 
-  override var inputTypes = Seq(UIntInfo(widthIn))
-  override var outputTypes = Seq(UIntInfo(widthOut))
+  override def inputTypes = Seq(UIntInfo(widthIn))
+  override def outputTypes = Seq(UIntInfo(widthOut))
 
-  override var inputFormat = inputNoControl
-  override var outputFormat = outputNoControl
+  override def inputFormat = inputNoControl
+ override def outputFormat = outputNoControl
 }
 
 // TODO: pipeline for this
@@ -92,14 +92,14 @@ case class GetTiling(widthA: Int, widthB: Int) extends ChainsawGenerator {
 
   override def impl(dataIn: Seq[Any]): Seq[BigInt] = dataIn.asInstanceOf[Seq[BigInt]]
 
-  override var inputTypes = Seq(UIntInfo(widthA + 1), UIntInfo(widthB + 1))
-  override var outputTypes = Seq(UIntInfo(widthA), UIntInfo(widthB),
+  override def inputTypes = Seq(UIntInfo(widthA + 1), UIntInfo(widthB + 1))
+  override def outputTypes = Seq(UIntInfo(widthA), UIntInfo(widthB),
     UIntInfo(widthA), UIntInfo(widthB), UIntInfo(1))
 
-  override var inputFormat = inputNoControl
-  override var outputFormat = outputNoControl
+  override def inputFormat = inputNoControl
+ override def outputFormat = outputNoControl
 
-  override var latency = 1
+  override def latency = 1
 
   /** --------
    * implementations

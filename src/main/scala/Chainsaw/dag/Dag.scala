@@ -1,8 +1,7 @@
 package Chainsaw.dag
 
 import Chainsaw._
-import Chainsaw.dsp.{FilterGraph, SingleFilterGraph}
-import org.jetbrains.annotations.Debug.Renderer
+import Chainsaw.dsp.FilterGraph
 import org.jgrapht._
 import org.jgrapht.alg.connectivity._
 import org.jgrapht.graph._
@@ -19,10 +18,13 @@ case class IoGenerator(numericType: NumericType, direction: Direction)
 
   override def impl(dataIn: Seq[Any]) = dataIn
 
-  override var inputTypes = Seq(numericType)
-  override var outputTypes = Seq(numericType)
-  override var inputFormat = inputNoControl
-  override var outputFormat = outputNoControl
+  override def inputTypes = Seq(numericType)
+
+  override def outputTypes = Seq(numericType)
+
+  override def inputFormat = inputNoControl
+
+  override def outputFormat = outputNoControl
 
   override def comb(dataIn: Seq[Bits]) = dataIn
 }
@@ -58,11 +60,13 @@ case class ConstantGenerator(numericType: NumericType, constant: Any)
 
   override def impl(dataIn: Seq[Any]) = Seq(constant)
 
-  override var inputTypes = Seq(numericType)
-  override var outputTypes = Seq(numericType)
+  override def inputTypes = Seq(numericType)
 
-  override var inputFormat = inputNoControl
-  override var outputFormat = outputNoControl
+  override def outputTypes = Seq(numericType)
+
+  override def inputFormat = inputNoControl
+
+  override def outputFormat = outputNoControl
 }
 
 object ConstantVertex {
@@ -179,7 +183,6 @@ abstract class Dag()
     Flatten(this)
     logger.info(s"\n----do retiming after flatten----")
     updateLatency()
-    updateEstimation()
     this
   }
 
@@ -193,41 +196,31 @@ abstract class Dag()
   /** --------
    * methods for getting metadata
    * -------- */
-  override var inputTypes = Seq(UIntInfo(1))
-  override var outputTypes = Seq(UIntInfo(1))
-  override var inputFormat = inputNoControl
-  override var outputFormat = outputNoControl
+  override def inputTypes = inputs.map(_.gen.inputTypes.head)
+
+  override def outputTypes = outputs.map(_.gen.outputTypes.head)
+
+  // TODO: methods for generating frame format according to vertices and Dag topology
+  override def inputFormat = inputNoControl
+
+  override def outputFormat = outputNoControl
+
+
   var retimingInfo = Map[V, Int]()
-  override var latency = -1 // placeholder which will be overwritten by updateHardwareData
 
-  def updateIO(): Unit = {
-    inputTypes = inputs.map(_.gen.inputTypes.head)
-    outputTypes = outputs.map(_.gen.outputTypes.head)
-    // TODO: methods for generating frame format according to vertices and Dag topology
-    inputFormat = inputNoControl
-    outputFormat = outputNoControl
-  }
-
-  def updateEstimation(): Unit = {
-    utilEstimation = vertexSet().asScala.map(_.gen.utilEstimation).reduce(_ + _)
-    fmaxEstimation = {
-      val value = vertexSet().asScala.map(_.gen.fmaxEstimation.toDouble).min
-      HertzNumber(value)
+  override def latency = { // TODO: better strategy
+    if (implMode == Infinite) {
+      val path = new alg.shortestpath.BFSShortestPath(this).getPath(inputs.head, outputs.head)
+      path.getVertexList.asScala.prevAndNext { case (prev, next) => getEdge(prev, next).weight.toInt }.sum
     }
+    else retimingInfo(outputs.head) - retimingInfo(inputs.head)
   }
 
   def updateLatency(): Unit = {
     autoPipeline()
-    if(implMode == Infinite) {
-      val path = new alg.shortestpath.BFSShortestPath(this).getPath(inputs.head, outputs.head)
-      latency = path.getVertexList.asScala.prevAndNext { case (prev, next) => getEdge(prev, next).weight.toInt }.sum
-    }
-    else latency = retimingInfo(outputs.head) - retimingInfo(inputs.head)
   }
 
   def graphDone(): Unit = {
-    updateIO()
-    updateEstimation()
     updateLatency()
     doDrc()
   }

@@ -26,13 +26,13 @@ case class Scaling(coefficient: Double)(implicit filterPrecision: FilterPrecisio
 
   override def impl(dataIn: Seq[Any]) = null
 
-  override var inputTypes = Seq(dataType)
-  override var outputTypes = Seq(dataType)
+  override def inputTypes = Seq(dataType)
 
-  override var inputFormat = inputNoControl
-  override var outputFormat = outputNoControl
+  override def outputTypes = Seq(dataType)
 
-  latency = 0
+  override def inputFormat = inputNoControl
+
+  override def outputFormat = outputNoControl
 }
 
 case class Addition()(implicit filterPrecision: FilterPrecision)
@@ -52,13 +52,13 @@ case class Addition()(implicit filterPrecision: FilterPrecision)
 
   override def impl(dataIn: Seq[Any]) = null
 
-  override var inputTypes = Seq.fill(2)(dataType)
-  override var outputTypes = Seq(dataType)
+  override def inputTypes = Seq.fill(2)(dataType)
 
-  override var inputFormat = inputNoControl
-  override var outputFormat = outputNoControl
+  override def outputTypes = Seq(dataType)
 
-  latency = 0
+  override def inputFormat = inputNoControl
+
+  override def outputFormat = outputNoControl
 }
 
 case class Var()(implicit filterPrecision: FilterPrecision)
@@ -72,11 +72,13 @@ case class Var()(implicit filterPrecision: FilterPrecision)
 
   override def impl(dataIn: Seq[Any]) = null
 
-  override var inputTypes = Seq(dataType)
-  override var outputTypes = Seq(dataType)
+  override def inputTypes = Seq(dataType)
 
-  override var inputFormat = inputNoControl
-  override var outputFormat = outputNoControl
+  override def outputTypes = Seq(dataType)
+
+  override def inputFormat = inputNoControl
+
+  override def outputFormat = outputNoControl
 }
 
 abstract class FilterGraph(bs: Seq[Double], as: Seq[Double], filterPrecision: FilterPrecision) extends Dag {
@@ -112,7 +114,7 @@ abstract class FilterGraph(bs: Seq[Double], as: Seq[Double], filterPrecision: Fi
     }
   }
 
-  offset = 1
+  override def offset = 1
 
   override def implH = new ChainsawModule(this) {
 

@@ -22,12 +22,12 @@ case class FineReduction(M: BigInt, upperBound: Int) extends ChainsawGenerator {
 
   override def generateTestCases = Seq.fill(1000)(BigInt(widthIn, Random)).filter(_ < upperBound * M)
 
-  override var inputTypes = Seq(UIntInfo(widthIn))
-  override var outputTypes = Seq(UIntInfo(widthOut))
+  override def inputTypes = Seq(UIntInfo(widthIn))
+  override def outputTypes = Seq(UIntInfo(widthOut))
 
-  override var inputFormat = inputNoControl
-  override var outputFormat = outputNoControl
-  override var latency = sub0Gen.latency + 4
+  override def inputFormat = inputNoControl
+ override def outputFormat = outputNoControl
+  override def latency = sub0Gen.latency + 4
 
   // TODO: optimization for [0, 2M) and (-M, M)
   override def implH: ChainsawModule = new ChainsawModule(this) {

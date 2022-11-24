@@ -151,7 +151,7 @@ object Compressor4to2 extends Compressor {
 
   override def inputFormat(width: Int) = 5 +: Seq.fill(width - 1)(4)
 
-  override def outputFormat(width: Int) = 1 +: Seq.fill(width)(2)
+ override def outputFormat(width: Int) = 1 +: Seq.fill(width)(2)
 
   override def areaCost(width: Int, considerCarry8: Boolean = true, isPipeline: Boolean = true): Double =
     Seq(
@@ -203,7 +203,7 @@ object Compressor3to1 extends Compressor {
 
   override def inputFormat(width: Int): Seq[Int] = 5 +: Seq.fill(width - 1)(3)
 
-  override def outputFormat(width: Int): Seq[Int] = Seq.fill(width)(1) :+ 2
+ override def outputFormat(width: Int): Seq[Int] = Seq.fill(width)(1) :+ 2
 
   override def areaCost(width: Int, considerCarry8: Boolean = true, isPipeline: Boolean = true): Double =
     Seq(
@@ -255,7 +255,7 @@ object Compressor1to1 extends Compressor {
 
   override def inputFormat(width: Int) = Seq.fill(width)(1)
 
-  override def outputFormat(width: Int) = Seq.fill(width)(1)
+ override def outputFormat(width: Int) = Seq.fill(width)(1)
 
   override def areaCost(width: Int, considerCarry8: Boolean = true, isPipeline: Boolean = true): Double =
     if (isPipeline) width.toDouble / 2 else 0.0
@@ -302,7 +302,7 @@ object Compressor6to3 extends Compressor {
 
   override def inputFormat(width: Int) = Seq(6)
 
-  override def outputFormat(width: Int) = Seq.fill(3)(1)
+ override def outputFormat(width: Int) = Seq.fill(3)(1)
 
   override def areaCost(width: Int, considerCarry8: Boolean = true, isPipeline: Boolean = true): Double = 3.0
 
@@ -355,7 +355,7 @@ object Compressor3to2 extends Compressor {
 
   override def inputFormat(width: Int) = Seq(3)
 
-  override def outputFormat(width: Int): Seq[Int] = Seq.fill(2)(1)
+ override def outputFormat(width: Int): Seq[Int] = Seq.fill(2)(1)
 
   override def areaCost(width: Int, considerCarry8: Boolean = true, isPipeline: Boolean = true): Double = 1.0
 
@@ -425,7 +425,7 @@ object Compressor606To5 extends Compressor {
 
   /** number of bits in output columns, low to high
    */
-  override def outputFormat(width: Int): Seq[Int] = Seq.fill(5)(1)
+ override def outputFormat(width: Int): Seq[Int] = Seq.fill(5)(1)
 
   /** number of LUTs
    */

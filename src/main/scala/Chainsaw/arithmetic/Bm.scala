@@ -20,7 +20,7 @@ case class Bm(width: Int, constant: Option[BigInt] = None, bmSolution: BmSolutio
     def <<(shiftLeft: Int) = WeightedPort(port, arithInfo << shiftLeft)
   }
 
-  override def name = s"bm_$width"
+  override def name = getAutoName(this)
 
   override def impl(dataIn: Seq[Any]) = Seq(dataIn.asInstanceOf[Seq[BigInt]].product)
 
