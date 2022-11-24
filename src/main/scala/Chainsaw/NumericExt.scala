@@ -54,5 +54,11 @@ object NumericExt {
       ret := sf.truncated
       ret
     }
+
+    def fractionalPart = {
+      val ret = SFix(0 exp, sf.minExp exp)
+      ret.assignFromBits(sf.asBits.msb ## sf.asBits.takeLow(-sf.minExp))
+      ret
+    }
   }
 }

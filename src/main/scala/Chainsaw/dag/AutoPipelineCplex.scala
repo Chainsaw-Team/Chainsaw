@@ -17,7 +17,7 @@ object AutoPipelineCplex {
     implicit val refDag: Dag = dag
 
     // prepare
-    dag.makeComb()
+    //    dag.makeComb()
 
     // declare cplex model
     val cplex = new IloCplex()

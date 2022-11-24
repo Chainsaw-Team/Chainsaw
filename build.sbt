@@ -1,3 +1,6 @@
+import sbt.Keys.unmanagedJars
+import sbt.file
+
 ThisBuild / version := "1.0"
 ThisBuild / scalaVersion := "2.12.16"
 ThisBuild / organization := "org.chainsaw"
@@ -31,7 +34,10 @@ lazy val Chainsaw = (project in file("."))
     libraryDependencies += "cc.redberry" %% "rings.scaladsl" % "2.5.7", // for finite field operations
 
     libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.9", // for scala test
-    libraryDependencies ++= Seq(optimus, optimusOj, optimusLp)
+    libraryDependencies ++= Seq(optimus, optimusOj, optimusLp),
+    Compile / unmanagedJars += file("lib/cplex.jar"),
+    Compile / unmanagedJars += file("lib/engine.jar")
   )
+
 
 fork := true

@@ -154,7 +154,6 @@ object ArithInfoGenerator {
           )
         }
       }
-
   }
 
   object TriangleInfos {
