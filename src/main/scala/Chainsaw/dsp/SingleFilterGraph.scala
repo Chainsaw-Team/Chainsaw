@@ -7,8 +7,11 @@ import spinal.core.{Bits, _}
 import NumericExt._
 
 import scala.collection.JavaConverters._
+import scala.util.Random
 
-case class FilterPrecision(coeffType: NumericType, dataType: NumericType)
+case class FilterPrecision(coeffType: NumericType, dataType: NumericType){
+  override def toString = s"${coeffType.integral}_${coeffType.fractional}_${dataType.integral}_${dataType.fractional}"
+}
 
 case class Scaling(coefficient: Double)(implicit filterPrecision: FilterPrecision)
   extends Combinational {
@@ -22,7 +25,7 @@ case class Scaling(coefficient: Double)(implicit filterPrecision: FilterPrecisio
     Seq(ret.asBits)
   }
 
-  override def name = s"scaling_$coefficient".replace('-', 'N').replace('.', '_')
+  override def name = "scaling"
 
   override def impl(dataIn: Seq[Any]) = null
 
@@ -92,6 +95,9 @@ abstract class FilterGraph(bs: Seq[Double], as: Seq[Double], filterPrecision: Fi
 
   override val metric = ChainsawMetric(frameWise = forallBound(doubleBound(1e-1)))
   override val implMode = Infinite
+
+  override def generateTestCases = Seq.fill(1000)(Random.nextDouble())
+
   implicit val precision: FilterPrecision = filterPrecision
 
   implicit class FilterUtil(port: DagPort) {
@@ -143,7 +149,7 @@ abstract class FilterGraph(bs: Seq[Double], as: Seq[Double], filterPrecision: Fi
 case class SingleFilterGraph(bs: Seq[Double], as: Seq[Double], filterPrecision: FilterPrecision)
   extends FilterGraph(bs, as, filterPrecision) {
 
-  override def name = s"filter_b_${bs.map(_.toInt).mkString("_")}_a_${as.map(_.toInt).mkString("_")}".replace("-", "N")
+  override def name = getAutoName(this)
 
   import precision._
 
@@ -159,6 +165,13 @@ case class SingleFilterGraph(bs: Seq[Double], as: Seq[Double], filterPrecision: 
   y := ret.out(0).z(1)
 
   graphDone()
+}
+
+object Filter {
+  def apply(bs: Seq[Double], as: Seq[Double], filterPrecision: FilterPrecision, parallel: Int): FilterGraph = {
+    val base = SingleFilterGraph(bs, as, filterPrecision)
+    Unfold(base, parallel)
+  }
 }
 
 object Unfold {

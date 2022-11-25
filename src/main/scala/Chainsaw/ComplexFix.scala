@@ -75,7 +75,7 @@ case class ComplexFix(peak: ExpNumber, resolution: ExpNumber) extends Bundle {
 object ComplexFix {
   def apply(R: SFix, I: SFix): ComplexFix = {
     require(R.numericType == I.numericType)
-    val ret = R.numericType.asComplexFix()
+    val ret = R.numericType.toComplexFixInfo.asComplexFix()
     ret.real := R
     ret.imag := I
     ret
