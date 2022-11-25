@@ -61,4 +61,23 @@ object NumericExt {
       ret
     }
   }
+
+  implicit class BitsUtil(bits: Bits) {
+    def toSFix(numericType: NumericType) = {
+      val ret = numericType.asSFix()
+      ret.assignFromBits(bits)
+      ret
+    }
+
+    def toComplexFix(numericType: NumericType) = {
+      val ret = numericType.asComplexFix()
+      ret.assignFromBits(bits)
+      ret
+    }
+
+    def withImag(imag: Bits, numericType: NumericType) = {
+      val sf = numericType.toSFixInfo
+      ComplexFix(bits.toSFix(sf), imag.toSFix(sf))
+    }
+  }
 }
