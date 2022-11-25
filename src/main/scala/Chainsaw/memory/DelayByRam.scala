@@ -6,13 +6,14 @@ import spinal.lib._
 
 import scala.language.postfixOps
 
-case class DelayByRam(width: Int, length: Int) extends ChainsawGenerator {
+case class DelayByRam(width: Int, delay: Int) extends ChainsawGenerator {
 
-  require(length >= 4, s"length too small: $length")
+  require(delay >= 4, s"length too small: $delay")
 
-  val paddedLength = BigInt(1) << log2Up(length + 1)
+  val counterWidth = log2Up(delay + 1)
+  val paddedLength = Pow2(counterWidth)
 
-  override def name = s"delayByRam_${width}_$length"
+  override def name = getAutoName(this)
 
   override def impl(dataIn: Seq[Any]) = dataIn
 
@@ -24,16 +25,15 @@ case class DelayByRam(width: Int, length: Int) extends ChainsawGenerator {
 
   override def outputFormat = outputNoControl
 
-  override def latency = length
+  override def latency = delay
 
   override def implH = new ChainsawModule(this) {
-
     val index = CounterFreeRun(paddedLength)
     val ram = Mem(Bits(width bits), paddedLength)
     ram.setAsBlockRam()
     ram.write(index.value, dataIn.head)
 
-    val readAddr = (index.value - U(length - 3, log2Up(paddedLength) bits)).d()
+    val readAddr =  (index.value - U(delay - 3, counterWidth bits)).d()
     dataOut.head := ram.readSync(readAddr).d()
   }
 }
