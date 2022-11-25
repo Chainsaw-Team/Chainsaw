@@ -25,7 +25,8 @@ case class DdsWave(signalType: DdsSignalType,
   val commonFreq = lcm(baseValue, signalValue)
 
   val pointsInCommonPeriod: Int = (commonFreq / signalValue).toInt
-  logger.info(s"dds period: $pointsInCommonPeriod")
+  val period = pointsInCommonPeriod
+
   val pointsInSignalPeriod: Double = baseBandFreq.toDouble / signalFreq.toDouble
 
   def wave = signalType match {
@@ -45,7 +46,9 @@ case class DdsWave(signalType: DdsSignalType,
  *
  * @param dataType output data precision
  */
-case class Dds(ddsWave: DdsWave, dataType: NumericType) extends ChainsawGenerator {
+case class Dds(ddsWave: DdsWave, dataType: NumericType, parallel: Int) extends ChainsawGenerator {
+
+  val actualPeriod = lcm(ddsWave.period, parallel).toInt
 
   override def name = "dds"
 
@@ -56,16 +59,16 @@ case class Dds(ddsWave: DdsWave, dataType: NumericType) extends ChainsawGenerato
   override val metric = ChainsawMetric(frameWise = forallBound(doubleBound(1e-3)))
 
   override def inputTypes = Seq(UIntInfo(1))
-  override def outputTypes = Seq(dataType)
-
-  override def inputFormat = inputNoControl
- override def outputFormat = outputNoControl
+  override def outputTypes = Seq.fill(parallel)(dataType)
+  override def inputFormat = MatrixFormat(1, actualPeriod)
+  override def outputFormat = MatrixFormat(parallel, actualPeriod)
   override def latency = 2
 
   override def implH = new ChainsawModule(this) {
-    val data = ddsWave.wave.map(dataType.fromConstant)
+    val data = ddsWave.generate(actualPeriod).grouped(parallel).toSeq
+      .map(seq => Vec(seq.map(dataType.fromConstant)))
     val signalRom = Mem(data)
     val counter = Counter(ddsWave.pointsInCommonPeriod, inc = validIn)
-    sfixDataOut.head := signalRom.readSync(counter.value).d()
+    sfixDataOut := signalRom.readSync(counter.value).d()
   }
 }
