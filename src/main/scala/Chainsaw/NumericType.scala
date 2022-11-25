@@ -39,6 +39,11 @@ case class NumericType(integral: Int, fractional: Int, signed: Boolean, complex:
     else if (signed) SIntType
     else UIntType
 
+  def isUInt = numericEnum == UIntType
+  def isSInt= numericEnum == SIntType
+  def isSFix = numericEnum == SFixType
+  def isComplexFix = numericEnum == ComplexFixType
+
   def bitWidth = ((if (signed) 1 else 0) + integral + fractional) * (if (complex) 2 else 1)
 
   /** --------
@@ -60,7 +65,7 @@ case class NumericType(integral: Int, fractional: Int, signed: Boolean, complex:
   }
 
   def asComplexFix: HardType[ComplexFix] = {
-    require(numericEnum == ComplexFixType)
+    require(numericEnum == ComplexFixType, s"your type: $numericEnum")
     HardType(ComplexFix(integral exp, -fractional exp))
   }
 
@@ -157,10 +162,51 @@ case class NumericType(integral: Int, fractional: Int, signed: Boolean, complex:
     }
   }
 
+  // TODO: sfixinfo should be able to represent numbers with maxExp less than 0
+
+  def maxValue = numericEnum match {
+    case UIntType => Pow2(integral) - 1
+    case SIntType => Pow2(integral) - 1
+    case SFixType => Pow2(integral).toDouble - (1.0 / Pow2(fractional).toDouble)
+    case ComplexFixType => ???
+  }
+
+  def minValue = numericEnum match {
+    case UIntType => BigInt(0)
+    case SIntType => -Pow2(integral)
+    case SFixType => -Pow2(integral).toDouble + 1.0 - (1.0 / Pow2(fractional).toDouble)
+    case ComplexFixType => ???
+  }
+
+  def resolution = numericEnum match {
+    case UIntType => 1.0
+    case SIntType => 1.0
+    case SFixType => 1.0 / Pow2(fractional).toDouble
+    case ComplexFixType => 1.0 / Pow2(fractional).toDouble
+  }
+
+  /** --------
+   * random
+   * -------- */
+  def getRandom = numericEnum match {
+    case UIntType => BigInt(integral, Random)
+    case SIntType => BigInt(integral + 1, Random) - Pow2(integral)
+    case SFixType =>
+      val upper = maxValue.asInstanceOf[Double]
+      Random.nextDouble() * 2 * upper - upper
+    case ComplexFixType =>
+      val upper = toSFixInfo.maxValue.asInstanceOf[Double]
+      Complex(Random.nextDouble() * 2 * upper - upper, Random.nextDouble() * 2 * upper - upper)
+  }
+
   override def toString = {
     s"typeInfo: ${numericEnum.getClass.getSimpleName} with integral=$integral, fractional=$fractional, width=$bitWidth"
   }
 }
+
+/** --------
+ * entrance
+ * -------- */
 
 object UIntInfo {
   def apply(integral: Int) = NumericType(integral, 0, signed = false, complex = false)
