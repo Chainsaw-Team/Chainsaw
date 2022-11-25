@@ -114,7 +114,7 @@ trait ChainsawGenerator {
    */
   // when a module need no control, you can use it as a function
   def asFunc: Seq[Bits] => Seq[Bits] = (dataIn: Seq[Bits]) => {
-    require(needNoControl)
+    if(!needNoControl) logger.warn(s"you're using $name as a function while it may need control")
     val core = implH
     core.setFreeRun()
     core.dataIn := Vec(dataIn)
