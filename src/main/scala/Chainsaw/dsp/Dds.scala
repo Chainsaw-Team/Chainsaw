@@ -15,11 +15,11 @@ object PULSE extends DdsSignalType
 
 
 case class DdsWave(signalType: DdsSignalType,
-                   baseBandFreq: HertzNumber,
+                   samplingFreq: HertzNumber,
                    signalFreq: HertzNumber,
                    phaseOffset: Double) {
 
-  val baseValue = baseBandFreq.toBigDecimal.toBigInt()
+  val baseValue = samplingFreq.toBigDecimal.toBigInt()
   val signalValue = signalFreq.toBigDecimal.toBigInt()
 
   val commonFreq = lcm(baseValue, signalValue)
@@ -27,13 +27,12 @@ case class DdsWave(signalType: DdsSignalType,
   val pointsInCommonPeriod: Int = (commonFreq / signalValue).toInt
   val period = pointsInCommonPeriod
 
-  val pointsInSignalPeriod: Double = baseBandFreq.toDouble / signalFreq.toDouble
+  val pointsInSignalPeriod: Double = samplingFreq.toDouble / signalFreq.toDouble
 
   def wave = signalType match {
     case SINE =>
       val step = 2 * Pi / pointsInSignalPeriod
       (0 until pointsInCommonPeriod).map(i => sin(i * step + phaseOffset))
-    case PULSE => ???
   }
 
   def generate(cycle: Int) = {

@@ -7,7 +7,11 @@ import Chainsaw.xilinx.VivadoUtilRequirement
 import breeze.math.Complex
 import spinal.core._
 
+import scala.reflect.runtime.universe
+
 case class ComplexMult(dataType: NumericType, coeffType: NumericType, productType: NumericType) extends ChainsawGenerator {
+
+  override def name = getAutoName(this)
 
   override def impl(dataIn: Seq[Any]) = Seq(dataIn.asInstanceOf[Seq[Complex]].product)
 

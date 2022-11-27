@@ -7,13 +7,15 @@ import org.apache.commons.io.FileUtils
 
 class ChainsawFlatSpec extends AnyFlatSpec {
 
-  def testGenerator(gen: ChainsawGenerator, synth: Boolean = false, impl: Boolean = false): Unit = {
+  def testGenerator(gen: => ChainsawGenerator, synth: Boolean = false, impl: Boolean = false): Unit = {
 
     behavior of gen.name
 
     it should "have a correct naive implementation" in {
-      gen.setAsNaive()
-      gen.doSelfTest()
+      if (gen.implNaiveH.isDefined) {
+        gen.setAsNaive()
+        gen.doSelfTest()
+      }
     }
 
     it should "have a correct implementation" in {

@@ -1,4 +1,7 @@
 package Chainsaw.intel
+
+import Chainsaw.phases
+import org.apache.commons.io.FileUtils
 import spinal.core._
 
 import java.io._
@@ -6,15 +9,16 @@ import java.nio.file.Paths
 import scala.io.Source
 import scala.language.postfixOps
 import scala.sys.process._
+import java.io.File
 
 object Report extends Enumeration {
   type ReportType = Value
   val RESOURCE, TIMING = Value
 }
 
-class QuartusFlow[T <: Component](dut: => T, workspace: String = "quartusWorkspace") {
+class QuartusFlow[T <: Component](dut: => T = null, workspace: String = "quartusWorkspace", netlistFile: Option[File] = None) {
 
-  val revisionName  = "tempRef"
+  val revisionName = "tempRef"
   val mapReportFile = revisionName + ".map.rpt"
   val staReportFile = revisionName + ".sta.rpt"
 
@@ -25,8 +29,15 @@ class QuartusFlow[T <: Component](dut: => T, workspace: String = "quartusWorkspa
     // new workspace
     s"mkdir $workspace".run()
     println("")
-    //generate RTL
-    SpinalConfig(mode = Verilog, targetDirectory = s"$workspace").generateVerilog(dut.setDefinitionName("temp"))
+    //generate RTL`
+    netlistFile match {
+      case Some(file) => FileUtils.copyDirectory(file, new File(workspace))
+      case None =>
+        val config = SpinalConfig(targetDirectory = workspace)
+        config.addTransformationPhase(new phases.FfIo)
+        config.generateVerilog(dut.setDefinitionName("temp"))
+    }
+
     // clear the workspace--shell
     Process("rm *txt *Ref* *qpf *qsf", new File(workspace))
     Process("rm -rf db inc*", new File(workspace)) !
@@ -36,23 +47,23 @@ class QuartusFlow[T <: Component](dut: => T, workspace: String = "quartusWorkspa
     Process("quartus_sh -t set.tcl", new File(workspace)) !
     // get report
     val resourceReport = getReport(Report.RESOURCE)
-    val timingReport   = getReport(Report.TIMING)
+    val timingReport = getReport(Report.TIMING)
     // display report
     println(resourceReport.mkString("\n"))
     println(timingReport.mkString("\n"))
   }
 
   def tclGen(): Unit = {
-    val laodFlow        = "load_package flow\n"
-    val newProject      = "project_new -overwrite -r " + revisionName + " temp\n"
-    val setTop          = "set_global_assignment -name TOP_LEVEL_ENTITY temp\n"
-    val setFamily       = "set_global_assignment -name FAMILY \"" + FAMILY + "\"\n"
+    val laodFlow = "load_package flow\n"
+    val newProject = "project_new -overwrite -r " + revisionName + " temp\n"
+    val setTop = "set_global_assignment -name TOP_LEVEL_ENTITY temp\n"
+    val setFamily = "set_global_assignment -name FAMILY \"" + FAMILY + "\"\n"
     val loadVerilogFile = "set_global_assignment -name VERILOG_FILE temp.v\n"
-    val compileProject  = "execute_flow -compile\n"
-    val tclSeq          = Seq(laodFlow, newProject, setTop, setFamily, loadVerilogFile, compileProject)
+    val compileProject = "execute_flow -compile\n"
+    val tclSeq = Seq(laodFlow, newProject, setTop, setFamily, loadVerilogFile, compileProject)
 
     val tclFile = new File(workspace + "/" + "set.tcl")
-    val writer  = new PrintWriter(tclFile)
+    val writer = new PrintWriter(tclFile)
     tclSeq.foreach(writer.write)
     writer.close()
   }
@@ -62,10 +73,10 @@ class QuartusFlow[T <: Component](dut: => T, workspace: String = "quartusWorkspa
       var fileName = ""
       reportType match {
         case Report.RESOURCE => fileName = mapReportFile
-        case Report.TIMING   => fileName = staReportFile
+        case Report.TIMING => fileName = staReportFile
       }
       val rptFile = Paths.get(workspace, fileName).toFile
-      val report  = Source.fromFile(rptFile).getLines().toArray
+      val report = Source.fromFile(rptFile).getLines().toArray
       reportType match {
         case Report.RESOURCE =>
           var index = -1
@@ -88,6 +99,10 @@ class QuartusFlow[T <: Component](dut: => T, workspace: String = "quartusWorkspa
 }
 
 object QuartusFlow extends App {
+
   import Chainsaw._
-  new QuartusFlow(Chainsaw.dsp.ComplexMult(SFixInfo(0, 17)).implH).impl()
+
+  //  new QuartusFlow(Chainsaw.dsp.ComplexMult(SFixInfo(0, 17)).implH).impl()
+  val netList = new File("/home/ltr/Chainsaw/src/main/resources/netlists")
+  new QuartusFlow(netlistFile = Some(netList)).impl()
 }

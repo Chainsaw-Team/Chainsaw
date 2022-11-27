@@ -1,5 +1,6 @@
 package Chainsaw
 
+import breeze.linalg.max
 import breeze.math._
 import breeze.numerics._
 import spinal.core._
@@ -40,8 +41,11 @@ case class NumericType(integral: Int, fractional: Int, signed: Boolean, complex:
     else UIntType
 
   def isUInt = numericEnum == UIntType
-  def isSInt= numericEnum == SIntType
+
+  def isSInt = numericEnum == SIntType
+
   def isSFix = numericEnum == SFixType
+
   def isComplexFix = numericEnum == ComplexFixType
 
   def bitWidth = ((if (signed) 1 else 0) + integral + fractional) * (if (complex) 2 else 1)
@@ -197,6 +201,40 @@ case class NumericType(integral: Int, fractional: Int, signed: Boolean, complex:
     case ComplexFixType =>
       val upper = toSFixInfo.maxValue.asInstanceOf[Double]
       Complex(Random.nextDouble() * 2 * upper - upper, Random.nextDouble() * 2 * upper - upper)
+  }
+
+  /** --------
+   * type inference
+   * -------- */
+  def *(that: NumericType): NumericType = {
+    require(this.numericEnum == that.numericEnum, "type arithmetic is allowed only between same types")
+    numericEnum match {
+      case UIntType => UIntInfo(this.integral + that.integral)
+      case SIntType => SIntInfo(this.integral + that.integral + 1)
+      case SFixType => SFixInfo(this.integral + that.integral + 1, this.fractional + that.fractional)
+      case ComplexFixType => ComplexFixInfo(this.integral + that.integral + 1, this.fractional + that.fractional)
+    }
+  }
+
+  // TODO: verification
+  def +(that: NumericType) = {
+    require(this.numericEnum == that.numericEnum, "type arithmetic is allowed only between same types")
+    numericEnum match {
+      case UIntType => UIntInfo(max(this.integral, that.integral))
+      case SIntType => SIntInfo(max(this.integral, that.integral))
+      case SFixType => SFixInfo(max(this.integral, that.integral), max(this.fractional, that.fractional))
+      case ComplexFixType => ComplexFixInfo(max(this.integral, that.integral), max(this.fractional, that.fractional))
+    }
+  }
+
+  def +^(that: NumericType) = {
+    require(this.numericEnum == that.numericEnum, "type arithmetic is allowed only between same types")
+    numericEnum match {
+      case UIntType => UIntInfo(max(this.integral, that.integral) + 1)
+      case SIntType => SIntInfo(max(this.integral, that.integral) + 1)
+      case SFixType => SFixInfo(max(this.integral, that.integral) + 1, max(this.fractional, that.fractional))
+      case ComplexFixType => ComplexFixInfo(max(this.integral, that.integral) + 1, max(this.fractional, that.fractional))
+    }
   }
 
   override def toString = {

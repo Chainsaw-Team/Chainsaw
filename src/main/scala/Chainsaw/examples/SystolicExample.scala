@@ -47,7 +47,7 @@ case class SystolicSpinal(bs: Seq[BigInt]) extends Component {
   val xline = Seq.iterate(x, bs.length)(_.d(2))
   val scaled = xline.zip(bs).map { case (port, b) => (port * S(b, 16 bits).d()).d() }
   // the first element is a dummy, it is a must for extreme fmax, or PREG won't be used for the first DSP
-  val y = (S(0, 16 bits) +: scaled).reduce((a, b) => (a + b).d())
+  val y = (S(0, 16 bits) +: scaled).reduce((a, b) => (a +^ b).d())
   out(y)
 }
 
@@ -67,8 +67,8 @@ case class SystolicSpinal(bs: Seq[BigInt]) extends Component {
 object SystolicExample extends App {
   val bs = Seq.fill(5)(BigInt(16, Random) - Pow2(15))
   //  VivadoSynth(SystolicExample(), "synthXilinxSystolic")
-  //  VivadoSynth(SystolicSpinal(bs), "synthOurSystolic")
-  new QuartusFlow(SystolicSpinal(bs)).impl() // this architecture is also suitable for Intel Device(Cyclone V)
+  VivadoSynth(SystolicSpinal(bs), "synthOurSystolic")
+  //  new QuartusFlow(SystolicSpinal(bs)).impl() // this architecture is also suitable for Intel Device(Cyclone V)
 }
 
 

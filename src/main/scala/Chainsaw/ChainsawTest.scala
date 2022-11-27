@@ -189,18 +189,22 @@ case class ChainsawTest(
       // compare yours with the golden frame by frame until the first mismatch
       val remained = yours.zip(goldenInUse).zipWithIndex.dropWhile { case ((y, g), _) => metric.frameWise(y, g) }
       if (remained.nonEmpty && !silentTest) {
-        val ((y, g), i) = remained.head
-        showErrorMap(gen, raws(i), y, g, i, metric)
+        implMode match {
+          case Comb =>
+            val ((y, g), i) = remained.head
+            showFrameBasedErrorMap(gen, raws(i), y, g, i, metric)
+          case StateMachine => ???
+          case Infinite => logger.info(s"test for generator ${gen.name} failed\n${infiniteDataString(raws.flatten, yours.flatten, goldenInUse.flatten)}")
+        }
       }
       remained.isEmpty
     }
 
     if (!silentTest) {
-
       if (success) implMode match {
-        case Comb => logger.info(s"test for generator ${gen.name} passed\n${showAllData(gen, raws.last, yours.last, goldenInUse.last, raws.length)}")
+        case Comb => logger.info(s"test for generator ${gen.name} passed\n${frameBasedDataString(gen, raws.last, yours.last, goldenInUse.last, raws.length)}")
         case StateMachine =>
-        case Infinite => logger.info(s"test for generator ${gen.name} passed\n${showInfiniteData(raws.flatten, yours.flatten, goldenInUse.flatten)}")
+        case Infinite => logger.info(s"test for generator ${gen.name} passed\n${infiniteDataString(raws.flatten, yours.flatten, goldenInUse.flatten)}")
       }
       else logger.error(s"test for generator ${gen.name} failed")
 
@@ -248,13 +252,13 @@ object ChainsawTest {
       (if (matrix.length >= 2 * cycles) "\n" + matrix.takeRight(cycles).map(showRow).mkString("\n") else "")
   }
 
-  def showAllData[T](gen: ChainsawGenerator, input: Seq[T], yours: Seq[T], golden: Seq[T], index: Int): String =
+  def frameBasedDataString[T](gen: ChainsawGenerator, input: Seq[T], yours: Seq[T], golden: Seq[T], index: Int): String =
     s"\n$index-th frame:" +
       s"\ninput :\n${showData(input, gen.sizeIn)}" +
       s"\nyours :\n${showData(yours, gen.sizeOut)}" +
       s"\ngolden:\n${showData(golden, gen.sizeOut)}"
 
-  def showErrorMap[T](gen: ChainsawGenerator, inputs: Seq[T], y: Seq[T], g: Seq[T], i: Int, metric: ChainsawMetric): Unit = {
+  def showFrameBasedErrorMap[T](gen: ChainsawGenerator, inputs: Seq[T], y: Seq[T], g: Seq[T], i: Int, metric: ChainsawMetric): Unit = {
     // show the shape of errors
     val errors = y.zip(g).map { case (eleY, eleG) => metric.elementWise(eleY, eleG) }
     val errorMap = gen.outputFormat.fromRawData(errors, true)._1
@@ -264,13 +268,24 @@ object ChainsawTest {
     logger.info(
       s"\n----error frame report----" +
         s"\nelementWise errors:\n$errorMap" +
-        s"\n${showAllData(gen, inputs, y, g, i)}"
+        s"\n${frameBasedDataString(gen, inputs, y, g, i)}"
     )
   }
 
-  def showInfiniteData[T](input: Seq[T], yours: Seq[T], golden: Seq[T]) = {
+//  def showInfiniteErrorMap[T](gen: ChainsawGenerator, y: Seq[T], g: Seq[T]) = {
+//    val errors = y.zip(g).map { case (eleY, eleG) => gen.metric.elementWise(eleY, eleG) }
+//    val errorMap = errors.map(if (_) " " else "■").mkString("")
+//    val errorIdx = errors.indexWhere(_ == false)
+//    logger.info(
+//      s"\n----error report----" +
+//        s"\n$errorMap" +
+//        s"\nfirst error at position $errorIdx, yours = ${y(errorIdx)}, golden = ${g(errorIdx)}"
+//    )
+//  }
+
+  def infiniteDataString[T](input: Seq[T], yours: Seq[T], golden: Seq[T]) = {
     s"\ninput :\n${input.mkString(" ")}" +
-      s"\nyours :\n${yours.mkString(" ")}" +
-      s"\ngolden:\n${golden.mkString(" ")}"
+      s"\nyours :\n${yours.mkString(", ")}" +
+      s"\ngolden:\n${golden.mkString(", ")}"
   }
 }
