@@ -64,6 +64,7 @@ case class Cordic(algebraicMode: AlgebraicMode, rotationMode: RotationMode,
   override def generateTestCases: Seq[Double] = {
     def getGroup: Seq[Double] = {
       def getOne: Double = Random.nextDouble() * 2 - 1 // [-1,1]
+
       algebraicMode match {
         case CIRCULAR =>
           val phase0 = getOne * Pi // [-Pi, Pi]
@@ -74,17 +75,23 @@ case class Cordic(algebraicMode: AlgebraicMode, rotationMode: RotationMode,
         case LINEAR => ???
       }
     }
+
     Seq.fill(1000)(getGroup).flatten
   }
+
+  override def fmaxEstimation = 600 MHz
 
   val amplitudeType = SFixInfo(1, fraction)
   val phaseType = SFixInfo(2, fraction)
 
   override def inputTypes = Seq(amplitudeType, amplitudeType, phaseType)
+
   override def outputTypes = inputTypes
 
   override def inputFormat = inputNoControl
- override def outputFormat = inputNoControl
+
+  override def outputFormat = outputNoControl
+
   override def latency = iteration + 1
 
   def getHyperbolicSequence(iteration: Int): Seq[Int] = {

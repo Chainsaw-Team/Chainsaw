@@ -36,14 +36,6 @@ object Output extends VarType
 
 object Var extends VarType
 
-sealed trait SopStructure
-
-object Direct extends SopStructure
-
-object Transpose extends SopStructure
-
-object Systolic extends SopStructure
-
 sealed trait Strategy
 
 sealed trait TimeDiffStrategy extends Strategy
@@ -73,3 +65,15 @@ object S2M extends CpaMode
 object S2S extends CpaMode
 
 trait ChainsawSolution
+
+sealed trait FilterType extends ChainsawEnum
+
+object Direct1 extends FilterType
+
+object Direct2 extends FilterType
+
+object Transpose1 extends FilterType
+
+object Transpose2 extends FilterType
+
+object Systolic extends FilterType

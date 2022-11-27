@@ -23,4 +23,7 @@ object testConfigurations {
   val cordicSynth = false
   val cordicImpl = false
 
+  val filterSynth = true
+  val filterImpl = false
+
 }

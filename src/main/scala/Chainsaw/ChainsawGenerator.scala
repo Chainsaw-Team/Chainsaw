@@ -18,7 +18,7 @@ import Chainsaw.xilinx._
 
 trait ChainsawGenerator {
 
-  def name = getAutoName(this)
+  def name: String
 
   def getAutoName[T: TypeTag](obj: T) = {
     val fieldSymbols = typeOf[T].members.filter(_.isMethod).map(_.asTerm).filter(_.isCaseAccessor).toSeq.reverse
@@ -31,6 +31,7 @@ trait ChainsawGenerator {
         case boolean: Boolean => if (boolean) name.trim else s"not${name.trim}"
         case bigInt: BigInt => hashName(bigInt)
         case seq: Seq[_] => hashName(seq)
+        case numericType: NumericType => s"${numericType.integral}_${numericType.fractional}"
         case solution: ChainsawSolution => hashName(solution)
         case operatorType: OperatorType => className(operatorType)
         case chainsawEnum: ChainsawEnum => className(chainsawEnum)
@@ -65,22 +66,28 @@ trait ChainsawGenerator {
    *
    */
   def inputTypes: Seq[NumericType]
+
   def outputTypes: Seq[NumericType]
 
   /** -------- timing information --------
    *
    */
   def inputFormat: FrameFormat
+
   def outputFormat: FrameFormat
+
   val inputTimes: Option[Seq[Int]] = None // when this is empty, inputs are aligned
   val outputTimes: Option[Seq[Int]] = None
+
   def latency: Int // defined as the latency from the head of inputs to the head of outputs
+
   def offset: Int = 0
 
   /** -------- performance information --------
    *
    */
   def utilEstimation: VivadoUtil = VivadoUtilRequirement()
+
   def fmaxEstimation: HertzNumber = 600 MHz
 
   /** -------- implementations --------
@@ -114,7 +121,7 @@ trait ChainsawGenerator {
    */
   // when a module need no control, you can use it as a function
   def asFunc: Seq[Bits] => Seq[Bits] = (dataIn: Seq[Bits]) => {
-    if(!needNoControl) logger.warn(s"you're using $name as a function while it may need control")
+    if (!needNoControl) logger.warn(s"you're using $name as a function while it may need control")
     val core = implH
     core.setFreeRun()
     core.dataIn := Vec(dataIn)

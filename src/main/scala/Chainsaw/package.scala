@@ -52,6 +52,7 @@ package object Chainsaw {
   val synthWorkspace = new File("synthWorkspace")
   val cplexJarPath = new File("/opt/ibm/ILOG/CPLEX_Studio1210/cplex/lib/cplex.jar")
   val flopocoPath = new File("/home/ltr/flopoco/build/flopoco")
+  val matlabScriptDir = new File("src/main/resources/matlabScripts")
 
   /** --------
    * scala type utils
@@ -59,7 +60,7 @@ package object Chainsaw {
   implicit class IntUtil(int: Int) {
     def divideAndCeil(base: Int) = (int + base - 1) / base
 
-    def nextMultiple(base: Int) = divideAndCeil(base) * base
+    def nextMultipleOf(base: Int) = divideAndCeil(base) * base
   }
 
   implicit class StringUtil(s: String) {
@@ -99,7 +100,7 @@ package object Chainsaw {
     /** split the BigInt uniformly into n segments, low to high
      */
     def splitN(n: Int): Seq[BigInt] = {
-      val padded = BitValue(value, width.nextMultiple(n))
+      val padded = BitValue(value, width.nextMultipleOf(n))
       val segmentWidth = width.divideAndCeil(n)
       val segments = ArrayBuffer[BigInt]()
       var current = padded
@@ -207,7 +208,7 @@ package object Chainsaw {
     def apply(exp: Int) = BigInt(1) << exp
   }
 
-  def randBigInt(width:Int) = BigInt(width, Random)
+  def randBigInt(width: Int) = BigInt(width, Random)
 
   @tailrec
   def gcd(a: BigInt, b: BigInt): BigInt = {

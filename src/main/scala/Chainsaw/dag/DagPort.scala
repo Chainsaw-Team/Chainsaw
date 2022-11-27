@@ -18,6 +18,11 @@ case class DagPort(vertex: DagVertex, order: Int, direction: Direction) {
     case Out => vertex.gen.outputWidths(order)
   }
 
+  def numericType = direction match {
+    case In => vertex.gen.inputTypes(order)
+    case Out => vertex.gen.outputTypes(order)
+  }
+
   def target(implicit ref: Dag) = direction match {
     case In => vertex
     case Out => vertex.targets.apply(order)

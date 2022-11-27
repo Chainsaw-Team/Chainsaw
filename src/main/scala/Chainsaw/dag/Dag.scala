@@ -1,7 +1,6 @@
 package Chainsaw.dag
 
 import Chainsaw._
-import Chainsaw.dsp.FilterGraph
 import org.jgrapht._
 import org.jgrapht.alg.connectivity._
 import org.jgrapht.graph._
@@ -189,7 +188,11 @@ abstract class Dag()
   /** --------
    * methods for implementation
    * -------- */
-  override def implH: ChainsawModule = DagImplH(this)
+  override def implH: ChainsawModule = {
+    updateLatency()
+    exportPng(name)
+    DagImplH(this)
+  }
 
   def setVerticesAsNaive(): Unit = vertexSet().asScala.foreach(_.gen.setAsNaive())
 
@@ -205,28 +208,24 @@ abstract class Dag()
 
   override def outputFormat = outputNoControl
 
-
   var retimingInfo = Map[V, Int]()
 
   override def latency = { // TODO: better strategy
-    if (implMode == Infinite) {
+    val ret = if (implMode == Infinite) {
       val path = new alg.shortestpath.BFSShortestPath(this).getPath(inputs.head, outputs.head)
-      path.getVertexList.asScala.prevAndNext { case (prev, next) => getEdge(prev, next).weight.toInt }.sum
+      path.getVertexList.asScala.prevAndNext { case (prev, next) => getEdge(prev, next).weight.toInt + next.gen.latency }.sum
     }
     else retimingInfo(outputs.head) - retimingInfo(inputs.head)
+
+    logger.warn(s"Dag latency = $ret")
+    ret
   }
 
-  def updateLatency(): Unit = {
-    autoPipeline()
-  }
+  def updateLatency(): Unit = autoPipeline()
 
-  def graphDone(): Unit = {
-    updateLatency()
-    doDrc()
-  }
+  def graphDone(): Unit = doDrc()
 
-  def assureAcyclic(): Unit = if (!this.isInstanceOf[FilterGraph])
-    assert(!new alg.cycle.CycleDetector(this).detectCycles(), "dag must be acyclic")
+  def assureAcyclic(): Unit = assert(!new alg.cycle.CycleDetector(this).detectCycles(), "dag must be acyclic")
 
   def assureConnected(): Unit = {
     val ins = new ConnectivityInspector(this)

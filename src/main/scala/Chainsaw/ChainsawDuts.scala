@@ -21,10 +21,13 @@ object ChainsawDuts {
       override val metric = ChainsawMetric.defaultMetric
 
       override def inputTypes = Seq.fill(4)(UIntInfo(4))
+
       override def outputTypes = Seq.fill(4)(UIntInfo(4))
 
       override def inputFormat = formatI
-     override def outputFormat = formatO
+
+      override def outputFormat = formatO
+
       override def latency = 5
 
       override def implH = new ChainsawModule(this) {

@@ -14,7 +14,6 @@ abstract class Combinational extends ChainsawGenerator {
 
   override def implH = null // this should never be invoked, instead, method comb will be used for implementation
 
-
   def comb(dataIn: Seq[Bits]): Seq[Bits]
 }
 
@@ -33,10 +32,12 @@ case class Split(width: Int, lowWidth: Int) extends Combinational {
   }
 
   override def inputTypes = Seq(UIntInfo(width))
+
   override def outputTypes = Seq(UIntInfo(width - lowWidth), UIntInfo(lowWidth))
 
   override def inputFormat = inputNoControl
- override def outputFormat = outputNoControl
+
+  override def outputFormat = outputNoControl
 }
 
 case class SplitN(width: Int, n: Int) extends Combinational {
@@ -49,10 +50,12 @@ case class SplitN(width: Int, n: Int) extends Combinational {
     dataIn.head.asInstanceOf[BigInt].toBitValue(width).splitN(n)
 
   override def inputTypes = Seq(UIntInfo(width))
+
   override def outputTypes = Seq.fill(n)(UIntInfo(width.divideAndCeil(n)))
 
   override def inputFormat = inputNoControl
- override def outputFormat = outputNoControl
+
+  override def outputFormat = outputNoControl
 }
 
 case class ShiftLeft(shift: Int, width: Int) extends Combinational {
@@ -64,10 +67,12 @@ case class ShiftLeft(shift: Int, width: Int) extends Combinational {
   override def impl(dataIn: Seq[Any]) = dataIn.asInstanceOf[Seq[BigInt]].map(_ << shift)
 
   override def inputTypes = Seq(UIntInfo(width))
+
   override def outputTypes = Seq(UIntInfo(width + shift))
 
   override def inputFormat = inputNoControl
- override def outputFormat = outputNoControl
+
+  override def outputFormat = outputNoControl
 }
 
 case class Resize(widthIn: Int, widthOut: Int) extends Combinational {
@@ -79,10 +84,12 @@ case class Resize(widthIn: Int, widthOut: Int) extends Combinational {
   override def impl(dataIn: Seq[Any]): Seq[BigInt] = dataIn.asInstanceOf[Seq[BigInt]]
 
   override def inputTypes = Seq(UIntInfo(widthIn))
+
   override def outputTypes = Seq(UIntInfo(widthOut))
 
   override def inputFormat = inputNoControl
- override def outputFormat = outputNoControl
+
+  override def outputFormat = outputNoControl
 }
 
 // TODO: pipeline for this
@@ -93,18 +100,20 @@ case class GetTiling(widthA: Int, widthB: Int) extends ChainsawGenerator {
   override def impl(dataIn: Seq[Any]): Seq[BigInt] = dataIn.asInstanceOf[Seq[BigInt]]
 
   override def inputTypes = Seq(UIntInfo(widthA + 1), UIntInfo(widthB + 1))
+
   override def outputTypes = Seq(UIntInfo(widthA), UIntInfo(widthB),
     UIntInfo(widthA), UIntInfo(widthB), UIntInfo(1))
 
   override def inputFormat = inputNoControl
- override def outputFormat = outputNoControl
+
+  override def outputFormat = outputNoControl
 
   override def latency = 1
 
   /** --------
    * implementations
    * -------- */
-  override def implH = new ChainsawModule(this){
+  override def implH = new ChainsawModule(this) {
     val Seq(a, b) = uintDataIn
     val (aMsb, aMain) = a.splitAt(widthA)
     val (bMsb, bMain) = b.splitAt(widthB)
