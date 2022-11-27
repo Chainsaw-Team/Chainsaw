@@ -20,7 +20,8 @@ class VivadoFlow[T <: Component](
                                   xilinxDevice: XilinxDevice,
                                   topModuleName: String,
                                   workspacePath: File,
-                                  xdcFile: Option[File] = None
+                                  xdcFile: Option[File] = None,
+                                  netlistFile: Option[File] = None
                                 ) {
 
   val isWindows = System.getProperty("os.name").toLowerCase().contains("win")
@@ -39,41 +40,47 @@ class VivadoFlow[T <: Component](
     val logFile = new File(workspacePath, "doit.log")
 
     // generate sources from dut
-    Try {
-      SpinalConfig(targetDirectory = workspacePath.getAbsolutePath + "/", oneFilePerComponent = true)
-        .generateVerilog(design.setDefinitionName(topModuleName))
-    } match {
-      case Failure(exception) =>
-        atSimTime = true // recover
-        throw exception
-      case Success(spinalReport) =>
-        // generate xdc & tcl file
-        val simpleLine = {
-          val targetPeriod = xilinxDevice.fMax.toTime
-          s"""create_clock -period ${(targetPeriod * 1e9) toBigDecimal} [get_ports clk]"""
-        }
-        FileUtils.write(simpleXdcFile, simpleLine)
-
-        // priority: specific xdc > device xdc > simple xdc
-        val xdcCandidates = Seq(xdcFile, xilinxDevice.xdcFile, Some(simpleXdcFile))
-        val xdcFileInUse = xdcCandidates.flatten.head
-
-        FileUtils.write(tclFile, getTcl(spinalReport.rtlSourcesPaths, xdcFileInUse))
-
-        // run vivado
-        DoCmd.doCmd(
-          s"${vivadoPath.getAbsolutePath} -stack 2000 -nojournal -log ${logFile.getAbsolutePath} -mode batch -source ${tclFile.getAbsolutePath}",
-          workspacePath.getAbsolutePath
-        )
-
-        /** --------
-         * report
-         * -------- */
-        val report = new VivadoReport(logFile, xilinxDevice.family) // parse log file to get report
-        logger.info(s"\n----vivado flow report----\n" + report.toString)
-        atSimTime = true
-        report
+    val rtlResources = netlistFile match {
+      case Some(src) =>
+        val des = new File(workspacePath, src.getName)
+        FileUtils.copyFile(src, des)
+        mutable.LinkedHashSet(des.getAbsolutePath)
+      case None =>
+        val config = SpinalConfig(
+          defaultConfigForClockDomains = xilinxCDConfig,
+          targetDirectory = workspacePath.getAbsolutePath + "/",
+          oneFilePerComponent = true)
+        config.addTransformationPhase(new phases.FfIo)
+        val spinalReport = config.generateVerilog(design.setDefinitionName(topModuleName))
+        spinalReport.rtlSourcesPaths
     }
+
+    // generate xdc & tcl file
+    val simpleLine = {
+      val targetPeriod = xilinxDevice.fMax.toTime
+      s"""create_clock -period ${(targetPeriod * 1e9) toBigDecimal} [get_ports clk]"""
+    }
+    FileUtils.write(simpleXdcFile, simpleLine)
+
+    // priority: specific xdc > device xdc > simple xdc
+    val xdcCandidates = Seq(xdcFile, xilinxDevice.xdcFile, Some(simpleXdcFile))
+    val xdcFileInUse = xdcCandidates.flatten.head
+
+    FileUtils.write(tclFile, getTcl(rtlResources, xdcFileInUse))
+
+    // run vivado
+    DoCmd.doCmd(
+      s"${vivadoPath.getAbsolutePath} -stack 2000 -nojournal -log ${logFile.getAbsolutePath} -mode batch -source ${tclFile.getAbsolutePath}",
+      workspacePath.getAbsolutePath
+    )
+
+    /** --------
+     * report
+     * -------- */
+    val report = new VivadoReport(logFile, xilinxDevice.family) // parse log file to get report
+    logger.info(s"\n----vivado flow report----\n" + report.toString)
+    atSimTime = true
+    report
   }
 
   /** generate tcl script content for Vivado Flow
@@ -144,16 +151,20 @@ object VivadoFlow {
 }
 
 object DefaultVivadoFlow {
-  def general[T <: Module](design: => T, name: String, flowType: EdaFlowType) = {
-    val flow = new VivadoFlow(design, flowType, vu9p, name, new File(synthWorkspace, name))
+  def general[T <: Module](design: => T, name: String, flowType: EdaFlowType, netlistFile: Option[File]) = {
+    val flow = new VivadoFlow(design, flowType, vu9p, name, new File(synthWorkspace, name), netlistFile = netlistFile)
     flow.doFlow()
   }
 }
 
 object VivadoSynth {
-  def apply[T <: Module](design: => T, name: String) = DefaultVivadoFlow.general(design, name, SYNTH)
+  def apply[T <: Module](design: => T, name: String) = DefaultVivadoFlow.general(design, name, SYNTH, None)
+
+  def apply[T <: Module](netlistFile: File, name: String) = DefaultVivadoFlow.general(null, name, SYNTH, Some(netlistFile))
 }
 
 object VivadoImpl {
-  def apply[T <: Module](design: => T, name: String) = DefaultVivadoFlow.general(design, name, IMPL)
+  def apply[T <: Module](design: => T, name: String) = DefaultVivadoFlow.general(design, name, IMPL, None)
+
+  def apply[T <: Module](netlistFile: File, name: String) = DefaultVivadoFlow.general(null, name, IMPL, Some(netlistFile))
 }
