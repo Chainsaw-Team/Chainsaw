@@ -1,7 +1,6 @@
 package Chainsaw.dsp
 
 import Chainsaw._
-import Chainsaw.intel.QuartusFlow
 import Chainsaw.testConfigurations.{filterImpl, filterSynth}
 
 import scala.util.Random
