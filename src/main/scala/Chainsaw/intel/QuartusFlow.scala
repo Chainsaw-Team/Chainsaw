@@ -16,7 +16,7 @@ object Report extends Enumeration {
   val RESOURCE, TIMING = Value
 }
 
-class QuartusFlow[T <: Component](dut: => T = null, workspace: String = "quartusWorkspace", netlistFile: Option[File] = None) {
+class QuartusFlow[T <: Component](dut: => T = null, workspace: String = "quartusWorkspace", netlistDir: Option[File] = None) {
 
   val revisionName = "tempRef"
   val mapReportFile = revisionName + ".map.rpt"
@@ -30,7 +30,7 @@ class QuartusFlow[T <: Component](dut: => T = null, workspace: String = "quartus
     s"mkdir $workspace".run()
     println("")
     //generate RTL`
-    netlistFile match {
+    netlistDir match {
       case Some(file) => FileUtils.copyDirectory(file, new File(workspace))
       case None =>
         val config = SpinalConfig(targetDirectory = workspace)
@@ -104,5 +104,5 @@ object QuartusFlow extends App {
 
   //  new QuartusFlow(Chainsaw.dsp.ComplexMult(SFixInfo(0, 17)).implH).impl()
   val netList = new File("/home/ltr/Chainsaw/src/main/resources/netlists")
-  new QuartusFlow(netlistFile = Some(netList)).impl()
+  new QuartusFlow(netlistDir = Some(netList)).impl()
 }

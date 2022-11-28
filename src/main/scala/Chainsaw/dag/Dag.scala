@@ -189,7 +189,6 @@ abstract class Dag()
    * methods for implementation
    * -------- */
   override def implH: ChainsawModule = {
-    updateLatency()
     exportPng(name)
     DagImplH(this)
   }
@@ -223,7 +222,10 @@ abstract class Dag()
 
   def updateLatency(): Unit = autoPipeline()
 
-  def graphDone(): Unit = doDrc()
+  def graphDone(): Unit = {
+    updateLatency()
+    doDrc()
+  }
 
   def assureAcyclic(): Unit = assert(!new alg.cycle.CycleDetector(this).detectCycles(), "dag must be acyclic")
 

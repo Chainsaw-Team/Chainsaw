@@ -66,6 +66,5 @@ case class PointwiseUnwrap(dataType: NumericType)
     sfixDataOut.head := (ret * pi).d().truncated
   }
 
-  override def implNaiveH = Some(implH)
 }
 
