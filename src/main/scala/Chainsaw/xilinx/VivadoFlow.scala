@@ -40,6 +40,7 @@ class VivadoFlow[T <: Component](
     val logFile = new File(workspacePath, "doit.log")
 
     // generate sources from dut
+    // TODO: use netlistDir instead of netlistFile
     val rtlResources = netlistFile match {
       case Some(src) =>
         val des = new File(workspacePath, src.getName)

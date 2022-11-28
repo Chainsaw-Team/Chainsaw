@@ -28,6 +28,7 @@ out
 !src/main/resources/
 src/main/resources/*
 !src/main/resources/unisims/
+!src/main/resources/matlabScripts/
 
 # Workspaces
 genWorkSpace/

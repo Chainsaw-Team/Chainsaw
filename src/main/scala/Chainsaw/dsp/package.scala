@@ -1,5 +1,6 @@
 package Chainsaw
 
+import java.io.File
 import scala.language.implicitConversions
 
 package object dsp {
@@ -26,6 +27,21 @@ package object dsp {
     val ret = matlabEngine.feval("getCorr", a, b).asInstanceOf[Double]
     logger.info(s"corr factor = $ret")
     ret
+  }
+
+  def getSimulinkData(path: File) = {
+    matlabEngine.eval(
+      s"""
+         |    data = load(${path.getAbsolutePath}).ans.Data;
+         |    data = squeeze(data);
+         |""".stripMargin)
+    matlabEngine.getVariable("data")
+  }
+
+  def writeData(path: File, data: Any): Unit = {
+    require(path.isFile && path.getName.endsWith(".mat"))
+    matlabEngine.putVariable("data", data)
+    matlabEngine.eval(s"save (${path.getAbsolutePath}, data)")
   }
 
   val corrMetric = (yours: Seq[Any], golden: Seq[Any]) => {
