@@ -26,8 +26,6 @@ case class ParallelFir(coeffs: Seq[Double], filterPrecision: FilterPrecision, pa
   /** --------
    * taps calculation
    * -------- */
-
-
   val phaseCount = parallel * upSample
   val coeffsPadded = coeffs.padTo(taps.nextMultipleOf(phaseCount), 0.0)
   val subFilterTaps = coeffsPadded.length / phaseCount

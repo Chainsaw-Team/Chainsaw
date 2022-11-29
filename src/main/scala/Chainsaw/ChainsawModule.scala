@@ -144,6 +144,18 @@ class ChainsawModule(val gen: ChainsawGenerator) extends Module {
     typed
   })
 
+  //  lazy val afixDataOut: Vec[AFix] = Vec(gen.outputTypes.zip(dataOut).map { case (info, bits) =>
+  //    val typed = info()
+  //    bits := typed.asBits
+  //    typed
+  //  })
+  //
+  //  lazy val afixDataIn: Vec[AFix] = Vec(gen.inputTypes.zip(dataIn).map { case (info, bits) =>
+  //    val typed = info()
+  //    typed.assignFromBits(bits)
+  //    typed
+  //  })
+
   /** --------
    * connection utils
    * -------- */

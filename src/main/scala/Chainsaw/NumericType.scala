@@ -30,7 +30,7 @@ case class NumericType(integral: Int, fractional: Int, signed: Boolean, complex:
   /** --------
    * requirements
    * -------- */
-  require(integral >= 0 && fractional >= 0)
+  require(integral > -fractional)
   if (complex) require(signed, "unsigned complex is not supported")
   else if (fractional > 0) require(signed, "unsigned fixed is not supported")
 
@@ -73,6 +73,7 @@ case class NumericType(integral: Int, fractional: Int, signed: Boolean, complex:
     HardType(ComplexFix(integral exp, -fractional exp))
   }
 
+
   def toSFixInfo = NumericType(integral, fractional, signed, complex = false)
 
   def toComplexFixInfo = NumericType(integral, fractional, signed, complex = true)
@@ -80,6 +81,7 @@ case class NumericType(integral: Int, fractional: Int, signed: Boolean, complex:
   /** --------
    * constant -> signal
    * -------- */
+
   def fromConstant(constant: Double) = {
     require(numericEnum == SFixType)
     val sfType = asSFix()
@@ -240,6 +242,21 @@ case class NumericType(integral: Int, fractional: Int, signed: Boolean, complex:
   override def toString = {
     s"typeInfo: ${numericEnum.getClass.getSimpleName} with integral=$integral, fractional=$fractional, width=$bitWidth"
   }
+
+  /** --------
+   * based on AFix
+   * -------- */
+//  def apply() = numericEnum match {
+//    case UIntType => AFix.U(bitWidth bits)
+//    case SIntType => AFix.S(bitWidth bits)
+//    case SFixType => AFix.S(integral exp, -fractional exp)
+//  }
+//
+//  def fromConstant(constant: Double) = {
+//    val ret = apply()
+//    ret := AF(constant, integral bits, fractional bits, signed)
+//    ret
+//  }
 }
 
 /** --------
