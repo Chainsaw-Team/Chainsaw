@@ -1,25 +1,28 @@
 
-import com.mathworks.matlab.types
-import com.mathworks.engine.MatlabEngine
 import cc.redberry.rings.scaladsl.IntZ
+import com.mathworks.engine.MatlabEngine
 import org.slf4j.LoggerFactory
 import spinal.core._
+import spinal.core.internals.PhaseContext
 import spinal.lib._
 
 import java.io.File
 import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
+import scala.language.implicitConversions
 import scala.math.BigInt
 import scala.reflect.ClassTag
-import breeze.math._
-
-import scala.language.implicitConversions
 import scala.reflect.runtime.universe
 import scala.reflect.runtime.universe.runtimeMirror
 import scala.util.Random
 
 package object Chainsaw {
+
+  // for numeric type calculation
+  //  val virtualGlob = new GlobalData(SpinalConfig())
+  //  virtualGlob.phaseContext = new PhaseContext(SpinalConfig())
+  //  GlobalData.set(virtualGlob)
 
   /** --------
    * global run-time environment
