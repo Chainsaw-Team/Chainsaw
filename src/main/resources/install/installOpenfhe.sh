@@ -1,3 +1,9 @@
+#!/usr/bin/env bash
+
+set -o errexit
+set -o nounset
+set -o xtrace
+
 # 安装依赖项
 sudo apt-get install build-essential #this already includes g++,这些已经被包含在Ubuntu 20.04发行版中
 sudo apt-get install cmake
@@ -28,17 +34,17 @@ make testall # 完整测试
 # [100%] Built target pke_tests
 # Scanning dependencies of target testall
 # core:
-# Testing Backends: 4 Native 
+# Testing Backends: 4 Native
 # ****** OpenFHE Version 1.0.2
 # ****** Date 2023-02-21T15:18:38
 # ****** End 160 cases 160 passed 0 failed
 # pke:
-# Testing Backends: 4 Native 
+# Testing Backends: 4 Native
 # ****** OpenFHE Version 1.0.2
 # ****** Date 2023-02-21T15:18:45
 # ****** End 1373 cases 1373 passed 0 failed
 # binfhe:
-# Testing Backends: 4 Native 
+# Testing Backends: 4 Native
 # ****** OpenFHE Version 1.0.2
 # ****** Date 2023-02-21T15:25:05
 # ****** End 33 cases 33 passed 0 failed
