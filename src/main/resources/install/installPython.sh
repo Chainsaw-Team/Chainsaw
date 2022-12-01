@@ -1,5 +1,11 @@
-sudo apt
-sudo apt install python3-pip
+#!/usr/bin/env bash
+
+set -o errexit
+set -o nounset
+set -o xtrace
+
+sudo apt-get update
+sudo apt-get install -y python3-pip
 pip install numpy
 pip install scipy
 pip install matplotlib
@@ -9,6 +15,7 @@ pip install matplotlib
 # pip install notebook
 # pip install jinja2  --upgrade
 
+PYTHON_BIN=`which python3`
 echo  | cat >> ~/.bashrc # empty line
-echo export PYTHON=/usr/bin/python3 | cat >> ~/.bashrc
-echo alias python=/usr/bin/python3 | cat >> ~/.bashrc
+echo export PYTHON=$PYTHON_BIN | cat >> ~/.bashrc
+echo alias python=$PYTHON_BIN | cat >> ~/.bashrc
