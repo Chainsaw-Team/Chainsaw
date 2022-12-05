@@ -1,64 +1,96 @@
 package Chainsaw
 
-import spinal.core._
 import spinal.core.sim._
 import spinal.sim.SimThread
 
 import scala.collection.mutable.ArrayBuffer
 import scala.util.Random
+import spinal.core._
+import spinal.core.sim._
+import spinal.lib._
+import spinal.lib.fsm._
 
-case class ChainsawDynamicFrameTest(
-                                     testName: String = "testTemp",
-                                     gen: ChainsawDynamicFrameGenerator,
-                                     stimulus: Option[Seq[TestCase]] = None,
-                                     golden: Option[Seq[Seq[BigDecimal]]] = None,
-                                     terminateAfter: Int = 10000,
-                                     errorSegmentsShown: Int = 10
-                                   ) extends ChainsawBaseTest {
+
+case class ChainsawAllTest(
+                            testName: String = "testTemp",
+                            gen: ChainsawBaseGenerator,
+                            stimulus: Option[Seq[TestCase]] = None,
+                            golden: Option[Seq[Seq[BigDecimal]]] = None,
+                            terminateAfter: Int = 10000,
+                            errorSegmentsShown: Int = 10
+                          ) {
 
   import gen._
 
+  def simConfig = {
+    val ret = SimConfig.workspaceName(testName).withFstWave
+    ret._backend = gen.simBackEnd
+    ret
+  }
+
   /** --------
-   * prepare
+   * get input segments
    * -------- */
-  // get input segments
-  val inputSegments: Seq[TestCase] = stimulus.getOrElse(testCases).sortBy(_.control.head)
-  require(inputSegments.forall { case TestCase(data, control) =>
-    (data.length == inputFrameFormat(control).rawDataCount || inPortWidth == 0) &&
-      control.length == controlPortWidth
-  })
+  val inputSegments: Seq[TestCase] = stimulus.getOrElse(testCases)
+    .sortBy(_.control.headOption.getOrElse(BigDecimal(0)))
+
+  if (inPortWidth != 0) {
+    val pass = gen match { // check data length
+      case frame: Frame => inputSegments.forall { case TestCase(data, control) =>
+        data.length == frame.inputFrameFormat(control).rawDataCount
+      }
+      case _: Operator => inputSegments.map(_.data).forall(_.length == inPortWidth)
+      case _ => true
+    }
+    require(pass, "input data length is not correct")
+  }
 
   val targetSegmentCount = inputSegments.length
   val targetVectorCount = inputSegments.map(_.data.length).sum / inPortWidth
-  logger.info("target vector count: " + targetVectorCount)
-  // invalid data insertion between segments
+  /** --------
+   * interrupts insertion
+   * -------- */
   val valids = inputSegments.map(testCase => (testCase, true))
 
-  def getSwitchInterrupt = TestCase(Seq.fill(resetCycle)(randomInputVector).flatten, randomControl)
-  def getRandomInterrupt = TestCase(Seq.fill(Random.nextInt(10))(randomInputVector).flatten, randomControl)
+  def getRandomControl: Seq[BigDecimal] = gen match {
+    case dynamic: Dynamic => dynamic.randomControlVector
+    case _ => Seq[BigDecimal]()
+  }
+
+  def getRandomInterrupt = TestCase(Seq.fill(Random.nextInt(10))(randomDataVector).flatten, getRandomControl)
+
+  def getResetInterrupt = TestCase(Seq.fill(resetCycle)(randomDataVector).flatten, getRandomControl)
 
   val randomRatio = 10
   val inputSegmentsWithInvalid = ArrayBuffer[(TestCase, Boolean)](valids.head)
   valids.tail.foreach { case (testCase, valid) =>
-    if (!testCase.control.equals(inputSegmentsWithInvalid.last._1.control)) {
-      logger.info("switch interrupt inserted")
-      inputSegmentsWithInvalid += ((getSwitchInterrupt, false))
+    if (!testCase.control.equals(inputSegmentsWithInvalid.last._1.control) || gen.isInstanceOf[SemiInfinite]) {
+      inputSegmentsWithInvalid += ((getResetInterrupt, false))
     }
     if (Random.nextInt(randomRatio) > randomRatio - 2) {
       inputSegmentsWithInvalid += ((getRandomInterrupt, false))
-      logger.info("random interrupt inserted")
     } // probability = 1/ratio
     inputSegmentsWithInvalid += ((testCase, valid))
   }
 
-
   val sortedValids = inputSegmentsWithInvalid.filter(_._2).map(_._1)
 
-  // get golden segments
+  /** --------
+   * get golden segments
+   * -------- */
   val goldenSegments: Seq[Seq[BigDecimal]] = golden.getOrElse(sortedValids.map(impl))
   val latencies = sortedValids.map(testCase => latency(testCase.control))
-  val validOutputFrameLengths = sortedValids.map(testCase => outputFrameFormat(testCase.control).rawDataCount)
-  require(goldenSegments.map(_.length).equals(validOutputFrameLengths))
+
+  val pass = gen match { // check golden length
+    case frame: Frame =>
+      val validOutputFrameLengths = sortedValids.map(testCase => frame.outputFrameFormat(testCase.control).rawDataCount)
+      goldenSegments.map(_.length).equals(validOutputFrameLengths)
+    case _: Operator =>
+      goldenSegments.forall(_.length == outPortWidth)
+    case _ => true
+  }
+  require(pass, "golden data length is not correct")
+
   require(goldenSegments.length == targetSegmentCount)
 
   // segments -> vectors
@@ -77,7 +109,7 @@ case class ChainsawDynamicFrameTest(
    * -------- */
 
   simConfig.compile(gen.getImplH).doSim { dut =>
-    import dut.{clockDomain, flowIn, flowOut, controlIn}
+    import dut.{clockDomain, flowIn, flowOut}
 
     // init
     def init(): Unit = {
@@ -92,7 +124,10 @@ case class ChainsawDynamicFrameTest(
         if (i < inputVectorsWithValid.length) {
           val (data, control, valid) = inputVectorsWithValid(i)
           flowIn.payload.zip(data).foreach { case (fix, decimal) => fix #= decimal }
-          controlIn.zip(control).foreach { case (fix, decimal) => fix #= decimal }
+          dut match {
+            case dynamicModule: DynamicModule => dynamicModule.controlIn.zip(control).foreach { case (fix, decimal) => fix #= decimal }
+            case _ => // no control
+          }
           flowIn.valid #= valid
           if (valid) inputTimes += simTime()
         } else {
@@ -136,16 +171,39 @@ case class ChainsawDynamicFrameTest(
    * check & show
    * -------- */
   // vectors -> segments
-  val outputCycleCounts = sortedValids.map(testCase => outputFrameFormat(testCase.control).period)
-  val slices = outputCycleCounts.scan(0)(_ + _).prevAndNext { case (start, end) => start until end }
-  val outputSegments = slices.map(slice => outputVectors.slice(slice.start, slice.end)).map(_.flatten)
-  val inputSegmentTimes = slices.map(slice => inputTimes.slice(slice.start, slice.end)).map(_.head)
-  val outputSegmentTimes = slices.map(slice => outputTimes.slice(slice.start, slice.end)).map(_.head)
+
+  var outputSegments = Seq[Seq[BigDecimal]]()
+  var inputSegmentTimes = Seq[Long]()
+  var outputSegmentTimes = Seq[Long]()
+
+  gen match {
+    case frame: Frame =>
+      val outputCycleCounts = sortedValids.map(testCase => frame.outputFrameFormat(testCase.control).period)
+      val slices = outputCycleCounts.scan(0)(_ + _).prevAndNext { case (start, end) => start until end }
+      outputSegments = slices.map(slice => outputVectors.slice(slice.start, slice.end)).map(_.flatten)
+      inputSegmentTimes = slices.map(slice => inputTimes.slice(slice.start, slice.end)).map(_.head)
+      outputSegmentTimes = slices.map(slice => outputTimes.slice(slice.start, slice.end)).map(_.head)
+    case infinite: SemiInfinite =>
+      val discontinuities = outputTimes.sliding(2)
+        .map { case Seq(prev, next) => if (next - prev == 2) 0 else next }
+        .filterNot(_ == 0)
+        .map(outputTimes.indexOf).toSeq
+      val splitPoints = 0 +: discontinuities :+ outputVectors.length
+      outputSegments = splitPoints.sliding(2)
+        .map { case Seq(start, end) => outputVectors.slice(start, end) }.toSeq
+        .map(_.flatten)
+      inputSegmentTimes = splitPoints.init.map(inputTimes)
+      outputSegmentTimes = splitPoints.init.map(outputTimes)
+    case _: Operator =>
+      outputSegments = outputVectors
+      inputSegmentTimes = inputTimes
+      outputSegmentTimes = outputTimes
+  }
 
   require(outputSegments.length == goldenSegments.length,
     s"output segment count ${outputSegments.length} is not equal to golden segment count ${goldenSegments.length}")
 
-  val actualLatencies = outputTimes.zip(inputTimes).map { case (outputTime, inputTime) => (outputTime - 2 - inputTime) / 2 }
+  val actualLatencies = outputSegmentTimes.zip(inputSegmentTimes).map { case (outputTime, inputTime) => (outputTime - 2 - inputTime) / 2 }
 
   val passRecord = inputSegments.indices.map { i =>
     val payloadPass = metric(outputSegments(i), goldenSegments(i))
