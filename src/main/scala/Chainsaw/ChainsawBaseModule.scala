@@ -21,26 +21,24 @@ abstract class ChainsawBaseModule(val gen: ChainsawBaseGenerator) extends Compon
   setName(gen.name, weak = true)
 }
 
+trait DynamicModule {
+  val controlIn: Vec[AFix]
+}
+
 class ChainsawOperatorModule(override val gen: ChainsawOperatorGenerator)
   extends ChainsawBaseModule(gen) {
 
   import gen._
 
-  validOut := validIn.validAfter(latency)
-
-  setDefinitionName(gen.name)
-  setName(gen.name, weak = true)
+  validOut := validIn.validAfter(latency())
 }
 
 class ChainsawDynamicOperatorModule(override val gen: ChainsawDynamicOperatorGenerator)
-  extends ChainsawBaseModule(gen) {
+  extends ChainsawBaseModule(gen) with DynamicModule {
 
   import gen._
 
-  val controlIn = in Vec controlTypes.map(_.apply())
-
-  setDefinitionName(gen.name)
-  setName(gen.name, weak = true)
+  override val controlIn = in Vec controlTypes.map(_.apply())
 }
 
 class ChainsawFrameModule(override val gen: ChainsawFrameGenerator)
@@ -48,35 +46,27 @@ class ChainsawFrameModule(override val gen: ChainsawFrameGenerator)
 
   import gen._
 
-  validOut := validIn.validAfter(latency)
+  if (!isInstanceOf[DynamicModule]) {
+    validOut := validIn.validAfter(latency())
+  }
   val lastOut = out Bool()
-
   if (atSimTime) {
-    val inputCounter = Counter(period, inc = validIn)
-    assert(!(!validIn && inputCounter.value =/= 0), "input frame incomplete")
+    if (!isInstanceOf[DynamicModule]) {
+      val inputCounter = Counter(period, inc = validIn)
+      assert(!(!validIn && inputCounter.value =/= 0), "input frame incomplete")
+    }
     val frameCounter = Counter(16384, inc = lastOut)
     frameCounter.value.setName("frameId")
   }
-
-  setDefinitionName(gen.name)
-  setName(gen.name, weak = true)
 }
 
 class ChainsawDynamicFrameModule(override val gen: ChainsawDynamicFrameGenerator)
-  extends ChainsawBaseModule(gen) {
+  extends ChainsawBaseModule(gen) with DynamicModule {
 
   import gen._
 
+  override val controlIn = in Vec controlTypes.map(_.apply())
   val lastOut = out Bool()
-  val controlIn = in Vec controlTypes.map(_.apply())
-
-  if (atSimTime) {
-    val frameCounter = Counter(16384, inc = lastOut)
-    frameCounter.value.setName("frameId")
-  }
-
-  setDefinitionName(gen.name)
-  setName(gen.name, weak = true)
 }
 
 class ChainsawInfiniteModule(override val gen: ChainsawInfiniteGenerator)
@@ -84,20 +74,13 @@ class ChainsawInfiniteModule(override val gen: ChainsawInfiniteGenerator)
 
   import gen._
 
-  validOut := validIn.validAfter(latency)
-
-  setDefinitionName(gen.name)
-  setName(gen.name, weak = true)
+  validOut := validIn.validAfter(latency())
 }
 
 class ChainsawDynamicInfiniteModule(override val gen: ChainsawDynamicInfiniteGenerator)
-  extends ChainsawBaseModule(gen) {
+  extends ChainsawBaseModule(gen) with DynamicModule {
 
   import gen._
 
-
-  val controlIn = in Vec controlTypes.map(_.apply())
-
-  setDefinitionName(gen.name)
-  setName(gen.name, weak = true)
+  override val controlIn = in Vec controlTypes.map(_.apply())
 }

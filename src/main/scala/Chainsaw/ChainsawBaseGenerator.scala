@@ -4,8 +4,9 @@ import Chainsaw.xilinx._
 import spinal.core._
 import spinal.core.sim._
 
-case class TestCase(data: Seq[BigDecimal], control: Seq[BigDecimal]) {
-  override def toString = s"data   : ${data.mkString(",")}\ncontrol: ${control.mkString(",")}"
+case class TestCase(data: Seq[BigDecimal], control: Seq[BigDecimal] = Seq[BigDecimal]()) {
+  override def toString =
+    s"data   : ${data.mkString(",")}\ncontrol: ${control.mkString(",")}"
 }
 
 trait ChainsawBaseGenerator {
@@ -20,6 +21,19 @@ trait ChainsawBaseGenerator {
   def outputTypes: Seq[NumericTypeNew]
 
   /** --------
+   * model
+   * -------- */
+  def impl(testCase: TestCase): Seq[BigDecimal]
+
+  def metric(yours: Seq[BigDecimal], golden: Seq[BigDecimal]): Boolean
+
+  def testCases: Seq[TestCase]
+
+  def latency(control: Seq[BigDecimal]): Int
+
+  def resetCycle: Int
+
+  /** --------
    * implementations
    * -------- */
   def simBackEnd: SpinalSimBackendSel = SpinalSimBackendSel.VERILATOR
@@ -28,7 +42,6 @@ trait ChainsawBaseGenerator {
 
   def implNaiveH: Option[ChainsawBaseModule] // naive RTL implementation for simulation & top-down design, optional
 
-  // TODO: better implementation
   def implPass = new ChainsawBaseModule(this) {
     dataIn.foreach(_.addAttribute("dont_touch", "yes"))
     dataOut.foreach(_.assignDontCare())
@@ -63,17 +76,46 @@ trait ChainsawBaseGenerator {
 
   def clockInput(cycle: Int) = Seq.fill(cycle)(BigDecimal(1))
 
-  def randomInputVector = inputTypes.map(_.random)
+  def randomDataVector = inputTypes.map(_.random)
+
+  def randomTestCase: TestCase
 }
 
-trait ChainsawOperatorGenerator extends ChainsawBaseGenerator {
-  def impl(data: Seq[BigDecimal]): Seq[BigDecimal]
+trait SemiInfinite
 
-  def metric(yours: Seq[BigDecimal], golden: Seq[BigDecimal]): Boolean
+trait Operator
 
-  def testCases: Seq[BigDecimal]
+trait Dynamic {
+  def controlTypes: Seq[NumericTypeNew]
 
-  def latency: Int
+  def controlPortWidth = controlTypes.length
+
+  def randomControlVector = controlTypes.map(_.random)
+}
+
+trait FixedLatency {
+  def latency(): Int
+}
+
+trait Frame {
+
+  def inputFrameFormat(control: Seq[BigDecimal]): FrameFormat
+
+  def outputFrameFormat(control: Seq[BigDecimal]): FrameFormat
+
+  def period(control: Seq[BigDecimal]) = {
+    require(inputFrameFormat(control).period == outputFrameFormat(control).period, "input/output period should be the same")
+    inputFrameFormat(control).period
+  }
+
+  def randomInputFrame(control: Seq[BigDecimal]): Seq[BigDecimal]
+}
+
+trait ChainsawOperatorGenerator extends ChainsawBaseGenerator with Operator with FixedLatency {
+
+  override def resetCycle = 0
+
+  override def latency(control: Seq[BigDecimal]) = latency()
 
   override def implH: ChainsawOperatorModule
 
@@ -82,23 +124,13 @@ trait ChainsawOperatorGenerator extends ChainsawBaseGenerator {
   override def implPass = super.implPass.asInstanceOf[ChainsawOperatorModule]
 
   override def getImplH = super.getImplH.asInstanceOf[ChainsawOperatorModule]
+
+  override def randomTestCase = TestCase(randomDataVector)
 }
 
-trait ChainsawDynamicOperatorGenerator extends ChainsawBaseGenerator {
+trait ChainsawDynamicOperatorGenerator extends ChainsawBaseGenerator with Operator with Dynamic {
 
-  def impl(testCase: TestCase): Seq[BigDecimal]
-
-  def metric(yours: Seq[BigDecimal], golden: Seq[BigDecimal]): Boolean
-
-  /** Sequence of data & control
-   */
-  def testCases: Seq[TestCase]
-
-  def latency(control: Seq[BigDecimal]): Int
-
-  def controlTypes: Seq[NumericTypeNew]
-
-  def controlPortWidth = controlTypes.length
+  override def resetCycle = 0
 
   override def implH: ChainsawDynamicOperatorModule
 
@@ -108,21 +140,20 @@ trait ChainsawDynamicOperatorGenerator extends ChainsawBaseGenerator {
 
   override def getImplH = super.getImplH.asInstanceOf[ChainsawDynamicOperatorModule]
 
-  def randomTestcase = TestCase(inputTypes.map(_.random), controlTypes.map(_.random))
+  override def randomTestCase = TestCase(randomDataVector, randomControlVector)
 }
 
-trait ChainsawFrameGenerator extends ChainsawBaseGenerator {
-  def impl(data: Seq[BigDecimal]): Seq[BigDecimal]
+trait ChainsawFrameGenerator extends ChainsawBaseGenerator with FixedLatency with Frame {
 
-  def metric(yours: Seq[BigDecimal], golden: Seq[BigDecimal]): Boolean
-
-  def testCases: Seq[Seq[BigDecimal]]
-
-  def latency: Int
+  override def latency(control: Seq[BigDecimal]) = latency()
 
   def inputFrameFormat: FrameFormat
 
   def outputFrameFormat: FrameFormat
+
+  override def inputFrameFormat(control: Seq[BigDecimal]) = inputFrameFormat
+
+  override def outputFrameFormat(control: Seq[BigDecimal]) = inputFrameFormat
 
   override def implH: ChainsawFrameModule
 
@@ -132,32 +163,21 @@ trait ChainsawFrameGenerator extends ChainsawBaseGenerator {
 
   override def getImplH = super.getImplH.asInstanceOf[ChainsawFrameModule]
 
-  def period = {
+  def period: Int = {
     require(inputFrameFormat.period == outputFrameFormat.period, "input/output period should be the same")
     inputFrameFormat.period
   }
 
-  def randomInputFrame = Seq.fill(inputFrameFormat.period)(randomInputVector).flatten
+  override def period(control: Seq[BigDecimal]) = period
+
+  def randomInputFrame: Seq[BigDecimal] = Seq.fill(inputFrameFormat.period)(randomDataVector).flatten
+
+  override def randomInputFrame(control: Seq[BigDecimal]) = randomInputFrame
+
+  override def randomTestCase = TestCase(randomInputFrame)
 }
 
-trait ChainsawDynamicFrameGenerator extends ChainsawBaseGenerator {
-  def impl(data: TestCase): Seq[BigDecimal]
-
-  def metric(yours: Seq[BigDecimal], golden: Seq[BigDecimal]): Boolean
-
-  def testCases: Seq[TestCase]
-
-  def latency(control: Seq[BigDecimal]): Int
-
-  def resetCycle: Int
-
-  def controlTypes: Seq[NumericTypeNew]
-
-  def controlPortWidth = controlTypes.length
-
-  def inputFrameFormat(control: Seq[BigDecimal]): FrameFormat
-
-  def outputFrameFormat(control: Seq[BigDecimal]): FrameFormat
+trait ChainsawDynamicFrameGenerator extends ChainsawBaseGenerator with Frame with Dynamic {
 
   override def implH: ChainsawDynamicFrameModule
 
@@ -167,33 +187,18 @@ trait ChainsawDynamicFrameGenerator extends ChainsawBaseGenerator {
 
   override def getImplH = super.getImplH.asInstanceOf[ChainsawDynamicFrameModule]
 
-  def period(control: Seq[BigDecimal]) = {
-    require(inputFrameFormat(control).period == outputFrameFormat(control).period, "input/output period should be the same")
-    inputFrameFormat(control)
-  }
+  def randomInputFrame(control: Seq[BigDecimal]): Seq[BigDecimal] =
+    Seq.fill(inputFrameFormat(control).period)(randomDataVector).flatten
 
-  def randomInputFrame(control: Seq[BigDecimal]) =
-    Seq.fill(inputFrameFormat(control).period)(randomInputVector).flatten
-
-  def randomControl = controlTypes.map(_.random)
-
-  def randomTestCase = {
-    val control = randomControl
+  override def randomTestCase: TestCase = {
+    val control = randomControlVector
     TestCase(randomInputFrame(control), control)
   }
 }
 
-trait ChainsawInfiniteGenerator extends ChainsawBaseGenerator {
+trait ChainsawInfiniteGenerator extends ChainsawBaseGenerator with FixedLatency with SemiInfinite {
 
-  def impl(data: Seq[BigDecimal]): Seq[BigDecimal]
-
-  def metric(yours: Seq[BigDecimal], golden: Seq[BigDecimal]): Boolean
-
-  def testCases: Seq[Seq[BigDecimal]]
-
-  def latency: Int
-
-  def resetCycle: Int
+  override def latency(control: Seq[BigDecimal]) = latency()
 
   override def implH: ChainsawInfiniteModule
 
@@ -203,23 +208,10 @@ trait ChainsawInfiniteGenerator extends ChainsawBaseGenerator {
 
   override def getImplH = super.getImplH.asInstanceOf[ChainsawInfiniteModule]
 
+  override def randomTestCase = TestCase(Seq.fill(resetCycle)(randomDataVector).flatten)
 }
 
-trait ChainsawDynamicInfiniteGenerator extends ChainsawBaseGenerator {
-
-  def impl(testCase: TestCase): Seq[BigDecimal]
-
-  def metric(yours: Seq[BigDecimal], golden: Seq[BigDecimal]): Boolean
-
-  def testCases: Seq[TestCase]
-
-  def controlTypes: Seq[NumericTypeNew]
-
-  def controlPortWidth = controlTypes.length
-
-  def latency(control: Seq[BigDecimal]): Int
-
-  def resetCycle: Int
+trait ChainsawDynamicInfiniteGenerator extends ChainsawBaseGenerator with Dynamic with SemiInfinite {
 
   override def implH: ChainsawDynamicInfiniteModule
 
@@ -229,6 +221,5 @@ trait ChainsawDynamicInfiniteGenerator extends ChainsawBaseGenerator {
 
   override def getImplH = super.getImplH.asInstanceOf[ChainsawDynamicInfiniteModule]
 
-  def randomControl = controlTypes.map(_.random)
-
+  override def randomTestCase = TestCase(Seq.fill(resetCycle)(randomDataVector).flatten, randomControlVector)
 }

@@ -9,16 +9,18 @@ import scala.language.postfixOps
 import scala.util.Random
 import Chainsaw.memory._
 
+// TODO: formal examples
+
 case class ExampleAdder(width: Int) extends ChainsawOperatorGenerator {
-  override def impl(data: Seq[BigDecimal]) = Seq(data.sum)
+  override def impl(testCase: TestCase) = Seq(testCase.data.sum)
 
   override def metric(yours: Seq[BigDecimal], golden: Seq[BigDecimal]) = yours.equals(golden)
 
-  override def testCases = Seq.fill(1000)(BigInt(width, Random)).map(BigDecimal(_))
+  override def testCases = Seq.fill(1000)(TestCase(randomDataVector))
 
-  override def latency = 1
+  override def latency() = 1
 
-  override def name = s"adder_w$width"
+  override def name = s"adder"
 
   override def vivadoUtilEstimation = VivadoUtilEstimation(lut = width)
 
@@ -46,11 +48,9 @@ case class ExampleAddSub(width: Int) extends ChainsawDynamicOperatorGenerator {
     yours.equals(golden)
 
   override def testCases = {
-    Seq.fill(10)(TestCase(randomInputVector, Seq(BigDecimal(1)))) ++ // for sub
-      Seq.fill(10)(TestCase(randomInputVector, Seq(BigDecimal(0)))) // for add
+    Seq.fill(10)(TestCase(randomDataVector, Seq(BigDecimal(1)))) ++ // for sub
+      Seq.fill(10)(TestCase(randomDataVector, Seq(BigDecimal(0)))) // for add
   }
-
-  override def latency(control: Seq[BigDecimal]) = 1
 
   override def controlTypes = Seq(NumericTypeNew.Bool())
 
@@ -66,7 +66,7 @@ case class ExampleAddSub(width: Int) extends ChainsawDynamicOperatorGenerator {
 
   override def implNaiveH = None
 
-  override def name = s"addsub_w$width"
+  override def name = s"addsub"
 
   override def vivadoUtilEstimation = VivadoUtilEstimation(lut = width)
 
@@ -77,19 +77,24 @@ case class ExampleAddSub(width: Int) extends ChainsawDynamicOperatorGenerator {
   logger.info(s"input types: ${inputTypes.mkString(" ")}")
 
   override def outputTypes = Seq(NumericTypeNew.S(width + 1))
+
+  override def latency(control: Seq[BigDecimal]) = 1
 }
 
-case class ExampleStaticFlip(dataType: NumericTypeNew, length: Int) extends ChainsawFrameGenerator {
+case class ExampleStaticFlip(dataType: NumericTypeNew, length: Int)
+  extends ChainsawFrameGenerator {
 
-  override def name = s"flip_$length"
+  override def name = s"staticFlip"
 
-  override def impl(data: Seq[BigDecimal]) = data.reverse
+  override def impl(testCase: TestCase) = testCase.data.reverse
 
   override def metric(yours: Seq[BigDecimal], golden: Seq[BigDecimal]) = yours.equals(golden)
 
-  override def testCases = Seq.fill(1000)(randomInputFrame)
+  override def testCases = Seq.fill(1000)(TestCase(randomInputFrame))
 
-  override def latency = period + 1
+  override def latency() = period + 1
+
+  override def resetCycle = 0
 
   override def inputFrameFormat = MatrixFormat(1, length)
 
@@ -135,7 +140,7 @@ case class ExampleDynamicFlip(dataType: NumericTypeNew, maxLength: Int)
 
   val innerMaxLength = maxLength + 2 // for FIFO latency
 
-  override def name = s"flip_$maxLength"
+  override def name = s"dynamicFlip"
 
   override def impl(testCase: TestCase) = testCase.data.reverse
 
@@ -207,8 +212,8 @@ case class ExampleStaticFir(dataType: NumericTypeNew, coeffs: Seq[Double])
 
   val productType = dataType * dataType
 
-  override def impl(data: Seq[BigDecimal]) = {
-    val dataWithZeros = data ++ Seq.fill(coeffs.length - 1)(BigDecimal(0))
+  override def impl(testCase: TestCase) = {
+    val dataWithZeros = testCase.data ++ Seq.fill(coeffs.length - 1)(BigDecimal(0))
     dataWithZeros.sliding(coeffs.length).map { window =>
       window.zip(coeffs.reverse).map { case (d, c) => d * BigDecimal(c) }.sum
     }
@@ -218,12 +223,11 @@ case class ExampleStaticFir(dataType: NumericTypeNew, coeffs: Seq[Double])
     yours.zip(golden).forall { case (y, g) => dataType.same(y, g, 1e-1, 1e-1) }
 
   override def testCases = {
-    val ret = Seq(10, 20, 30, 20, 10).map(i => Seq.fill(i)(dataType.random))
-    logger.info(s"testCases: ${ret.head.mkString(" ")}")
+    val ret = Seq(10, 20, 30, 20, 10).map(i => TestCase(Seq.fill(i)(dataType.random)))
     ret
   }
 
-  override def latency = 2 * (coeffs.length + 1) + 1
+  override def latency() = 2 * (coeffs.length + 1) + 1
 
   override def resetCycle = coeffs.length
 
@@ -240,7 +244,7 @@ case class ExampleStaticFir(dataType: NumericTypeNew, coeffs: Seq[Double])
 
   override def implNaiveH = None
 
-  override def name = "Fir"
+  override def name = "staticFir"
 
   override def vivadoUtilEstimation = VivadoUtilEstimation(dsp = coeffs.length)
 
@@ -269,8 +273,8 @@ case class ExampleDynamicFir(dataType: NumericTypeNew, tap: Int)
     yours.zip(golden).forall { case (y, g) => dataType.same(y, g, 1e-1, 1e-1) }
 
   override def testCases = {
-    val data = Seq(10, 20, 30, 20, 10).map(i => Seq.fill(i)(dataType.random))
-    data.map(TestCase(_, randomControl))
+    val data = Seq(10, 20, 30, 20, 10).map(i => Seq.fill(i)(Random.nextDouble()).map(BigDecimal(_)))
+    data.map(TestCase(_, Seq.fill(tap)(Random.nextDouble()).map(BigDecimal(_))))
   }
 
   override def controlTypes = Seq.fill(tap)(dataType)
@@ -294,7 +298,7 @@ case class ExampleDynamicFir(dataType: NumericTypeNew, tap: Int)
 
   override def implNaiveH = None
 
-  override def name = "DynamicFir"
+  override def name = "dynamicFir"
 
   override def vivadoUtilEstimation = VivadoUtilEstimation(dsp = tap)
 
@@ -305,12 +309,11 @@ case class ExampleDynamicFir(dataType: NumericTypeNew, tap: Int)
   override def outputTypes = Seq(productType)
 }
 
-
 object TestGeneratorExamples extends App {
-  ChainsawOperatorTest("testAdder", ExampleAdder(8))
-  ChainsawDynamicOperatorTest("testAdder", ExampleAddSub(8), terminateAfter = 1000)
-  ChainsawFrameTest("testFlip", ExampleStaticFlip(dataType = NumericTypeNew.U(8), length = 20), terminateAfter = 1000)
-  ChainsawDynamicFrameTest("testFlip", ExampleDynamicFlip(dataType = NumericTypeNew.U(8), maxLength = 20), terminateAfter = 1000)
-  ChainsawInfiniteTest("testFir", ExampleStaticFir(dataType = NumericTypeNew.SFix(0, 14), Seq.fill(5)(Random.nextDouble())), terminateAfter = 1000)
-  ChainsawDynamicInfiniteTest("testFir", ExampleDynamicFir(dataType = NumericTypeNew.SFix(0, 14), 5), terminateAfter = 1000)
+  ChainsawAllTest("testAdder", ExampleAdder(8))
+  ChainsawAllTest("testAdder", ExampleAddSub(8), terminateAfter = 1000)
+  ChainsawAllTest("testFlip", ExampleStaticFlip(dataType = NumericTypeNew.U(8), length = 20), terminateAfter = 1000)
+  ChainsawAllTest("testFlip", ExampleDynamicFlip(dataType = NumericTypeNew.U(8), maxLength = 20), terminateAfter = 1000)
+  ChainsawAllTest("testFir", ExampleStaticFir(dataType = NumericTypeNew.SFix(4, 14), Seq.fill(5)(Random.nextDouble())), terminateAfter = 1000)
+  ChainsawAllTest("testFir", ExampleDynamicFir(dataType = NumericTypeNew.SFix(4, 14), 5), terminateAfter = 1000)
 }
