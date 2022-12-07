@@ -6,42 +6,61 @@ import spinal.core.{IntToBuilder, _}
 import spinal.lib._
 
 import scala.language.postfixOps
+import scala.util.Random
 
-case class IntMultiAdder(widthIn: Int, n: Int, signed: Boolean) extends Flopoco {
+case class IntMultiAdder(widthIn: Int, n: Int, signed: Boolean)
+  extends FlopocoOperator {
+
+  /** --------
+   * params for Flopoco generation
+   * -------- */
   override val operatorName = "IntMultiAdder"
-  override val params = Seq(("signedIn", if (signed) 1 else 0), ("n", n), ("wIn", widthIn))
-  override val frequency = 800 MHz
   override val family = UltraScale
+  override val params = Seq(("signedIn", if (signed) 1 else 0), ("n", n), ("wIn", widthIn))
 
-  override def inputTypes = Seq.fill(n)(UIntInfo(widthIn))
-  val widthOut = inputTypes.head.bitWidth + log2Up(n)
-  override def outputTypes = Seq(UIntInfo(widthOut))
-
-  override def inputFormat = inputNoControl
- override def outputFormat = outputNoControl
-
-  override def blackbox: FlopocoBlackBox = new FlopocoBlackBox {
+  /** black box used in synthesis
+   */
+  override def blackbox = new FlopocoBlackBox {
     val X = in Vec(Bits(widthIn bits), n)
     X.zipWithIndex.foreach { case (int, i) => int.setName(s"X$i") }
     val R = out Bits (widthOut bits)
 
-    override def asFunc: Seq[Bits] => Seq[Bits] = (dataIn: Seq[Bits]) => {
-      val core = this
-      core.X := Vec(dataIn)
-      Seq(core.R)
+    override def mapChainsawModule(flowIn: Flow[Fragment[Vec[AFix]]], flowOut: Flow[Fragment[Vec[AFix]]]): Unit = {
+      X := flowIn.fragment.map(_.asBits)
+      flowOut.fragment.head.assignFromBits(R)
     }
   }
 
-  override def model(dataIn: Seq[Bits]) =
-    if (!signed) Seq(dataIn.map(_.asUInt).reduceBalancedTree(_ +^ _).asBits)
-    else Seq(dataIn.map(_.asSInt).reduceBalancedTree(_ +^ _).asBits)
+  override def implNaiveH = Some(new ChainsawOperatorModule(this) {
+    dataOut.head := dataIn.reduce(_ + _).d().truncated
+  })
 
-  override def impl(dataIn: Seq[Any]) = Seq(dataIn.asInstanceOf[Seq[BigInt]].sum)
+  override def name = s"${operatorName}_w${widthIn}_n${n}_${if (signed) "signed" else "unsigned"}"
 
-  flopocoDone()
-}
+  override def vivadoUtilEstimation = VivadoUtilEstimation(dsp = 0, lut = n * widthIn)
 
-object IntMultiAdder extends App {
-  ChainsawSynth(IntMultiAdder(100, 20, signed = false), "synthFlopocoMultiAdder")
-//  ChainsawImpl(IntMultiAdder(100, 20, signed = false), "FlopocoMultiAdder")
+  override def fmaxEstimation = 600 MHz
+
+  override def inputTypes =
+    if (!signed) Seq.fill(n)(NumericTypeNew.U(widthIn))
+    else Seq.fill(n)(NumericTypeNew.S(widthIn - 1))
+
+  val widthOut = widthIn + log2Up(n)
+
+  override def outputTypes =
+    if (!signed) Seq(NumericTypeNew.U(widthOut))
+    else Seq(NumericTypeNew.S(widthOut - 1))
+
+  /** --------
+   * model
+   * -------- */
+  override def impl(testCase: TestCase) = Seq(testCase.data.sum)
+
+  override def metric(yours: Seq[BigDecimal], golden: Seq[BigDecimal]) = yours.equals(golden)
+
+  override def testCases = {
+    val getVector = if (!signed) Seq.fill(n)(BigInt(widthIn, Random)).map(BigDecimal(_))
+    else Seq.fill(n)(BigInt(widthIn, Random) - (BigInt(1) << (widthIn - 1))).map(BigDecimal(_))
+    Seq.fill(100)(TestCase(getVector))
+  }
 }
