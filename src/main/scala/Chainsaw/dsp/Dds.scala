@@ -1,73 +1,52 @@
 package Chainsaw.dsp
 
 import Chainsaw._
-import breeze.numerics.constants.Pi
-import breeze.numerics.sin
+import Chainsaw.xilinx.VivadoUtilEstimation
 import spinal.core._
 import spinal.lib._
-import ChainsawMetric._
 
-sealed trait DdsSignalType
-
-object SINE extends DdsSignalType
-
-object PULSE extends DdsSignalType
-
-
-case class DdsWave(signalType: DdsSignalType,
-                   samplingFreq: HertzNumber,
-                   signalFreq: HertzNumber,
-                   phaseOffset: Double) {
-
-  val baseValue = samplingFreq.toBigDecimal.toBigInt()
-  val signalValue = signalFreq.toBigDecimal.toBigInt()
-
-  val commonFreq = lcm(baseValue, signalValue)
-
-  val pointsInCommonPeriod: Int = (commonFreq / signalValue).toInt
-  val period = pointsInCommonPeriod
-
-  val pointsInSignalPeriod: Double = samplingFreq.toDouble / signalFreq.toDouble
-
-  def wave = signalType match {
-    case SINE =>
-      val step = 2 * Pi / pointsInSignalPeriod
-      (0 until pointsInCommonPeriod).map(i => sin(i * step + phaseOffset))
-  }
-
-  def generate(cycle: Int) = {
-    val periodCount = cycle.divideAndCeil(pointsInCommonPeriod)
-    Seq.fill(periodCount)(wave).flatten.take(cycle)
-  }
-}
+import scala.language.postfixOps
 
 /** generating periodic wave
  *
  * @param dataType output data precision
  */
-case class Dds(ddsWave: DdsWave, dataType: NumericType, parallel: Int) extends ChainsawGenerator {
+case class Dds(ddsWave: DdsWave, dataType: NumericTypeNew, parallel: Int)
+  extends ChainsawInfiniteGenerator {
 
+  def name = s"Parallel_${parallel}_${Dds}_${dataType}_$ddsWave"
+
+  logger.info(s"wave period = ${ddsWave.pointsInCommonPeriod}")
   val actualPeriod = lcm(ddsWave.period, parallel).toInt
 
-  override def name = "dds"
+  override def implNaiveH = None
 
-  override def impl(dataIn: Seq[Any]) = ddsWave.generate(dataIn.length)
+  override def impl(testCase: TestCase) = ddsWave.generate(testCase.data.length * parallel).map(BigDecimal(_))
 
-  override val implMode = Infinite
+  override def metric(yours: Seq[BigDecimal], golden: Seq[BigDecimal]) = correlationMetric(yours, golden, 0.9)
 
-  override val metric = ChainsawMetric(frameWise = forallBound(doubleBound(1e-3)))
+  override def testCases = Seq.fill(3)(TestCase(randomDataSequence(100)))
 
-  override def inputTypes = Seq(UIntInfo(1))
-  override def outputTypes = Seq.fill(parallel)(dataType)
-  override def inputFormat = MatrixFormat(1, actualPeriod)
-  override def outputFormat = MatrixFormat(parallel, actualPeriod)
-  override def latency = 2
+  override def resetCycle = 0
 
-  override def implH = new ChainsawModule(this) {
-    val data = ddsWave.generate(actualPeriod).grouped(parallel).toSeq
+  override def latency() = 2
+
+  override def inputTypes = Seq[NumericTypeNew]()
+
+  override def outputTypes = Seq.fill(parallel * (if (ddsWave.complex) 2 else 1))(dataType)
+
+  override def vivadoUtilEstimation = VivadoUtilEstimation()
+
+  override def fmaxEstimation = 600 MHz
+
+  override def implH = new ChainsawInfiniteModule(this) {
+    val data = ddsWave.generate(actualPeriod * parallel).grouped(outPortWidth).toSeq
       .map(seq => Vec(seq.map(dataType.fromConstant)))
+    logger.info(s"wave gen points: ${data.mkString(" ")}")
     val signalRom = Mem(data)
-    val counter = Counter(ddsWave.pointsInCommonPeriod, inc = validIn)
-    sfixDataOut := signalRom.readSync(counter.value).d()
+    val counter = Counter(actualPeriod, inc = validIn)
+    dataOut := signalRom.readSync(counter.value).d()
   }
+
+
 }
