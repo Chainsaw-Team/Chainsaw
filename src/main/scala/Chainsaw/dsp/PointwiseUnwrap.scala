@@ -10,6 +10,7 @@ import scala.language.postfixOps
 
 case class PointwiseUnwrap(dataType: NumericType)
   extends ChainsawGenerator {
+
   override def name = getAutoName(this)
 
   override def impl(dataIn: Seq[Any]): Seq[Double] = {
