@@ -1,153 +1,243 @@
 package Chainsaw.arithmetic
 
 import Chainsaw._
-
 import scala.util.Random
 
 case class BmAlgo(bmSolution: BmSolution) {
 
-  case class WeightedValue(value: BigInt, arithInfo: ArithInfo) {
-    def eval: BigInt = {
-      assert(value.bitLength <= arithInfo.width, s"yours: ${value.bitLength}, upper: ${arithInfo.width}")
-      (value << arithInfo.weight) * (if (arithInfo.isPositive) 1 else -1)
-    }
+  // TODO: latency estimation
+  // TODO: apply cmults by DSP limit
 
-    def <<(shiftLeft: Int) = WeightedValue(value, arithInfo << shiftLeft)
-  }
-
-  logger.info(bmSolution.toString)
-
-  def impl(x: BigInt, y: BigInt): BigInt = {
-    val ret = doNSplitRec(x, y, bmSolution)
-
-    val golden = bmSolution.multiplierType match {
-      case FullMultiplier => x * y
-      case SquareMultiplier => x * x
-      case MsbMultiplier => ???
-      case LsbMultiplier => ???
-    }
-
-    assert(ret == golden, s"x $x, y $y, yours $ret, golden $golden")
-    assert(multCost == bmSolution.dspCost, s"estimated: ${bmSolution.dspCost}, actual: $multCost")
-    assert(splitCost == bmSolution.splitCost, s"estimated: ${bmSolution.splitCost}, actual: $splitCost")
-    assert(mergeCost == bmSolution.mergeCost, s"estimated: ${bmSolution.mergeCost}, actual: $mergeCost")
-    //    println(s"x $x, y $y, yours $ret, golden ${x * y}")
-    clearCost()
-    ret
-  }
-
-  var multCost = 0
+  val isConstantMult = bmSolution.constant.isDefined
+  /** --------
+   * cost statistics
+   * -------- */
+  var dspCost = 0
   var splitCost = 0
   var mergeCost = 0
+  var cmultCost = 0
+
+  def clbCost = splitCost + mergeCost + cmultCost
 
   def clearCost(): Unit = {
-    multCost = 0
+    dspCost = 0
     splitCost = 0
     mergeCost = 0
+    cmultCost = 0
   }
 
-  def add(v0: BigInt, v1: BigInt, width: Int): BigInt = {
-    assert(v0.bitLength <= width && v1.bitLength <= width)
-    splitCost += width
-    v0 + v1
+  val weightMax =
+    if (bmSolution.multiplierType == LsbMultiplier) bmSolution.widthFull
+    else bmSolution.widthFull * 2
+
+  val dspLatency = 3
+  val andLatency = 1
+
+  /** --------
+   * operations in BmAlgo
+   * -------- */
+  def splitN(x: WeightedValue, n: Int): Seq[WeightedValue] = {
+    val paddedWidth = x.arithInfo.width.nextMultipleOf(n)
+    val segmentWidth = x.arithInfo.width.divideAndCeil(n)
+    val values = x.value.toBitValue(paddedWidth).splitN(n)
+    (0 until n).map(i =>
+      WeightedValue(value = values(i),
+        arithInfo = ArithInfo(width = segmentWidth, weight = x.arithInfo.weight + i * segmentWidth, isPositive = x.arithInfo.isPositive, time = x.arithInfo.time)))
   }
 
-  def mult(v0: BigInt, v1: BigInt): BigInt = {
-    assert(Seq(v0.bitLength, v1.bitLength).sorted.zip(Seq(16, 25)).forall { case (yours, upper) => yours <= upper }, s"${v0.bitLength}, ${v1.bitLength}")
-    multCost += 1
-    v0 * v1
+  def splitMSB(x: WeightedValue) = {
+    val (msb, main) = x.value.toBitValue(x.arithInfo.width).splitAt(x.arithInfo.width - 1)
+    val msbValue = WeightedValue(value = msb,
+      arithInfo = ArithInfo(width = 1, weight = x.arithInfo.weight + x.arithInfo.width - 1, time = x.arithInfo.time))
+    val mainValue = WeightedValue(value = main,
+      arithInfo = ArithInfo(width = x.arithInfo.width - 1, weight = x.arithInfo.weight, time = x.arithInfo.time))
+    (msbValue, mainValue)
   }
 
-  def merge(widthOut: Int, weightedValues: Seq[WeightedValue]): BigInt = {
-    weightedValues.foreach(weightedValue => assert(weightedValue.value.bitLength <= weightedValue.arithInfo.width))
+  def add(v0: WeightedValue, v1: WeightedValue, constant: Boolean = false) = {
+    require(v0.arithInfo.width == v1.arithInfo.width, s"v0: ${v0.arithInfo}, v1: ${v1.arithInfo}")
+    if (!constant) splitCost += v0.arithInfo.width
+    val width = v0.arithInfo.width + 1
+    val weight = v0.arithInfo.weight // this should be reset after
+    val time = v0.arithInfo.time + v0.arithInfo.width.divideAndCeil(cpaWidthMax)
+    WeightedValue(value = v0.value + v1.value, arithInfo = ArithInfo(width, weight, v0.arithInfo.isPositive, time))
+  }
+
+  def mult(v0: WeightedValue, v1: WeightedValue) = {
+    require(v0.arithInfo.isPositive == v1.arithInfo.isPositive)
+    require(v0.arithInfo.time == v1.arithInfo.time)
+    val width = v0.arithInfo.width + v1.arithInfo.width
+    val weight = v0.arithInfo.weight + v1.arithInfo.weight
+    val time = v0.arithInfo.time + dspLatency
+
+    if (isConstantMult) {
+      val constantWeight = Csd(v1.value).weight
+      if (constantWeight >= bmSolution.threshold) dspCost += 1
+      else cmultCost += bmSolution.dsp._1 * (constantWeight - 1) // TODO: more accurate estimation
+    } else dspCost += 1
+
+    WeightedValue(value = v0.value * v1.value, arithInfo = ArithInfo(width, weight, v0.arithInfo.isPositive, time))
+  }
+
+  def and(v0: WeightedValue, v1: WeightedValue) = {
+    require(v1.arithInfo.width == 1)
+    val width = v0.arithInfo.width
+    val weight = v0.arithInfo.weight + v1.arithInfo.weight
+    val time = v0.arithInfo.time + andLatency
+    WeightedValue(value = v0.value * v1.value,
+      arithInfo = ArithInfo(width = width, weight = weight, time = time))
+  }
+
+  def merge(weightedValues: Seq[WeightedValue], widthOut: Int): WeightedValue = {
+    val base = weightedValues.map(_.arithInfo.weight).min
     mergeCost += weightedValues.map(_.arithInfo.width).sum - widthOut
-    weightedValues.map(_.eval).sum
+    val value = weightedValues.map(_.eval).sum >> base
+    WeightedValue(value = value,
+      arithInfo = ArithInfo(widthOut, base, isPositive = true, weightedValues.map(_.arithInfo.time).max))
   }
 
-  def doNSplitRec(x: BigInt, y: BigInt, bmSolution: BmSolution): BigInt = {
-    if (bmSolution.isEmpty) mult(x, y)
+  /** --------
+   * algorithm
+   * -------- */
+  def doRectangular(x: WeightedValue, y: WeightedValue, bmSolution: BmSolution): WeightedValue = {
+
+    if (bmSolution.isEmpty) {
+      if (x.arithInfo.weight + y.arithInfo.weight < weightMax) mult(x, y) else WeightedValue(0, ArithInfo(0, x.arithInfo.weight + y.arithInfo.weight))
+    }
     else {
+
       val current = bmSolution.topDecomposition
       import current._
-      val segmentWidth = baseWidth + baseHeight
 
-      val aWords: Seq[BigInt] = x.toBitValue(widthNext).splitN(aSplit) // width = baseHeight
-      val bWords: Seq[BigInt] = y.toBitValue(widthNext).splitN(bSplit) // width = baseWidth
+      val aWords = splitN(x, aSplit) // width = baseHeight
+      val bWords = splitN(y, bSplit) // width = baseWidth
 
-      def doNSplit(aWords: Seq[BigInt], bWords: Seq[BigInt]): Seq[WeightedValue] = {
+      def doNSplit(aWords: Seq[WeightedValue], bWords: Seq[WeightedValue]): Seq[WeightedValue] = {
 
         multiplierType match {
           case FullMultiplier =>
             if (isKara) {
               val diagonals: Seq[WeightedValue] = (0 until split).map { i =>
-                // sub mults on diagonal inherit the multType
-                val value = doNSplitRec(aWords(i), bWords(i), bmSolution.subSolution(bmSolution.multiplierType))
-                WeightedValue(value, ArithInfo(width = segmentWidth, weight = widthBlock * i * 2))
+                doRectangular(aWords(i), bWords(i), bmSolution.subSolution(bmSolution.multiplierType))
               }
 
               val prods: Seq[WeightedValue] = Seq.tabulate(split, split) { (i, j) =>
-                if (i > j) { // upper triangular
-
-                  val mergedA = add(aWords(i), aWords(j), baseHeight)
-                  val mergedB = add(bWords(i), bWords(j), baseWidth)
-
-                  val (aMsb, aMain) = mergedA.toBitValue(baseWidth + 1).splitAt(baseHeight)
-                  val (bMsb, bMain) = mergedB.toBitValue(baseHeight + 1).splitAt(baseWidth)
-
-                  val full = doNSplitRec(aMain, bMain, bmSolution.subSolution(FullMultiplier))
-
-                  val sideA = WeightedValue(aMsb * bMain, ArithInfo(width = baseWidth, weight = widthBlock * (i + j) + baseHeight))
-                  val sideB = WeightedValue(bMsb * aMain, ArithInfo(width = baseHeight, weight = widthBlock * (i + j) + baseWidth))
-                  val ab = WeightedValue(aMsb * bMsb, ArithInfo(width = 1, weight = widthBlock * (i + j) + segmentWidth))
-
-                  val cross = WeightedValue(full, ArithInfo(width = segmentWidth, weight = widthBlock * (i + j)))
-                  val high = WeightedValue(diagonals(i).value, ArithInfo(width = segmentWidth, weight = widthBlock * (i + j), isPositive = false))
-                  val low = WeightedValue(diagonals(j).value, ArithInfo(width = segmentWidth, weight = widthBlock * (i + j), isPositive = false))
-
-                  Some(Seq(cross, high, low, sideA, sideB, ab))
+                if (i > j) { // upper triangular, generated by karatsuba method
+                  // pre-addition
+                  val weight = aWords(i).arithInfo.weight + bWords(j).arithInfo.weight
+                  require(aWords(i).arithInfo.weight + bWords(j).arithInfo.weight == aWords(j).arithInfo.weight + bWords(i).arithInfo.weight)
+                  val combinedA = add(aWords(i), aWords(j))
+                  val combinedB = add(bWords(i), bWords(j), isConstantMult)
+                  val (aMsb, aMain) = splitMSB(combinedA)
+                  val (bMsb, bMain) = splitMSB(combinedB)
+                  // sub-multiplication
+                  val full = doRectangular(aMain, bMain, bmSolution.subSolution(FullMultiplier)).withWeight(weight)
+                  val high = -diagonals(i).withWeight(weight)
+                  val low = -diagonals(j).withWeight(weight)
+                  // full - high - low
+                  val mainSegments = Seq(full, high, low)
+                  // side-multiplications
+                  val sideA = and(bMain, aMsb).withWeight(weight + baseHeight)
+                  val sideB = and(aMain, bMsb).withWeight(weight + baseWidth)
+                  val ab = and(aMsb, bMsb).withWeight(weight + baseWidth + baseHeight)
+                  val sideSegments = Seq(sideA, sideB, ab)
+                  Some(mainSegments ++ sideSegments)
                 } else None
               }.flatten.flatten.flatten
-
               diagonals ++ prods
             } else {
               Seq.tabulate(split, split) { (i, j) =>
-                val value = doNSplitRec(aWords(i), bWords(j), bmSolution.subSolution(bmSolution.multiplierType))
-                WeightedValue(value, ArithInfo(width = segmentWidth, weight = widthBlock * (i + j)))
+                doRectangular(aWords(i), bWords(j), bmSolution.subSolution(bmSolution.multiplierType))
               }.flatten
             }
 
           case SquareMultiplier =>
-            val diagonals: Seq[WeightedValue] = (0 until split).map { i =>
-              // sub mults on diagonal inherit the multType
-              val value = doNSplitRec(aWords(i), bWords(i), bmSolution.subSolution(bmSolution.multiplierType))
-              WeightedValue(value, ArithInfo(width = segmentWidth, weight = widthBlock * i * 2))
-            }
-            val prods: Seq[WeightedValue] = Seq.tabulate(split, split) { (i, j) =>
-              if (i > j) { // upper triangular
-                val value = doNSplitRec(aWords(i), bWords(j), bmSolution.subSolution(FullMultiplier))
-                Some(WeightedValue(value, ArithInfo(width = segmentWidth, weight = widthBlock * (i + j) + 1)))
+            Seq.tabulate(split, split) { (i, j) =>
+              if (i >= j) { // upper triangular
+                val prod = doRectangular(aWords(i), bWords(j), bmSolution.subSolution(FullMultiplier))
+                val ret = if (i != j) prod << 1 else prod
+                Some(ret)
               } else None
             }.flatten.flatten
-            diagonals ++ prods
 
-          case MsbMultiplier => ???
-          case LsbMultiplier => ???
-          case Kara => ???
+          case MsbMultiplier =>
+            Seq.tabulate(split, split) { (i, j) =>
+              if (i + j >= split - 1) {
+                val multType = if (i + j == split - 1) bmSolution.multiplierType else FullMultiplier
+                val ret = doRectangular(aWords(i), bWords(j), bmSolution.subSolution(multType))
+                Some(ret)
+              }
+              else None
+            }.flatten.flatten
+
+          case LsbMultiplier =>
+            Seq.tabulate(split, split) { (i, j) =>
+              if (i + j <= split - 1) {
+                val multType = if (i + j == split - 1) bmSolution.multiplierType else FullMultiplier
+                val ret = doRectangular(aWords(i), bWords(j), bmSolution.subSolution(multType))
+                Some(ret)
+              }
+              else None
+            }.flatten.flatten
         }
       }
 
-      val segments = Seq.tabulate(factorB, factorA) { (i, j) =>
+      val segments = Seq.tabulate(factorB, factorA) { (i, j) => // for rectangular
         // distribute words to N-split sub modules
         val as = aWords.zipWithIndex.filter(_._2 % factorB == i).map(_._1)
         val bs = bWords.zipWithIndex.filter(_._2 % factorA == j).map(_._1)
-        val weight = i * baseHeight + j * baseWidth
-        doNSplit(as, bs).map(_ << weight)
+        doNSplit(as, bs)
       }.flatten.flatten
 
-      val ret = merge(widthOut, segments)
+      val validSegments = segments.filter(_.arithInfo.weight < weightMax)
+      assert(validSegments.forall(_.arithInfo.width != 0))
+      val ret = merge(validSegments, widthOut)
       ret
     }
   }
+
+  /** --------
+   * entrance to algorithm
+   * -------- */
+  def impl(x: BigInt, y: BigInt, verbose: Boolean = false): BigInt = {
+
+    def adjustForMultType(value: BigInt) = {
+      bmSolution.multiplierType match {
+        case MsbMultiplier => value >> bmSolution.widthFull
+        case LsbMultiplier => value.mod(Pow2(bmSolution.widthFull))
+        case _ => value
+      }
+    }
+
+    val yInUse = if (isConstantMult) bmSolution.constant.get else if (bmSolution.multiplierType == SquareMultiplier) x else y
+    val tempGolden = x * yInUse
+    val tempRet = doRectangular(
+      WeightedValue(x, ArithInfo(bmSolution.widthFull, 0)),
+      WeightedValue(yInUse, ArithInfo(bmSolution.widthFull, 0)),
+      bmSolution).eval
+    val golden = adjustForMultType(tempGolden)
+    val ret = adjustForMultType(tempRet)
+
+    if (verbose) {
+      val multName = s"${bmSolution.widthFull}-bit ${if (isConstantMult) "constant" else "variable"} ${className(bmSolution.multiplierType)} threshold = ${bmSolution.threshold}"
+      logger.info(
+        s"\n----$multName----" +
+          s"\n\tdspCost = $dspCost" +
+          s"\n\tclbCost = $clbCost = $splitCost(split) + $mergeCost(merge) + $cmultCost(cmult)"
+      )
+    }
+
+    if (bmSolution.multiplierType != MsbMultiplier) assert(ret == golden, s"x $x, y $y, yours $ret, golden $golden")
+    else {
+      val error = ret - golden
+      assert(error <= 0 && error >= -(bmSolution.widthFull / 2), s"error = $error")
+      logger.info(s"error introduced by MSB multiplier: $error, ${ret.bitLength}, ${golden.bitLength}")
+    }
+    clearCost()
+    ret
+  }
+
+  def implConstantMult(x: BigInt, verbose: Boolean = false): BigInt = impl(x, null, verbose)
 
   def selfTest(): Unit = {
     def getMultiplicand = BigInt(bmSolution.widthFull, Random)

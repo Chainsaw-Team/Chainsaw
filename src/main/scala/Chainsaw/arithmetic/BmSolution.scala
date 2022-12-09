@@ -10,8 +10,16 @@ import breeze.numerics.ceil
  * @param splits         number of splits for each layer, bottom-up
  * @param multiplierType multiplication target
  * @param isKaras        use Karatsuba/School book BmDecomposition for each layer, bottom-up
+ * @param constant       Some(constant) if the multiplication is constant, None otherwise
+ * @param threshold      weight for a multiplication to use a dsp
  */
-case class BmSolution(dsp: (Int, Int), splits: Seq[Int], multiplierType: MultiplierType, isKaras: Seq[Boolean]) extends ChainsawSolution {
+case class BmSolution(dsp: (Int, Int),
+                      splits: Seq[Int],
+                      multiplierType: MultiplierType,
+                      isKaras: Seq[Boolean],
+                      constant: Option[BigInt] = None,
+                      threshold: Int = 0)
+  extends ChainsawSolution {
 
   require(splits.length == isKaras.length)
 
@@ -21,12 +29,12 @@ case class BmSolution(dsp: (Int, Int), splits: Seq[Int], multiplierType: Multipl
 
   /** baseWidth of each layer in bottom-up order
    */
-  lazy val allBaseSizes: Seq[(Int, Int)] = Seq.iterate((dsp, 0), layerCount) { case (width, i) =>
+  lazy val allBaseWidths: Seq[(Int, Int)] = Seq.iterate((dsp, 0), layerCount) { case (width, i) =>
     val widthNext = BmDecomposition.widthNext(width, splits(i))
     ((widthNext, widthNext), i + 1)
   }.map(_._1)
 
-  lazy val topDecomposition = BmDecomposition(allBaseSizes.last, splits.last, multiplierType, isKaras.last)
+  lazy val topDecomposition = BmDecomposition(allBaseWidths.last, splits.last, multiplierType, isKaras.last)
 
   /** tree of all BmDecompositions in top-down order, each Seq contains BmDecompositions in a layer
    */
@@ -34,18 +42,16 @@ case class BmSolution(dsp: (Int, Int), splits: Seq[Int], multiplierType: Multipl
     Seq.iterate((Seq(topDecomposition), 1), layerCount) { case (decomposition, i) =>
       val split = splits.reverse(i)
       val isKara = isKaras.reverse(i)
-      val baseSize = allBaseSizes.reverse(i)
+      val baseSize = allBaseWidths.reverse(i)
       val next = decomposition.flatMap(_.typesNext.map(BmDecomposition(baseSize, split, _, isKara)))
       (next, i + 1)
     }.map(_._1)
   }
 
   lazy val widthFull: Int = topDecomposition.widthNext
-
   lazy val widthOut: Int = widthFull * 2
 
-  // TODO: vary for different sizes
-  lazy val compressorEff = 1.0
+  lazy val compressorEff = 1.0 // TODO: vary for different sizes
 
   lazy val dspCost: Int = allBmDecompositions.last.map(_.subMultCount).sum
 
@@ -77,7 +83,9 @@ case class BmSolution(dsp: (Int, Int), splits: Seq[Int], multiplierType: Multipl
     println(s"clbCost = $clbCost")
   }
 
-  override def toString = s"Big Multiplier Solution for ${className(multiplierType)}: \n\t$widthFull = $dsp -> ${splits.zip(isKaras).mkString(" -> ")} \n\tdspCost = $dspCost, clbCost = $clbCost"
+  override def toString = s"Big Multiplier Solution for ${className(multiplierType)}: " +
+    s"\n\t$widthFull = $dsp -> ${splits.zip(isKaras).mkString(" -> ")} " +
+    s"\n\tdspCost = $dspCost, clbCost = $clbCost"
 }
 
 
