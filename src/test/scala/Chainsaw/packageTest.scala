@@ -23,4 +23,9 @@ class packageTest extends AnyFlatSpec {
       Seq(BigInt("01", 2), BigInt("10", 2), BigInt("11", 2)).reverse) // with padding
   }
 
+  it should "generate 2's complement correctly" in {
+    assert(BigInt(-3).toBitValue(3).toBinaryBigInt == BigInt("101", 2))
+    assert(BigInt(-7).toBitValue(4).toBinaryBigInt == BigInt("1001", 2))
+  }
+
 }
