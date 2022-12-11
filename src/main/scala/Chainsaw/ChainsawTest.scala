@@ -1,5 +1,6 @@
 package Chainsaw
 
+import Chainsaw.phases.IoAlign
 import spinal.core.sim._
 import spinal.sim.SimThread
 
@@ -10,20 +11,24 @@ import spinal.core.sim._
 import spinal.lib._
 import spinal.lib.fsm._
 
-
-case class ChainsawAllTest(
-                            testName: String = "testTemp",
-                            gen: ChainsawBaseGenerator,
-                            stimulus: Option[Seq[TestCase]] = None,
-                            golden: Option[Seq[Seq[BigDecimal]]] = None,
-                            terminateAfter: Int = 10000,
-                            errorSegmentsShown: Int = 10
-                          ) {
+case class ChainsawTest(
+                         testName: String = "testTemp",
+                         gen: ChainsawBaseGenerator,
+                         stimulus: Option[Seq[TestCase]] = None,
+                         golden: Option[Seq[Seq[BigDecimal]]] = None,
+                         terminateAfter: Int = 10000,
+                         errorSegmentsShown: Int = 10
+                       ) {
 
   import gen._
 
   def simConfig = {
-    val ret = SimConfig.workspaceName(testName).withFstWave
+    val spinalConfig = ChainsawSpinalConfig
+    if (gen.isInstanceOf[Unaligned]) spinalConfig.addTransformationPhase(new IoAlign) // for unaligned generator, pad the input and output
+    val ret = SimConfig
+      .workspaceName(testName)
+      .withFstWave
+      .withConfig(spinalConfig)
     ret._backend = gen.simBackEnd
     ret
   }
@@ -46,7 +51,7 @@ case class ChainsawAllTest(
   }
 
   val targetSegmentCount = inputSegments.length
-  val targetVectorCount = inputSegments.map(_.data.length).sum / inPortWidth
+  val targetVectorCount = inputSegments.map(_.data.length).sum / (if (inPortWidth == 0) 1 else inPortWidth)
   /** --------
    * interrupts insertion
    * -------- */
@@ -59,7 +64,7 @@ case class ChainsawAllTest(
 
   def getRandomInterrupt = TestCase(Seq.fill(Random.nextInt(10))(randomDataVector).flatten, getRandomControl)
 
-  def getResetInterrupt = TestCase(Seq.fill(resetCycle)(randomDataVector).flatten, getRandomControl)
+  def getResetInterrupt = TestCase(Seq.fill(resetCycle max 1)(randomDataVector).flatten, getRandomControl)
 
   val randomRatio = 10
   val inputSegmentsWithInvalid = ArrayBuffer[(TestCase, Boolean)](valids.head)
@@ -96,7 +101,7 @@ case class ChainsawAllTest(
   // segments -> vectors
   val inputVectorSize = if (inPortWidth == 0) 1 else inPortWidth // when inPortWidth is 0, the module is driven by clock
   val inputVectorsWithValid = inputSegmentsWithInvalid.flatMap { case (TestCase(segment, control), valid) =>
-    segment.grouped(inPortWidth).toSeq.map((_, control, valid))
+    segment.grouped(inputVectorSize).toSeq.map((_, control, valid))
   }
 
   // data containers
@@ -109,11 +114,11 @@ case class ChainsawAllTest(
    * -------- */
 
   simConfig.compile(gen.getImplH).doSim { dut =>
-    import dut.{clockDomain, flowIn, flowOut}
+    import dut.{clockDomain, flowInPointer, flowOutPointer}
 
     // init
     def init(): Unit = {
-      flowIn.valid #= false
+      flowInPointer.valid #= false
       clockDomain.forkStimulus(2)
       clockDomain.waitSampling()
     }
@@ -123,15 +128,15 @@ case class ChainsawAllTest(
       while (true) {
         if (i < inputVectorsWithValid.length) {
           val (data, control, valid) = inputVectorsWithValid(i)
-          flowIn.payload.zip(data).foreach { case (fix, decimal) => fix #= decimal }
+          flowInPointer.payload.zip(data).foreach { case (fix, decimal) => fix #= decimal }
           dut match {
             case dynamicModule: DynamicModule => dynamicModule.controlIn.zip(control).foreach { case (fix, decimal) => fix #= decimal }
             case _ => // no control
           }
-          flowIn.valid #= valid
+          flowInPointer.valid #= valid
           if (valid) inputTimes += simTime()
         } else {
-          flowIn.valid #= false
+          flowInPointer.valid #= false
         }
         i += 1
         clockDomain.waitSampling()
@@ -140,8 +145,8 @@ case class ChainsawAllTest(
 
     def peek(): SimThread = fork {
       while (true) {
-        if (flowOut.valid.toBoolean) {
-          outputVectors += flowOut.payload.map(_.toBigDecimal)
+        if (flowOutPointer.valid.toBoolean) {
+          outputVectors += flowOutPointer.payload.map(_.toBigDecimal)
           outputTimes += simTime()
         }
         clockDomain.waitSampling()
@@ -183,7 +188,7 @@ case class ChainsawAllTest(
       outputSegments = slices.map(slice => outputVectors.slice(slice.start, slice.end)).map(_.flatten)
       inputSegmentTimes = slices.map(slice => inputTimes.slice(slice.start, slice.end)).map(_.head)
       outputSegmentTimes = slices.map(slice => outputTimes.slice(slice.start, slice.end)).map(_.head)
-    case infinite: SemiInfinite =>
+    case _: SemiInfinite =>
       val discontinuities = outputTimes.sliding(2)
         .map { case Seq(prev, next) => if (next - prev == 2) 0 else next }
         .filterNot(_ == 0)

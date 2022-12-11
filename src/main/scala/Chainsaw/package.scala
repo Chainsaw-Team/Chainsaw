@@ -1,9 +1,12 @@
 
+import Chainsaw.deprecated.{ChainsawGenerator, NumericType}
+import Chainsaw.xilinx.xilinxCDConfig
 import cc.redberry.rings.scaladsl.IntZ
 import com.mathworks.engine.MatlabEngine
 import org.slf4j.LoggerFactory
 import spinal.core._
 import spinal.core.internals.PhaseContext
+import spinal.core.sim.SpinalSimBackendSel
 import spinal.lib._
 
 import java.io.File
@@ -14,10 +17,36 @@ import scala.language.implicitConversions
 import scala.math.BigInt
 import scala.reflect.ClassTag
 import scala.reflect.runtime.universe
+import scala.reflect.runtime.universe._
 import scala.reflect.runtime.universe.runtimeMirror
 import scala.util.Random
 
 package object Chainsaw {
+
+  def inVirtualGlob[T](func: => T) = {
+    val old = GlobalData.get
+
+    val virtualGlob = new GlobalData(SpinalConfig())
+    virtualGlob.phaseContext = new PhaseContext(SpinalConfig())
+    GlobalData.set(virtualGlob)
+    val ret = func
+
+    GlobalData.set(old)
+    ret
+  }
+
+  def inVirtualComponent[T](func: => T) = {
+    inVirtualGlob {
+      val com = new Module {
+        val ret = func
+      }
+      com.ret
+    }
+  }
+
+  def ChainsawSpinalConfig = SpinalConfig(
+    defaultConfigForClockDomains = xilinxCDConfig,
+    oneFilePerComponent = true)
 
   // for numeric type calculation
   //  val virtualGlob = new GlobalData(SpinalConfig())
@@ -34,6 +63,8 @@ package object Chainsaw {
 
   def setAsNaive(generator: Any*) = naiveSet += generator.getClass.getSimpleName.replace("$", "")
 
+  var testFlopoco = false
+  var testVhdl = false
   var atSimTime = true
 
   val dot = "■"
@@ -55,6 +86,7 @@ package object Chainsaw {
   val synthWorkspace = new File("synthWorkspace")
   val cplexJarPath = new File("/opt/ibm/ILOG/CPLEX_Studio1210/cplex/lib/cplex.jar")
   val flopocoPath = new File("/home/ltr/flopoco/build/flopoco")
+  val flopocoOutputDir = new File("src/main/resources/flopocoGenerated")
   val matlabScriptDir = new File("src/main/resources/matlabScripts")
 
   /** --------
@@ -64,6 +96,18 @@ package object Chainsaw {
     def divideAndCeil(base: Int) = (int + base - 1) / base
 
     def nextMultipleOf(base: Int) = divideAndCeil(base) * base
+
+    def divideToBlock(blockCount: Int) = {
+      val fullLength = divideAndCeil(blockCount)
+      val diff = fullLength * blockCount - int
+      Seq.fill(blockCount - 1)(fullLength) :+ fullLength - diff
+    }
+
+    def divideToChannel(channelCount: Int) = {
+      val fullLength = divideAndCeil(channelCount)
+      val diff = fullLength * channelCount - int
+      Seq.fill(channelCount - diff)(fullLength) ++ Seq.fill(diff)(fullLength - 1)
+    }
   }
 
   implicit class StringUtil(s: String) {
@@ -91,6 +135,8 @@ package object Chainsaw {
       val base = BigInt(1) << lowWidth
       (value >> lowWidth, value % base)
     }
+
+    def toBinaryBigInt = if (value >= 0) value else (BigInt(1) << (width)) + value
 
     def takeLow(n: Int) = splitAt(n)._2
 
@@ -152,7 +198,7 @@ package object Chainsaw {
 
   implicit class VecUtil[T <: Data](vec: Vec[T]) {
     def :=(that: Seq[T]): Unit = {
-      require(vec.length == that.length)
+      require(vec.length == that.length, s"vec length ${that.length} -> ${vec.length}")
       vec.zip(that).foreach { case (port, data) => port := data }
     }
 
@@ -191,8 +237,6 @@ package object Chainsaw {
 
   def ChainsawSynth(gen: ChainsawGenerator, name: String, withRequirement: Boolean = false) = {
     // TODO: with requirement, + ffs before and after the component, - ffs before comparison
-
-
     val report = VivadoSynth(gen.implH, name)
     if (withRequirement) report.require(gen.utilEstimation, gen.fmaxEstimation)
     report
@@ -200,7 +244,20 @@ package object Chainsaw {
 
   def ChainsawImpl(gen: ChainsawGenerator, name: String, withRequirement: Boolean = false) = {
     val report = VivadoImpl(gen.implH, name)
-    if (withRequirement) report.require(gen.utilEstimation, gen.fmaxEstimation)
+    if (withRequirement) report.require(gen.utilEstimation.toRequirement, gen.fmaxEstimation)
+    report
+  }
+
+  def ChainsawSynthAll(gen: ChainsawBaseGenerator, name: String, withRequirement: Boolean = false) = {
+    // TODO: with requirement, + ffs before and after the component, - ffs before comparison
+    val report = VivadoSynth(gen.implH, name)
+    if (withRequirement) report.require(gen.vivadoUtilEstimation.toRequirement, gen.fmaxEstimation)
+    report
+  }
+
+  def ChainsawImplAll(gen: ChainsawBaseGenerator, name: String, withRequirement: Boolean = false) = {
+    val report = VivadoImpl(gen.implH, name)
+    if (withRequirement) report.require(gen.vivadoUtilEstimation.toRequirement, gen.fmaxEstimation)
     report
   }
 
@@ -210,6 +267,8 @@ package object Chainsaw {
   object Pow2 {
     def apply(exp: Int) = BigInt(1) << exp
   }
+
+  def nextPow2(n: Int): BigInt = BigInt(1) << log2Up(n)
 
   def randBigInt(width: Int) = BigInt(width, Random)
 
@@ -226,13 +285,55 @@ package object Chainsaw {
     def toBigInt = BigInt(intz.toByteArray)
   }
 
-  // to get unique name
+  /** --------
+   * to getUniqueName
+   * -------- */
 
   val mirror: universe.Mirror = runtimeMirror(getClass.getClassLoader)
 
   def className(any: Any) = any.getClass.getSimpleName.replace("$", "")
 
   def hashName(any: Any) = any.hashCode().toString.replace("-", "N")
+
+  def getAutoName[T: TypeTag](obj: T)(implicit tag: ClassTag[T]) = {
+    val fieldSymbols = typeOf[T].members
+      .filter(_.isMethod)
+      .map(_.asTerm)
+      .filter(_.isCaseAccessor)
+      .toSeq.reverse
+    val fieldNames = fieldSymbols.map(_.name)
+    val instanceMirror: universe.InstanceMirror = mirror.reflect(obj)
+    val valuesAndNames = fieldNames.map(_.toString).zip(fieldSymbols.map(instanceMirror.reflectField).map(_.get)).sortBy(_._1)
+
+    def getFieldName(name: String, value: Any) = {
+      value match {
+        case boolean: Boolean => if (boolean) name.trim else s"not${name.trim}"
+        case chainsawSolution: ChainsawSolution => hashName(chainsawSolution)
+        case chainsawEnum: ChainsawEnum => className(chainsawEnum)
+        case sim: SpinalSimBackendSel => className(sim)
+        case bigInt: BigInt => hashName(bigInt).replace('-', 'N')
+        case seq: Seq[_] => hashName(seq)
+        case double: Double => hashName(double)
+        case int: Double => int.toString.replace("-", "N")
+        case numericType: NumericType => s"${numericType.integral}_${numericType.fractional}".replace('-', 'N') // TODO: remove old numericType
+        case numericType: NumericType => s"${numericType.integral}_${numericType.fractional}".replace('-', 'N')
+        case hertzNumber: HertzNumber => (hertzNumber / 1e6).toInt
+        case operatorType: OperatorType => className(operatorType)
+        case _ => value.toString
+      }
+    }
+
+    val fieldName = valuesAndNames.map { case (name, value) =>
+      value match {
+        case option: Option[_] => option match {
+          case Some(some) => getFieldName(name, some)
+          case None => "none"
+        }
+        case _ => getFieldName(name, value)
+      }
+    }.mkString("_")
+    className(obj) + "_" + fieldName
+  }
 
   /** --------
    * matlab utils

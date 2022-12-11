@@ -9,6 +9,10 @@ case class TestCase(data: Seq[BigDecimal], control: Seq[BigDecimal] = Seq[BigDec
     s"data   : ${data.mkString(",")}\ncontrol: ${control.mkString(",")}"
 }
 
+object TestCase {
+  def empty = TestCase(Seq[BigDecimal]())
+}
+
 trait ChainsawBaseGenerator {
   def name: String
 
@@ -16,9 +20,9 @@ trait ChainsawBaseGenerator {
 
   def fmaxEstimation: HertzNumber
 
-  def inputTypes: Seq[NumericTypeNew]
+  def inputTypes: Seq[NumericType]
 
-  def outputTypes: Seq[NumericTypeNew]
+  def outputTypes: Seq[NumericType]
 
   /** --------
    * model
@@ -49,7 +53,7 @@ trait ChainsawBaseGenerator {
   }
 
   // impl selection
-  def setAsNaive(): Unit = naiveSet += this.getClass.getSimpleName
+  def setAsNaive(): Unit = naiveSet += className(this)
 
   def useNaive: Boolean = naiveSet.contains(this.getClass.getSimpleName)
 
@@ -72,13 +76,43 @@ trait ChainsawBaseGenerator {
    * utils for input/output generation
    * -------- */
 
-  def emptyTypes: Seq[NumericTypeNew] = Seq[NumericTypeNew]()
+  def emptyTypes: Seq[NumericType] = Seq[NumericType]()
 
   def clockInput(cycle: Int) = Seq.fill(cycle)(BigDecimal(1))
 
-  def randomDataVector = inputTypes.map(_.random)
+  def randomDataVector = if (inputTypes.nonEmpty) inputTypes.map(_.random) else Seq(BigDecimal(0))
+
+  def randomDataSequence(cycle: Int) = Seq.fill(cycle)(randomDataVector).flatten
 
   def randomTestCase: TestCase
+
+  /** --------
+   * utils for test
+   * -------- */
+
+  def doSelfTest() = ChainsawTest(s"test$name", this)
+
+  def report: String =
+    s"""
+       |name: $name
+       |input types: ${inputTypes.mkString(", ")}
+       |output types: ${outputTypes.mkString(", ")}
+       |utilEstimated: $vivadoUtilEstimation
+       |fmaxEstimated: ${fmaxEstimation / 1e6} MHz
+       |""".stripMargin
+
+  /** --------
+   * utils for instantiation
+   * -------- */
+  def process(data: Seq[AFix]) = {
+    val core = implH
+    core.dataIn.zip(data).foreach { case (in, data) => in := data }
+    core.dataOut
+  }
+
+  def cloneInput = Vec(inputTypes.map(_.apply()))
+
+  def cloneOutput = Vec(outputTypes.map(_.apply()))
 }
 
 trait SemiInfinite
@@ -86,7 +120,7 @@ trait SemiInfinite
 trait Operator
 
 trait Dynamic {
-  def controlTypes: Seq[NumericTypeNew]
+  def controlTypes: Seq[NumericType]
 
   def controlPortWidth = controlTypes.length
 
@@ -222,4 +256,15 @@ trait ChainsawDynamicInfiniteGenerator extends ChainsawBaseGenerator with Dynami
   override def getImplH = super.getImplH.asInstanceOf[ChainsawDynamicInfiniteModule]
 
   override def randomTestCase = TestCase(Seq.fill(resetCycle)(randomDataVector).flatten, randomControlVector)
+}
+
+
+trait Unaligned {
+  val inputTimes: Seq[Int]
+
+  def inputInterval = inputTimes.max - inputTimes.min
+
+  val outputTimes: Seq[Int]
+
+  def outputInterval = outputTimes.max - outputTimes.min
 }

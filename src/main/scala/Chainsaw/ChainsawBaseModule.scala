@@ -8,14 +8,30 @@ abstract class ChainsawBaseModule(val gen: ChainsawBaseGenerator) extends Compon
 
   import gen._
 
-  val flowIn = slave Flow Vec(inputTypes.map(_.apply()))
-  val flowOut = master Flow Vec(outputTypes.map(_.apply()))
+  val flowIn = slave Flow Fragment(Vec(inputTypes.map(_.apply())))
+  val flowOut = master Flow Fragment(Vec(outputTypes.map(_.apply())))
 
-  val dataIn = flowIn.payload
+  val dataIn = flowIn.fragment
   val validIn = flowIn.valid
+  val lastIn = flowIn.last
 
-  val dataOut = flowOut.payload
+  val dataOut = flowOut.fragment
   val validOut = flowOut.valid
+  val lastOut = flowOut.last
+
+  // these pointers can be modified by elaboration phases
+  var flowInPointer = flowIn
+  var flowOutPointer = flowOut
+
+  gen match {
+    case fixedLatency: FixedLatency => validOut := validIn.validAfter(fixedLatency.latency())
+    case _ =>
+  }
+
+  if (atSimTime) {
+    val segmentCounter = Counter(16384, inc = lastOut)
+    segmentCounter.value.setName("segmentId")
+  }
 
   setDefinitionName(gen.name)
   setName(gen.name, weak = true)
@@ -27,10 +43,7 @@ trait DynamicModule {
 
 class ChainsawOperatorModule(override val gen: ChainsawOperatorGenerator)
   extends ChainsawBaseModule(gen) {
-
-  import gen._
-
-  validOut := validIn.validAfter(latency())
+  lastOut := validOut
 }
 
 class ChainsawDynamicOperatorModule(override val gen: ChainsawDynamicOperatorGenerator)
@@ -39,6 +52,7 @@ class ChainsawDynamicOperatorModule(override val gen: ChainsawDynamicOperatorGen
   import gen._
 
   override val controlIn = in Vec controlTypes.map(_.apply())
+  lastOut := validOut
 }
 
 class ChainsawFrameModule(override val gen: ChainsawFrameGenerator)
@@ -46,17 +60,9 @@ class ChainsawFrameModule(override val gen: ChainsawFrameGenerator)
 
   import gen._
 
-  if (!isInstanceOf[DynamicModule]) {
-    validOut := validIn.validAfter(latency())
-  }
-  val lastOut = out Bool()
   if (atSimTime) {
-    if (!isInstanceOf[DynamicModule]) {
-      val inputCounter = Counter(period, inc = validIn)
-      assert(!(!validIn && inputCounter.value =/= 0), "input frame incomplete")
-    }
-    val frameCounter = Counter(16384, inc = lastOut)
-    frameCounter.value.setName("frameId")
+    val inputCounter = Counter(period, inc = validIn)
+    assert(!(!validIn && inputCounter.value =/= 0), "input frame incomplete")
   }
 }
 
@@ -66,15 +72,11 @@ class ChainsawDynamicFrameModule(override val gen: ChainsawDynamicFrameGenerator
   import gen._
 
   override val controlIn = in Vec controlTypes.map(_.apply())
-  val lastOut = out Bool()
 }
 
 class ChainsawInfiniteModule(override val gen: ChainsawInfiniteGenerator)
   extends ChainsawBaseModule(gen) {
-
-  import gen._
-
-  validOut := validIn.validAfter(latency())
+  lastOut.assignDontCare()
 }
 
 class ChainsawDynamicInfiniteModule(override val gen: ChainsawDynamicInfiniteGenerator)
@@ -83,4 +85,5 @@ class ChainsawDynamicInfiniteModule(override val gen: ChainsawDynamicInfiniteGen
   import gen._
 
   override val controlIn = in Vec controlTypes.map(_.apply())
+  lastOut.assignDontCare()
 }
