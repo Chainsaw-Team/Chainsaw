@@ -1,6 +1,7 @@
 package Chainsaw.xilinx
 
 import Chainsaw._
+import Chainsaw.xilinx.VivadoUtil.UNKNOWN
 import ilog.concert._
 import ilog.cplex._
 
@@ -16,7 +17,7 @@ case class VivadoUtil(
   def getValues = Seq(lut, ff, dsp, bram36, uram288, carry8)
 
   def +(that: VivadoUtil) = VivadoUtil(
-    this.getValues.zip(that.getValues).map { case (a, b) => a + b }
+    this.getValues.zip(that.getValues).map { case (a, b) => if (a == -1 || b == -1) 0 else a + b }
   )
 
   def *(k: Int) = VivadoUtil(this.getValues.map(_ * k))
@@ -36,30 +37,6 @@ case class VivadoUtil(
   def >=(that: VivadoUtil): Boolean = that <= this
 
   def normalizedCost(clbPerDsp: Double): Double = dsp.toDouble max (lut / clbPerDsp)
-
-  def isBetterThan(that: VivadoUtil, strategy: UtilStrategy, clbPerDsp: Double) = {
-
-    def getDet(value: Double, thatValue: Double): Int = if (value < thatValue) 1 else if (value == thatValue) 0 else -1
-
-    val dspBetter = getDet(this.dsp, that.dsp)
-    val clbBetter = getDet(this.lut, that.lut)
-
-    // TODO: generalize clbPerDsp
-    val ratioBetter = getDet(this.normalizedCost(clbPerDsp), that.normalizedCost(clbPerDsp))
-
-    /** judge whether a solution is better than another by multiple determinants with decresing priorities
-     *
-     * @param betters
-     * 1 for better, 0 for equally good, -1 for worst
-     */
-    def betterWithPriority(betters: Int*): Boolean = betters.reverse.zipWithIndex.map { case (better, i) => better << i }.sum > 0
-
-    strategy match {
-      case DspFirst => betterWithPriority(dspBetter, clbBetter, ratioBetter)
-      case ClbFirst => betterWithPriority(clbBetter, dspBetter, ratioBetter)
-      case RatioFirst => betterWithPriority(ratioBetter, dspBetter, clbBetter)
-    }
-  }
 
   def solveBestScheme(schemes: Seq[VivadoUtil], solveVars: Seq[Int]): Array[Int] = {
     val cplex = new IloCplex()
@@ -99,13 +76,15 @@ case class VivadoUtil(
     ret
   }
 
-  def showInt(value: Int) =
-    if (value == Int.MaxValue) "unlimited" else value.toString
+  def toRequirement = VivadoUtil(getValues.map(value => if(value == -1) UNKNOWN else value))
+
+  private def toIntString(value: Int) =
+    if (value == UNKNOWN || value == -1) "???" else value.toString
 
   override def toString = {
     Seq("lut", "ff", "dsp", "bram36", "uram288", "carry8")
       .map(_.toUpperCase)
-      .zip(getValues.map(showInt))
+      .zip(getValues.map(toIntString))
       .map { case (name, value) => s"$name = $value" }
       .mkString(" ")
   }
@@ -116,38 +95,32 @@ case class VivadoUtil(
   }
 }
 
+object VivadoUtil {
+  val UNKNOWN = Int.MaxValue
+}
+
 object VivadoUtilRequirement {
   val limit = Int.MaxValue
 
   def apply(
-             lut: Int = limit,
-             ff: Int = limit,
-             dsp: Int = limit,
-             bram36: Int = limit,
-             uram288: Int = limit,
-             carry8: Int = limit
+             lut: Int = VivadoUtil.UNKNOWN,
+             ff: Int = VivadoUtil.UNKNOWN,
+             dsp: Int = VivadoUtil.UNKNOWN,
+             bram36: Int = VivadoUtil.UNKNOWN,
+             uram288: Int = VivadoUtil.UNKNOWN,
+             carry8: Int = VivadoUtil.UNKNOWN
            ) =
     VivadoUtil(lut, ff, dsp, bram36, uram288, carry8)
 }
 
 object VivadoUtilEstimation {
-  val limit = Int.MaxValue
-
   def apply(
-             lut: Int = 0,
-             ff: Int = 0,
-             dsp: Int = 0,
-             bram36: Int = 0,
-             uram288: Int = 0,
-             carry8: Int = 0
+             lut: Int = -1,
+             ff: Int = -1,
+             dsp: Int = -1,
+             bram36: Int = -1,
+             uram288: Int = -1,
+             carry8: Int = -1
            ) =
     VivadoUtil(lut, ff, dsp, bram36, uram288, carry8)
 }
-
-sealed trait UtilStrategy
-
-object DspFirst extends UtilStrategy
-
-object ClbFirst extends UtilStrategy
-
-object RatioFirst extends UtilStrategy

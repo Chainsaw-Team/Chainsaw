@@ -99,15 +99,19 @@ class VivadoReport(
   override def toString: String =
     s"LUT $LUT, FF $FF, DSP $DSP, BRAM $BRAM, URAM $URAM, CARRY8 $CARRY8, Freq = ${Frequency / 1e6} MHz\n"
 
+  def requireFmax(fmaxRequirement: HertzNumber): Unit = assert(
+    this.Frequency >= fmaxRequirement.toDouble,
+    s"\ncritical path failed: \n\tyours:  ${Frequency / 1e6} MHz, \n\ttarget: $fmaxRequirement"
+  )
+
+  def requireUtil(utilRequirement: VivadoUtil): Unit = assert(
+    this.util <= utilRequirement,
+    s"\nutil failed: \n\tyours:  $util, target: \n\t$utilRequirement"
+  )
+
   def require(utilRequirement: VivadoUtil, fmaxRequirement: HertzNumber): Unit = {
-    assert(
-      this.util <= utilRequirement,
-      s"util failed: yours: $util, target: $utilRequirement"
-    )
-    assert(
-      this.Frequency >= fmaxRequirement.toDouble,
-      s"critical path failed: yours: ${Frequency / 1e6} MHz, target: $fmaxRequirement"
-    )
+    requireUtil(utilRequirement)
+    requireFmax(fmaxRequirement)
   }
 
   log.close()
