@@ -23,8 +23,8 @@ case class Cordic(algebraicMode: AlgebraicMode,
       initValues.map(value => if (value.isDefined) "1" else "0").mkString("_")
     }"
 
-  val phaseType = NumericTypeNew(Pi, -Pi, -fractional)
-  val amplitudeType = NumericTypeNew(2.1, -2.1, -fractional)
+  val phaseType = NumericType(Pi, -Pi, -fractional)
+  val amplitudeType = NumericType(2.1, -2.1, -fractional)
   logger.info(s"phaseType: $phaseType, amplitudeType: $amplitudeType")
 
   /** --------
@@ -118,7 +118,7 @@ case class Cordic(algebraicMode: AlgebraicMode,
     Seq.fill(1000)(getGroup).map(TestCase(_))
   }
 
-  override def inputTypes: Seq[NumericTypeNew] =
+  override def inputTypes: Seq[NumericType] =
     Seq(amplitudeType, amplitudeType, phaseType).zip(initValues)
       .flatMap {
         case (t, Some(_)) => None
@@ -141,7 +141,7 @@ case class Cordic(algebraicMode: AlgebraicMode,
       if (algebraicMode == HYPERBOLIC) getHyperbolicSequence(iteration)
       else 0 until iteration
 
-    val scaleType = NumericTypeNew(1, 16, signed = true) // for 18 bit multiplier
+    val scaleType = NumericType(1, 16, signed = true) // for 18 bit multiplier
     val scaleComplement = scaleType.fromConstant(getScaleComplement(iteration))
     logger.info(s"compensation = ${getScaleComplement(iteration)}")
 

@@ -10,7 +10,7 @@ import scala.language.postfixOps
 import scala.util.Random
 
 // TODO: parallel version
-case class DynamicDelay(delay: Int, dataType: NumericTypeNew, parallel: Int)
+case class DynamicDelay(delay: Int, dataType: NumericType, parallel: Int)
   extends ChainsawDynamicInfiniteGenerator {
 
   override def name = s"DynamicDelay_$delay"
@@ -47,7 +47,7 @@ case class DynamicDelay(delay: Int, dataType: NumericTypeNew, parallel: Int)
 
   override def latency(control: Seq[BigDecimal]) = control.head.toInt
 
-  override def controlTypes = Seq(NumericTypeNew.U(log2Up(delay + 1)))
+  override def controlTypes = Seq(NumericType.U(log2Up(delay + 1)))
 
   override def inputTypes = Seq.fill(parallel)(dataType)
 

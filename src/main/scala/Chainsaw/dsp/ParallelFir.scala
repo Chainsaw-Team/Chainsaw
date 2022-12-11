@@ -11,8 +11,8 @@ import scala.util.Random
 // TODO: implement upsample & downsample
 // when number of outPorts is a multiple of number of downSample -
 case class ParallelFir(coeffs: Seq[Double],
-                       coeffType: NumericTypeNew,
-                       dataType: NumericTypeNew,
+                       coeffType: NumericType,
+                       dataType: NumericType,
                        parallel: Int)
   extends ChainsawInfiniteGenerator {
 

@@ -7,21 +7,21 @@ import spinal.core._
 import scala.language.postfixOps
 import scala.util.Random
 
-case class FilterPrecisionNew(coeffType: NumericTypeNew, dataType: NumericTypeNew) {
+case class FilterPrecisionNew(coeffType: NumericType, dataType: NumericType) {
   override def toString = ""
 }
 
 /** systolic fir for FPGAs, extremely efficient for Xilinx device
  */
 case class Fir(coeffs: Seq[Double],
-               coeffType: NumericTypeNew,
-               dataType: NumericTypeNew,
+               coeffType: NumericType,
+               dataType: NumericType,
                symmetric: Boolean = false)
   extends ChainsawInfiniteGenerator {
 
   if (symmetric) require(coeffs.length % 2 == 0, "odd tap number is not supported for symmetric mode")
   val temp = dataType * coeffType
-  val productType = if (symmetric) NumericTypeNew(temp.integral + 1, temp.fractional, temp.signed) else temp
+  val productType = if (symmetric) NumericType(temp.integral + 1, temp.fractional, temp.signed) else temp
   val coeffsInUse = if (symmetric) coeffs.take(coeffs.length.divideAndCeil(2)) else coeffs
 
   override def name = s"${if (symmetric) "Symmetric" else "Asymmetric"}_Fir_${dataType}_${coeffType}_coeff${hashName(coeffs)}"
