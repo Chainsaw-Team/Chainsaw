@@ -1,23 +1,25 @@
 package Chainsaw.arithmetic
 
 import Chainsaw._
+import Chainsaw.xilinx.VivadoUtilEstimation
 import cc.redberry.rings
 import cc.redberry.rings.scaladsl._
 import spinal.core._
 
 import scala.util.Random
 
-/**
+/** implement big constant multiplication by compressor tree
+ *
  * @param constant       constant multiplicand
  * @param multiplierType MSB/LSB/FULL
  * @param widthIn        width of variable multiplicand
- * @param widthInvolved      width of bits involved in calculation
+ * @param widthInvolved  width of bits involved in calculation
  * @param widthOut       width of product
  * @param useCsd         use canonical signed digit to represent the constant
  */
-case class TruncatedConstantMult(constant: BigInt, multiplierType: MultiplierType,
-                                 widthIn: Int, widthInvolved: Int, widthOut: Int,
-                                 useCsd: Boolean = false) {
+case class BcmAlgo(constant: BigInt, multiplierType: MultiplierType,
+                   widthIn: Int, widthInvolved: Int, widthOut: Int,
+                   useCsd: Boolean = false) extends HardAlgo {
 
   /** --------
    * width calculation
@@ -57,9 +59,15 @@ case class TruncatedConstantMult(constant: BigInt, multiplierType: MultiplierTyp
       .filterNot(_._1.isEmpty) // skip empty slices
       .map { case (slice, info) => (slice, info << slice.head) } // true weight
 
+  val clbCost = sliceAndInfos.map(_._2).map(_.width).sum
+
+  // TODO: take compressor efficiency into consideration
+  // TODO: more accurate estimation
+  override val vivadoUtilEstimation = VivadoUtilEstimation(lut = clbCost, ff = clbCost * 2, dsp = 0, bram36 = 0, uram288 = 0)
+
   /** --------
    * calculation & verification
-   -------- */
+   * -------- */
 
   def target(x: BigInt): BigInt = { // target of calculation
     require(x.bitLength <= widthIn)
@@ -132,15 +140,15 @@ case class TruncatedConstantMult(constant: BigInt, multiplierType: MultiplierTyp
 
 object MsbConstantMult {
   def apply(constant: BigInt, widthIn: Int, widthInvolved: Int, widthOut: Int, useCsd: Boolean) =
-    TruncatedConstantMult(constant, MsbMultiplier, widthIn, widthInvolved, widthOut, useCsd)
+    BcmAlgo(constant, MsbMultiplier, widthIn, widthInvolved, widthOut, useCsd)
 }
 
 object LsbConstantMult {
   def apply(constant: BigInt, widthIn: Int, widthOut: Int, useCsd: Boolean) =
-    TruncatedConstantMult(constant, LsbMultiplier, widthIn, widthOut, widthOut, useCsd)
+    BcmAlgo(constant, LsbMultiplier, widthIn, widthOut, widthOut, useCsd)
 }
 
 object FullConstantMult {
   def apply(constant: BigInt, widthIn: Int, useCsd: Boolean) =
-    TruncatedConstantMult(constant, FullMultiplier, widthIn, widthIn + constant.bitLength, widthIn + constant.bitLength, useCsd)
+    BcmAlgo(constant, FullMultiplier, widthIn, widthIn + constant.bitLength, widthIn + constant.bitLength, useCsd)
 }

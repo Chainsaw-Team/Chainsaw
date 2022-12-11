@@ -1,30 +1,36 @@
 package Chainsaw.arithmetic
 
 import Chainsaw._
+import Chainsaw.xilinx.VivadoUtilEstimation
+
 import scala.util.Random
 
-case class BmAlgo(bmSolution: BmSolution) {
+/** long multiplication implemented by divide-and-conquer
+ */
+case class BmAlgo(bmSolution: BmSolution) extends HardAlgo {
+
+  // more accurate concept for clbCost
 
   // TODO: latency estimation
   // TODO: apply cmults by DSP limit
 
   val isConstantMult = bmSolution.constant.isDefined
+
   /** --------
    * cost statistics
    * -------- */
-  var dspCost = 0
+  var multCost = 0
+  var fixCost = 0
   var splitCost = 0
   var mergeCost = 0
   var cmultCost = 0
 
-  def clbCost = splitCost + mergeCost + cmultCost
-
-  def clearCost(): Unit = {
-    dspCost = 0
-    splitCost = 0
-    mergeCost = 0
-    cmultCost = 0
-  }
+  //  def clearCost(): Unit = {
+  //    multCost = 0
+  //    splitCost = 0
+  //    mergeCost = 0
+  //    cmultCost = 0
+  //  }
 
   val weightMax =
     if (bmSolution.multiplierType == LsbMultiplier) bmSolution.widthFull
@@ -70,11 +76,14 @@ case class BmAlgo(bmSolution: BmSolution) {
     val weight = v0.arithInfo.weight + v1.arithInfo.weight
     val time = v0.arithInfo.time + dspLatency
 
-    if (isConstantMult) {
-      val constantWeight = Csd(v1.value).weight
-      if (constantWeight >= bmSolution.threshold) dspCost += 1
-      else cmultCost += bmSolution.dsp._1 * (constantWeight - 1) // TODO: more accurate estimation
-    } else dspCost += 1
+    val constantWeight = if (isConstantMult) Csd(v1.value).weight else v1.arithInfo.width
+    val useCMult = (isConstantMult && constantWeight < bmSolution.threshold)
+    if (useCMult) {
+      cmultCost += bmSolution.dspSize._1 * (constantWeight - 1) // TODO: more accurate estimation
+    } else {
+      multCost += bmSolution.baseMultiplier.dspCost
+      fixCost += bmSolution.baseMultiplier.clbCost.toInt
+    }
 
     WeightedValue(value = v0.value * v1.value, arithInfo = ArithInfo(width, weight, v0.arithInfo.isPositive, time))
   }
@@ -222,8 +231,8 @@ case class BmAlgo(bmSolution: BmSolution) {
       val multName = s"${bmSolution.widthFull}-bit ${if (isConstantMult) "constant" else "variable"} ${className(bmSolution.multiplierType)} threshold = ${bmSolution.threshold}"
       logger.info(
         s"\n----$multName----" +
-          s"\n\tdspCost = $dspCost" +
-          s"\n\tclbCost = $clbCost = $splitCost(split) + $mergeCost(merge) + $cmultCost(cmult)"
+          s"\n\tdspCost = $multCost" +
+          s"\n\tclbCost = ${splitCost + mergeCost + cmultCost} = $splitCost(split) + $mergeCost(merge) + $cmultCost(cmult)"
       )
     }
 
@@ -231,9 +240,8 @@ case class BmAlgo(bmSolution: BmSolution) {
     else {
       val error = ret - golden
       assert(error <= 0 && error >= -(bmSolution.widthFull / 2), s"error = $error")
-      logger.info(s"error introduced by MSB multiplier: $error, ${ret.bitLength}, ${golden.bitLength}")
+      if (verbose) logger.info(s"error introduced by MSB multiplier: $error, ${ret.bitLength}, ${golden.bitLength}")
     }
-    clearCost()
     ret
   }
 
@@ -247,4 +255,13 @@ case class BmAlgo(bmSolution: BmSolution) {
     data.foreach { case (x, y) => impl(x, y) }
     logger.info("bm algo test passed")
   }
+
+  /** --------
+   * determine cost while initializing
+   * -------- */
+  impl(BigInt(bmSolution.widthFull, Random), BigInt(bmSolution.widthFull, Random), verbose = false)
+  val eff = 1.0 // TODO: vary for different sizes
+  val clbCost = (splitCost + fixCost + (mergeCost + cmultCost) / eff).toInt
+
+  override def vivadoUtilEstimation = VivadoUtilEstimation(dsp = multCost, lut = clbCost, ff = clbCost * 2, bram36 = 0, uram288 = 0)
 }

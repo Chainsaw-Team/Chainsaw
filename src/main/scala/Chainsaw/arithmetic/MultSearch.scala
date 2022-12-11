@@ -1,36 +1,51 @@
 package Chainsaw.arithmetic
 
 import Chainsaw._
+import Chainsaw.deprecated.Bcm
 import Chainsaw.xilinx.{VivadoUtil, VivadoUtilRequirement}
 import spinal.core._
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
-object BmSearch {
+/** unified multiplier design interface, following algos are supported:
+ *          - 1. divide-and-conquer based implementation of big multiplier
+ *            [[BmAlgo]], [[Bm]]
+ *
+ *          - 2. bit heap compression based implementation of big multiplier
+ *            [[BcmAlgo]] [[Bcm]]
+ *
+ *          - 3. RNS-based implementation of mid multiplier
+ *
+ *          - 4. look up table based implementation of small multiplier
+ */
+object MultSearch {
 
   def apply(width: Int, multiplierType: MultiplierType, budget: VivadoUtil): Unit = {
-    val solutions = getParetos(width, multiplierType)
+    val solutions = getBmParetos(width, multiplierType)
     val count = budget.solveBestScheme(solutions.map(_.vivadoUtil + VivadoUtilRequirement(lut = 20000, dsp = 0)), Seq(0, 2)) // 0 & 2 for LUT & DSP
     count.zip(solutions).foreach { case (i, solution) => logger.info(s"$i X $solution") }
     val util = count.zip(solutions).map { case (i, solution) => solution.vivadoUtil * i }.reduce(_ + _)
     logger.info(s"LUT: ${util.lut} / ${budget.lut}, DSP: ${util.dsp} / ${budget.dsp}")
   }
 
-  /** get the best Karatsuba Solution by branch and bound algorithm
+  // available starting points
+  // FIXME: 17 X 17 leads to problem, why?
+  val baseMultipliers = Seq(
+    BaseDspMult(16, 16), BaseDspMult(12, 24), BaseDspMult(16, 24), BaseDspMult(16, 20), // use dsp as pure multiplier
+    Sm(FullMultiplier), // taking advantage of dsps' pre-adder/post-adder
+  )
+
+  /** get the best BmSolutions for variable multiplications by branch and bound + dynamic programming algorithm
    *
    * @param width width of the multiplier
    */
-  def getParetos(width: Int, multiplierType: MultiplierType): Seq[BmSolution] = {
+  // TODO: search for MSB/LSB multipliers, with optimized base multipliers(LSB/MSB version)
+  def getBmParetos(width: Int, multiplierType: MultiplierType): Seq[BmSolution] = {
 
-    val dsps =
-    //      if (multiplierType == FullMultiplier) Seq((16, 16), (12, 24), (16, 24), (16, 20))
-      Seq((16, 16), (12, 24), (16, 24), (16, 20))
+    val solutionSet = mutable.Map[Int, ArrayBuffer[BmSolution]]() // width -> solutions
 
-
-    val solutionSet = mutable.Map[Int, ArrayBuffer[BmSolution]]()
-
-    def inferior(a: BmSolution, b: BmSolution): Boolean =
+    def inferior(a: BmSolution, b: BmSolution): Boolean = // definition of Pareto
       a.vivadoUtil.lut >= b.vivadoUtil.lut && a.vivadoUtil.dsp >= b.vivadoUtil.dsp
 
     def makePareto(solutions: ArrayBuffer[BmSolution]): mutable.Seq[BmSolution] = {
@@ -48,13 +63,14 @@ object BmSearch {
 
     val naiveSolution = {
       val stage = log2Up((width + 15) / 16)
-      BmSolution((16, 16), Seq.fill(stage)(2), multiplierType, Seq.fill(stage)(true))
+      BmSolution(baseMultipliers.head, Seq.fill(stage)(2), multiplierType, Seq.fill(stage)(true))
+      //      BmSolution(baseMultipliers.head, Seq.fill(stage)(2), multiplierType, Seq.fill(stage)(false))
     }
 
     solutionSet(naiveSolution.widthFull) = ArrayBuffer[BmSolution]()
     solutionSet(naiveSolution.widthFull) += naiveSolution
 
-    def updateSolution(): Unit = solutionSet.values.foreach(makePareto)
+    def reduceSolutions(): Unit = solutionSet.values.foreach(makePareto)
 
     def addSolution(solutionNext: BmSolution): Unit = {
       if (!inferior(solutionNext, naiveSolution)) {
@@ -64,16 +80,14 @@ object BmSearch {
       }
     }
 
-    // init
-    dsps.foreach { dsp => // first layer decompositions are special
-      // val a = BmSolution(dsp, Seq(2), multiplierType, Seq(true))
-      // val b = BmSolution(dsp, Seq(2), multiplierType, Seq(false))
-      // val solutions = if (multiplierType == FullMultiplier) Seq(a, b) else Seq(a)
-      // solutions.foreach(addSolution)
-      // must be Kara at the first layer
-      addSolution(BmSolution(dsp, Seq(2), multiplierType, Seq(true)))
+    // initialization
+    baseMultipliers.foreach { dsp =>
+      if (dsp.widthX == dsp.widthY) addSolution(BmSolution(dsp, Seq[Int](), multiplierType, Seq[Boolean]()))
+      else {
+        (2 until 100).map(i => BmSolution(dsp, Seq(i), multiplierType, Seq(true))).filter(_.widthFull <= width).foreach(addSolution)
+        (2 until 100).map(i => BmSolution(dsp, Seq(i), multiplierType, Seq(false))).filter(_.widthFull <= width).foreach(addSolution)
+      }
     }
-
 
     def iter(solution: BmSolution): Unit = {
       var splitNext = 2
@@ -93,8 +107,6 @@ object BmSearch {
 
     def undetermined = solutionSet.filter { case (i, solutions) => i < width && solutions.nonEmpty }
 
-    def determined = solutionSet.filter { case (i, solutions) => i >= width && solutions.nonEmpty }
-
     while (undetermined.nonEmpty) {
       val old = mutable.Map[Int, ArrayBuffer[BmSolution]]()
       undetermined.foreach { case (i, solutions) => solutions // copy to old
@@ -105,13 +117,16 @@ object BmSearch {
       }
 
       undetermined.foreach(_._2.foreach(iter))
-      updateSolution()
+      reduceSolutions()
       old.foreach { case (i, solutions) => solutions.foreach(solutionSet(i) -= _) } // drop old
     }
 
     val all = ArrayBuffer(solutionSet.filter(_._1 >= width).flatMap(_._2).toSeq: _*)
     val ret = makePareto(all)
-    if (verbose >= 1) logger.info(s"solutions for $width bit big multiplier:\n\t${ret.mkString("\n\t")}")
+    logger.info(s"Pareto solutions for $width-bit ${className(multiplierType)}:\n${ret.mkString("\n")}")
     ret
   }
+
+  // TODO: search for constant multipliers with dynamic threshold
+
 }
