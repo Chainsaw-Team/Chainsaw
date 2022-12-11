@@ -1,7 +1,7 @@
 package Chainsaw.deprecated
 
 import Chainsaw._
-import Chainsaw.testConfigurations._
+import testConfigurations._
 
 class DedicatedMultTest extends ChainsawFlatSpec {
   val modes = Seq(FullMultiplier, SquareMultiplier, LsbMultiplier, Kara) // FIXME: implement MsbMultiplier, add it to modes

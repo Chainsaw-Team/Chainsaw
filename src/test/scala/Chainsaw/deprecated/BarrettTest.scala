@@ -1,6 +1,6 @@
 package Chainsaw.deprecated
 
-import Chainsaw.testConfigurations._
+import testConfigurations._
 import Chainsaw.{deprecated, _}
 
 class BarrettTest extends ChainsawFlatSpec {
