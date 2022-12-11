@@ -1,5 +1,7 @@
 package Chainsaw
 
+import Chainsaw.deprecated.NumericType
+import breeze.math.Complex
 import spinal.core._
 import spinal.core.sim._
 import spinal.lib._
@@ -9,18 +11,8 @@ import scala.language.postfixOps
 
 object NumericExt {
 
-  implicit class UIntUtil(ui: UInt) {
-    def numericType = UIntInfo(ui.getWidth)
-  }
-
-  implicit class SIntUtil(si: UInt) {
-    def numericType = SIntInfo(si.getWidth - 1)
-  }
-
   // extension for signed fix
   implicit class SFixUtil(sf: SFix) {
-
-    def numericType = SFixInfo(sf.maxExp, -sf.minExp)
 
     def isPositive: Bool = ~sf.raw.msb
 
@@ -62,22 +54,28 @@ object NumericExt {
     }
   }
 
-  implicit class BitsUtil(bits: Bits) {
-    def toSFix(numericType: NumericType) = {
-      val ret = numericType.asSFix()
-      ret.assignFromBits(bits)
+  implicit class afixUtil(afix: AFix) {
+    def numericType = new NumericType(afix.maxRaw, afix.minRaw, afix.exp)
+
+    // FIXME: fix the negate() method in SpinalHDL
+    def symmetricNegate = {
+      //      val ret = new AFix(-afix.minRaw max afix.maxRaw, -afix.maxRaw min afix.minRaw, afix.exp)
+      val ret = new AFix(afix.maxRaw, afix.minRaw, afix.exp)
+      if (afix.signed) ret.raw := (-afix.raw.asSInt).asBits
+      else ret.raw := U(afix.raw).twoComplement(True, null).asBits
       ret
     }
 
-    def toComplexFix(numericType: NumericType) = {
-      val ret = numericType.asComplexFix()
-      ret.assignFromBits(bits)
-      ret
-    }
-
-    def withImag(imag: Bits, numericType: NumericType) = {
-      val sf = numericType.toSFixInfo
-      ComplexFix(bits.toSFix(sf), imag.toSFix(sf))
-    }
+    def normalized = afix >> (if (afix.signed) (afix.intWidth - 1) else afix.intWidth)
   }
+
+  implicit class hardVecUtil(vec: Seq[AFix]) {
+    def toComplexFix = vec.grouped(2).toSeq.map { case Seq(a, b) => ComplexFix(a, b) }
+
+  }
+
+  implicit class softVecUtil(vec: Seq[BigDecimal]) {
+    def toComplex = vec.map(_.toDouble).grouped(2).toSeq.map { case Seq(a, b) => Complex(a, b) }
+  }
+
 }

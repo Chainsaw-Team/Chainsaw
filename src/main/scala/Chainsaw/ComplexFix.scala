@@ -1,48 +1,31 @@
 package Chainsaw
 
-import Chainsaw.NumericExt._
 import spinal.core._
 
 import scala.language.postfixOps
 
-/** complex number type based on SFix,Bundle and Breeze
- *
- */
-case class ComplexFix(peak: ExpNumber, resolution: ExpNumber) extends Bundle {
+class ComplexFix(maxRaw: BigInt, minRaw: BigInt, exp: Int)
+  extends Bundle {
 
-  val real = SFix(peak, resolution)
-  val imag = SFix(peak, resolution)
+  val real, imag = new AFix(maxRaw, minRaw, exp)
 
-  val maxExp = peak.value
-  val minExp = resolution.value
-
-  val numericType: NumericType = ComplexFixInfo(maxExp, -minExp)
-
-  /** --------
-   * addition
-   * -------- */
+  override def clone() = new ComplexFix(maxRaw, minRaw, exp)
 
   def +(that: ComplexFix): ComplexFix = ComplexFix(real + that.real, imag + that.imag)
 
-  def +^(that: ComplexFix): ComplexFix = ComplexFix(real +^ that.real, imag +^ that.imag)
+  def +|(that: ComplexFix): ComplexFix = ComplexFix(real +| that.real, imag +| that.imag)
 
   def -(that: ComplexFix): ComplexFix = ComplexFix(real - that.real, imag - that.imag)
 
-  def -^(that: ComplexFix): ComplexFix = ComplexFix(real -^ that.real, imag -^ that.imag)
+  def -|(that: ComplexFix): ComplexFix = ComplexFix(real -| that.real, imag -| that.imag)
 
   /** --------
    * multiplication
    * -------- */
 
-  def *(that: SFix): ComplexFix = {
-    val R = real * that
-    val I = imag * that
-
-    ComplexFix(R, I)
-  }
+  def *(that: AFix): ComplexFix = ComplexFix(real * that, imag * that)
 
   // TODO: multiplication using 3 mults
-  //  def *(that: ComplexFix): ComplexFix = ???
 
   /** --------
    * nontrivial computations
@@ -60,24 +43,29 @@ case class ComplexFix(peak: ExpNumber, resolution: ExpNumber) extends Bundle {
 
   def conj = ComplexFix(real, -imag)
 
-  /** --------
-   * truncation
-   * -------- */
+  // TODO: truncation by real/complex numeric type
+  def truncate(numericType: NumericType) = ???
 
-  def truncate(complexInfo: NumericType) = {
-    val retReal, retImag = complexInfo.toSFixInfo.asSFix()
-    retReal := real.truncated
-    retImag := imag.truncated
-    ComplexFix(retReal, retImag)
-  }
+  // TODO: saturation by real/complex numeric type
+  def saturate(numericType: NumericType) = ???
+
+  def fixTo(numericType: NumericType) = ComplexFix(real.fixTo(numericType()), imag.fixTo(numericType()))
 }
 
 object ComplexFix {
-  def apply(R: SFix, I: SFix): ComplexFix = {
-    require(R.numericType == I.numericType)
-    val ret = R.numericType.toComplexFixInfo.asComplexFix()
-    ret.real := R
-    ret.imag := I
+
+  def apply(maxRaw: BigInt, minRaw: BigInt, exp: ExpNumber) = new ComplexFix(maxRaw, minRaw, exp.value)
+
+  def apply(real: AFix, imag: AFix) = {
+    val ret = new ComplexFix(real.maxRaw, real.minRaw, real.exp)
+    ret.real := real
+    ret.imag := imag
     ret
+  }
+
+  def apply(amplitude: ExpNumber, resolution: ExpNumber, signed: Boolean = true) = {
+    val maxRaw = BigInt(2).pow(amplitude.value - resolution.value) - 1
+    val minRaw = if (signed) -BigInt(2).pow(amplitude.value - resolution.value) else BigInt(0)
+    new ComplexFix(maxRaw, minRaw, resolution.value)
   }
 }

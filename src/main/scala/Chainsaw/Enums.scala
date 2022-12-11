@@ -77,3 +77,29 @@ object Transpose1 extends FilterType
 object Transpose2 extends FilterType
 
 object Systolic extends FilterType
+
+sealed trait ImplMode extends ChainsawEnum
+
+object FrameBased extends ImplMode
+
+object Infinite extends ImplMode
+
+sealed trait AlgebraicMode extends ChainsawEnum
+
+object CIRCULAR extends AlgebraicMode
+
+object HYPERBOLIC extends AlgebraicMode
+
+object LINEAR extends AlgebraicMode
+
+sealed trait RotationMode extends ChainsawEnum
+
+object ROTATION extends RotationMode
+
+object VECTORING extends RotationMode
+
+sealed trait DdsSignalType extends ChainsawEnum
+
+object SINE extends DdsSignalType
+
+object PULSE extends DdsSignalType
