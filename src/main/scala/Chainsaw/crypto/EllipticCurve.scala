@@ -2,7 +2,7 @@ package Chainsaw.crypto
 
 
 import Chainsaw._
-import Chainsaw.dag.Dag
+import Chainsaw.deprecated.Dag
 import cc.redberry.rings.scaladsl.GaussianIntegers.z
 import cc.redberry.rings.scaladsl._
 import cc.redberry.rings.scaladsl.syntax._
@@ -56,7 +56,7 @@ class EllipticCurve(val modulus: IntZ, val a: IntZ, val b: IntZ, val c: IntZ, va
     ret
   }
 
-  def paddGraph(width: Int): Dag = null
+  //  def paddGraph(width: Int): Dag = null
 
   // caution! padd & pdbl are actually two different operations in affine coordinates, we merge them for simplicity while using pmul
   def pdbl(p: EcPointAffine) = padd(p, p)
