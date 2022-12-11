@@ -10,8 +10,8 @@ import spinal.lib.fsm._
 
 import scala.language.postfixOps
 
-case class ComplexMult(dataType: NumericTypeNew,
-                       coeffType: NumericTypeNew)
+case class ComplexMult(dataType: NumericType,
+                       coeffType: NumericType)
   extends ChainsawOperatorGenerator {
 
   val retType = (dataType * coeffType).withCarry(1)

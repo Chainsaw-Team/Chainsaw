@@ -52,6 +52,7 @@ package object dsp {
     ret
   }
 
+  // TODO: implement this without Matlab
   val corrMetric = (yours: Seq[Any], golden: Seq[Any]) => {
     val y = yours.asInstanceOf[Seq[Double]].toArray
     val g = golden.asInstanceOf[Seq[Double]].toArray
@@ -106,8 +107,8 @@ package object dsp {
   /** --------
    * Hardware Utils
    * -------- */
-  def dataWithControl(dataType: NumericTypeNew, parallel: Int, controlWidth: Int) = {
-    Seq.fill(parallel)(dataType) :+ NumericTypeNew.U(controlWidth)
+  def dataWithControl(dataType: NumericType, parallel: Int, controlWidth: Int) = {
+    Seq.fill(parallel)(dataType) :+ NumericType.U(controlWidth)
   }
 
   def splitDataWithControl(raw: Seq[BigDecimal], parallel:Int) = {

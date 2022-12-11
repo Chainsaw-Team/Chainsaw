@@ -11,7 +11,7 @@ import scala.language.postfixOps
  *
  * @param dataType output data precision
  */
-case class Dds(ddsWave: DdsWave, dataType: NumericTypeNew, parallel: Int)
+case class Dds(ddsWave: DdsWave, dataType: NumericType, parallel: Int)
   extends ChainsawInfiniteGenerator {
 
   def name = s"Parallel_${parallel}_${Dds}_${dataType}_$ddsWave"
@@ -31,7 +31,7 @@ case class Dds(ddsWave: DdsWave, dataType: NumericTypeNew, parallel: Int)
 
   override def latency() = 2
 
-  override def inputTypes = Seq[NumericTypeNew]()
+  override def inputTypes = Seq[NumericType]()
 
   override def outputTypes = Seq.fill(parallel * (if (ddsWave.complex) 2 else 1))(dataType)
 
