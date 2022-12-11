@@ -141,7 +141,7 @@ class DSPMultHigh(width: Int = 16) extends Component {
     val BL = in UInt (width bits) // BL
     val MultiplierA = out Bits (width * 2 bits)
     val MultiplierB = out Bits (width * 2 bits)
-    val ret = out UInt (width * 2 + 1 bits) // high bit Mult
+    val ret = out UInt (width * 2 bits) // high bit Mult
     // FIXME: Just for test
     val DSP0retLowBit_test = out UInt (48 bits)
     val DSP1retHighBit_test = out UInt (width + 1 bits)
@@ -167,7 +167,7 @@ class DSPMultHigh(width: Int = 16) extends Component {
   AHBH_MultAdd.io.A := io.AH.resize(30)
   AHBH_MultAdd.io.B := io.BH.resize(18)
   AHBH_MultAdd.io.C := DSP1retHighBit.resize(48)
-  val DSP2ret = AHBH_MultAdd.io.P(width * 2 downto 0) // take low width*2 bits
+  val DSP2ret = AHBH_MultAdd.io.P(width * 2 - 1 downto 0) // take low width*2 bits
 
   io.ret := DSP2ret
 

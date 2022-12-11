@@ -26,9 +26,9 @@ case class ExampleAdder(width: Int) extends ChainsawOperatorGenerator {
 
   override def fmaxEstimation = 600 MHz
 
-  override def inputTypes = Seq.fill(2)(NumericTypeNew.U(width))
+  override def inputTypes = Seq.fill(2)(NumericType.U(width))
 
-  override def outputTypes = Seq(NumericTypeNew.U(width + 1))
+  override def outputTypes = Seq(NumericType.U(width + 1))
 
   override def implH = new ChainsawOperatorModule(this) {
     dataOut.head := dataIn.reduce(_ + _).d()
@@ -52,7 +52,7 @@ case class ExampleAddSub(width: Int) extends ChainsawDynamicOperatorGenerator {
       Seq.fill(10)(TestCase(randomDataVector, Seq(BigDecimal(0)))) // for add
   }
 
-  override def controlTypes = Seq(NumericTypeNew.Bool())
+  override def controlTypes = Seq(NumericType.Bool())
 
   override def implH = new ChainsawDynamicOperatorModule(this) {
     val sub = controlIn.head.asBits.asBool
@@ -72,16 +72,16 @@ case class ExampleAddSub(width: Int) extends ChainsawDynamicOperatorGenerator {
 
   override def fmaxEstimation = 600 MHz
 
-  override def inputTypes = Seq.fill(2)(NumericTypeNew.S(width))
+  override def inputTypes = Seq.fill(2)(NumericType.S(width))
 
   logger.info(s"input types: ${inputTypes.mkString(" ")}")
 
-  override def outputTypes = Seq(NumericTypeNew.S(width + 1))
+  override def outputTypes = Seq(NumericType.S(width + 1))
 
   override def latency(control: Seq[BigDecimal]) = 1
 }
 
-case class ExampleStaticFlip(dataType: NumericTypeNew, length: Int)
+case class ExampleStaticFlip(dataType: NumericType, length: Int)
   extends ChainsawFrameGenerator {
 
   override def name = s"staticFlip"
@@ -135,7 +135,7 @@ case class ExampleStaticFlip(dataType: NumericTypeNew, length: Int)
   override def outputTypes = Seq(dataType)
 }
 
-case class ExampleDynamicFlip(dataType: NumericTypeNew, maxLength: Int)
+case class ExampleDynamicFlip(dataType: NumericType, maxLength: Int)
   extends ChainsawDynamicFrameGenerator {
 
   val innerMaxLength = maxLength + 2 // for FIFO latency
@@ -204,10 +204,10 @@ case class ExampleDynamicFlip(dataType: NumericTypeNew, maxLength: Int)
 
   override def outputTypes = Seq(dataType)
 
-  override def controlTypes = Seq(NumericTypeNew.U(log2Up(innerMaxLength)))
+  override def controlTypes = Seq(NumericType.U(log2Up(innerMaxLength)))
 }
 
-case class ExampleStaticFir(dataType: NumericTypeNew, coeffs: Seq[Double])
+case class ExampleStaticFir(dataType: NumericType, coeffs: Seq[Double])
   extends ChainsawInfiniteGenerator {
 
   val productType = dataType * dataType
@@ -255,8 +255,7 @@ case class ExampleStaticFir(dataType: NumericTypeNew, coeffs: Seq[Double])
   override def outputTypes = Seq(productType)
 }
 
-
-case class ExampleDynamicFir(dataType: NumericTypeNew, tap: Int)
+case class ExampleDynamicFir(dataType: NumericType, tap: Int)
   extends ChainsawDynamicInfiniteGenerator {
 
   override def impl(testCase: TestCase) = {
@@ -310,10 +309,10 @@ case class ExampleDynamicFir(dataType: NumericTypeNew, tap: Int)
 }
 
 object TestGeneratorExamples extends App {
-  ChainsawAllTest("testAdder", ExampleAdder(8))
-  ChainsawAllTest("testAdder", ExampleAddSub(8), terminateAfter = 1000)
-  ChainsawAllTest("testFlip", ExampleStaticFlip(dataType = NumericTypeNew.U(8), length = 20), terminateAfter = 1000)
-  ChainsawAllTest("testFlip", ExampleDynamicFlip(dataType = NumericTypeNew.U(8), maxLength = 20), terminateAfter = 1000)
-  ChainsawAllTest("testFir", ExampleStaticFir(dataType = NumericTypeNew.SFix(4, 14), Seq.fill(5)(Random.nextDouble())), terminateAfter = 1000)
-  ChainsawAllTest("testFir", ExampleDynamicFir(dataType = NumericTypeNew.SFix(4, 14), 5), terminateAfter = 1000)
+  ChainsawTest("testAdder", ExampleAdder(8))
+  ChainsawTest("testAdder", ExampleAddSub(8), terminateAfter = 1000)
+  ChainsawTest("testFlip", ExampleStaticFlip(dataType = NumericType.U(8), length = 20), terminateAfter = 1000)
+  ChainsawTest("testFlip", ExampleDynamicFlip(dataType = NumericType.U(8), maxLength = 20), terminateAfter = 1000)
+  ChainsawTest("testFir", ExampleStaticFir(dataType = NumericType.SFix(4, 14), Seq.fill(5)(Random.nextDouble())), terminateAfter = 1000)
+  ChainsawTest("testFir", ExampleDynamicFir(dataType = NumericType.SFix(4, 14), 5), terminateAfter = 1000)
 }

@@ -6,7 +6,7 @@ import spinal.lib._
 import spinal.lib.fsm._
 
 // TODO: verification for dynamic counter
-class DynamicCounter(end: UInt) extends ImplicitArea[UInt] {
+case class DynamicCounter(end: UInt) extends ImplicitArea[UInt] {
 
   val willIncrement = False.allowOverride
   val willClear = False.allowOverride
@@ -15,7 +15,7 @@ class DynamicCounter(end: UInt) extends ImplicitArea[UInt] {
 
   def increment(): Unit = willIncrement := True
 
-  def set(value:UInt): Unit = valueNext := value
+  def set(value: UInt): Unit = valueNext := value
 
   val width = end.getBitsWidth
 
@@ -37,4 +37,14 @@ class DynamicCounter(end: UInt) extends ImplicitArea[UInt] {
   willOverflow.allowPruning()
 
   override def implicitValue = value
+}
+
+
+
+object DynamicCounter {
+  def apply(end: UInt, inc: Bool): DynamicCounter = {
+    val ret = DynamicCounter(end)
+    when(inc)(ret.increment())
+    ret
+  }
 }

@@ -1,7 +1,7 @@
 package Chainsaw.phases
 
 import Chainsaw._
-import Chainsaw.dag.dagFigDir
+import Chainsaw.deprecated.dagFigDir
 import com.mxgraph.layout._
 import com.mxgraph.util.mxCellRenderer
 import org.jgrapht.ext.JGraphXAdapter
@@ -26,13 +26,76 @@ class DrawDfg() extends Phase {
 
     /** --------
      * add vertices
-     -------- */
+     * -------- */
     topIos.foreach(graph.addVertex)
     pc.topLevel.children.foreach(graph.addVertex)
 
     /** --------
      * add edges
-     -------- */
+     * -------- */
+    def getSourceAndLatency(to: BaseType): (BaseType, Int) = {
+      val from = allIOs.filterNot(_ == to)
+      val pendingQueues = Array.fill(2)(ArrayBuffer[Expression]()) // 2, as we do not take Memories into consideration
+      var target = from.head.asInstanceOf[Expression]
+
+      def walk(that: Expression): Boolean = {
+        if (from.contains(that)) {
+          target = that
+          return true
+        }
+
+        that match {
+          case _: Mem[_] => throw new Exception("not supported yet")
+          case _: MemReadSync => throw new Exception("not supported yet")
+          case _: MemReadWrite => throw new Exception("not supported yet")
+          case _: MemReadAsync => throw new Exception("not supported yet")
+          case that: BaseType =>
+            def walkInputs(func: Expression => Unit): Unit = {
+              that.foreachStatements(s => {
+                s.foreachDrivingExpression(input => {
+                  func(input)
+                })
+                s.walkParentTreeStatementsUntilRootScope(tree => tree.walkDrivingExpressions(input => {
+                  func(input)
+                }))
+              })
+            }
+
+            if (that.isReg) {
+              walkInputs(input => pendingQueues(1) += input)
+              return false
+            } else {
+              walkInputs(input => if (walk(input)) return true)
+            }
+            return false
+          case that: Expression => {
+            that.foreachDrivingExpression(input => {
+              if (walk(input)) return true
+            })
+            return false
+          }
+        }
+      }
+
+      var depth = 0
+      pendingQueues(0) += to // init
+      while (pendingQueues.exists(_.nonEmpty)) {
+        // find sources whose distance to target <= 1
+        pendingQueues(0).foreach(node => {
+          if (walk(node)) return (target.asInstanceOf[BaseType], depth)
+        })
+        // all queues move forward for 1 cycle
+        val temp = pendingQueues(0)
+        for (i <- 0 until pendingQueues.length - 1) {
+          pendingQueues(i) = pendingQueues(i + 1)
+        }
+        pendingQueues(pendingQueues.length - 1) = temp
+        pendingQueues.last.clear()
+        depth += 1
+      }
+      (null, -1)
+    }
+
     def addEdge(target: BaseType, top: Boolean): Unit = {
       val (source, latency) = getSourceAndLatency(target)
       if (source != null) {
@@ -42,69 +105,6 @@ class DrawDfg() extends Phase {
         val edge = graph.addEdge(sourceVertex, targetVertex)
         graph.setEdgeWeight(edge, latency)
       } else logger.info(s"no edge to $target")
-
-      def getSourceAndLatency(to: BaseType): (BaseType, Int) = {
-        val from = allIOs.filterNot(_ == to)
-        val pendingQueues = Array.fill(2)(ArrayBuffer[Expression]()) // 2, as we do not take Memories into consideration
-        var target = from.head.asInstanceOf[Expression]
-
-        def walk(that: Expression): Boolean = {
-          if (from.contains(that)) {
-            target = that
-            return true
-          }
-
-          that match {
-            case _: Mem[_] => throw new Exception("not supported yet")
-            case _: MemReadSync => throw new Exception("not supported yet")
-            case _: MemReadWrite => throw new Exception("not supported yet")
-            case _: MemReadAsync => throw new Exception("not supported yet")
-            case that: BaseType =>
-              def walkInputs(func: Expression => Unit): Unit = {
-                that.foreachStatements(s => {
-                  s.foreachDrivingExpression(input => {
-                    func(input)
-                  })
-                  s.walkParentTreeStatementsUntilRootScope(tree => tree.walkDrivingExpressions(input => {
-                    func(input)
-                  }))
-                })
-              }
-
-              if (that.isReg) {
-                walkInputs(input => pendingQueues(1) += input)
-                return false
-              } else {
-                walkInputs(input => if (walk(input)) return true)
-              }
-              return false
-            case that: Expression => {
-              that.foreachDrivingExpression(input => {
-                if (walk(input)) return true
-              })
-              return false
-            }
-          }
-        }
-
-        var depth = 0
-        pendingQueues(0) += to // init
-        while (pendingQueues.exists(_.nonEmpty)) {
-          // find sources whose distance to target <= 1
-          pendingQueues(0).foreach(node => {
-            if (walk(node)) return (target.asInstanceOf[BaseType], depth)
-          })
-          // all queues move forward for 1 cycle
-          val temp = pendingQueues(0)
-          for (i <- 0 until pendingQueues.length - 1) {
-            pendingQueues(i) = pendingQueues(i + 1)
-          }
-          pendingQueues(pendingQueues.length - 1) = temp
-          pendingQueues.last.clear()
-          depth += 1
-        }
-        (null, -1)
-      }
     }
 
     topIos.filter(_.isOutput).foreach(addEdge(_, top = true))
@@ -112,7 +112,7 @@ class DrawDfg() extends Phase {
 
     /** --------
      * draw
-     -------- */
+     * -------- */
     val graphAdapter = new JGraphXAdapter[ScalaLocated, DefaultEdge](graph) // manager which store the information for rendering
     val layout = new mxCompactTreeLayout(graphAdapter, false, true)
     layout.setMoveTree(true)
@@ -142,7 +142,7 @@ object DrawDfg {
 
   class Top extends Component {
     val a, b, c, d = in UInt (8 bits)
-    val r = out UInt(8 bits)
+    val r = out UInt (8 bits)
     val core0, core1, core2 = Add(8)
     core0.io.a := a
     core0.io.b := b
