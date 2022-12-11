@@ -28,9 +28,9 @@ case class BaseMultiplierDSPKaratsuba(width: Int, height: Int, split: Int) exten
   val widthY = height * split
   val widthR = widthX + widthY
 
-  override def inputTypes = Seq(NumericTypeNew.U(widthX), NumericTypeNew.U(widthY))
+  override def inputTypes = Seq(NumericType.U(widthX), NumericType.U(widthY))
 
-  override def outputTypes = Seq(NumericTypeNew.U(widthR))
+  override def outputTypes = Seq(NumericType.U(widthR))
 
   /** --------
    * model
@@ -59,7 +59,7 @@ case class BaseMultiplierDSPKaratsuba(width: Int, height: Int, split: Int) exten
 
   /** black box used in synthesis
    */
-  override def blackbox = new FlopocoBlackBox {
+  override def blackbox = new FlopocoBlackBoxWithClk {
     val X = in Bits (widthX bits)
     val Y = in Bits (widthY bits)
     val R = out Bits (widthR bits)

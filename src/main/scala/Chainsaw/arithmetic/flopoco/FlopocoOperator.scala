@@ -106,10 +106,11 @@ abstract class FlopocoOperator extends ChainsawOperatorGenerator with Flopoco {
   }
 }
 
-abstract class FlopocoBlackBox() extends BlackBox {
+abstract class FlopocoBlackBox extends BlackBox {
+  def mapChainsawModule(flowIn: Flow[Fragment[Vec[AFix]]], flowOut: Flow[Fragment[Vec[AFix]]]): Unit
+}
 
+abstract class FlopocoBlackBoxWithClk extends FlopocoBlackBox {
   val clk = in Bool()
   mapCurrentClockDomain(clk)
-
-  def mapChainsawModule(flowIn: Flow[Fragment[Vec[AFix]]], flowOut: Flow[Fragment[Vec[AFix]]]): Unit
 }

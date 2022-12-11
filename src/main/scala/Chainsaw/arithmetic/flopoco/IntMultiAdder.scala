@@ -20,7 +20,7 @@ case class IntMultiAdder(widthIn: Int, n: Int, signed: Boolean)
 
   /** black box used in synthesis
    */
-  override def blackbox = new FlopocoBlackBox {
+  override def blackbox = new FlopocoBlackBoxWithClk  {
     val X = in Vec(Bits(widthIn bits), n)
     X.zipWithIndex.foreach { case (int, i) => int.setName(s"X$i") }
     val R = out Bits (widthOut bits)
@@ -42,14 +42,14 @@ case class IntMultiAdder(widthIn: Int, n: Int, signed: Boolean)
   override def fmaxEstimation = 600 MHz
 
   override def inputTypes =
-    if (!signed) Seq.fill(n)(NumericTypeNew.U(widthIn))
-    else Seq.fill(n)(NumericTypeNew.S(widthIn - 1))
+    if (!signed) Seq.fill(n)(NumericType.U(widthIn))
+    else Seq.fill(n)(NumericType.S(widthIn - 1))
 
   val widthOut = widthIn + log2Up(n)
 
   override def outputTypes =
-    if (!signed) Seq(NumericTypeNew.U(widthOut))
-    else Seq(NumericTypeNew.S(widthOut - 1))
+    if (!signed) Seq(NumericType.U(widthOut))
+    else Seq(NumericType.S(widthOut - 1))
 
   /** --------
    * model

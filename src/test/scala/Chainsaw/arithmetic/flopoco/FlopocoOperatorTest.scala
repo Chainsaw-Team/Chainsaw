@@ -1,8 +1,14 @@
 package Chainsaw.arithmetic.flopoco
 
-import Chainsaw.ChainsawFlopocoOperatorFlatSpec
+import Chainsaw._
 
-class FlopocoOperatorTest extends ChainsawFlopocoOperatorFlatSpec {
+class FlopocoOperatorTest extends ChainsawFlatSpec {
+
+  override val generatorConfigTable = Map(
+    "IntMultiAdder" -> TestConfig(full = false, naive = true, synth = false, impl = false),
+    "IntMultiplier" -> TestConfig(full = false, naive = true, synth = false, impl = false),
+    "BaseKaratsuba" -> TestConfig(full = false, naive = true, synth = false, impl = false)
+  )
 
   testIntMultiAdder()
   testIntMultiplier()
@@ -40,4 +46,5 @@ class FlopocoOperatorTest extends ChainsawFlopocoOperatorFlatSpec {
     val ns = Seq(2, 3, 4)
     ns.foreach(n => testFlopocoOperator(BaseMultiplierDSPKaratsuba(17, 17, n), synth = false, impl = false))
   }
+
 }

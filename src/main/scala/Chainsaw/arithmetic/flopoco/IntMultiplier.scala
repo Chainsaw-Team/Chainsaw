@@ -12,9 +12,9 @@ case class IntMultiplier(wX: Int, wY: Int, maxDSP: Int) extends FlopocoOperator 
 
   override def vivadoUtilEstimation = VivadoUtilEstimation(dsp = maxDSP)
 
-  override def inputTypes = Seq(wX, wY).map(NumericTypeNew.U)
+  override def inputTypes = Seq(wX, wY).map(NumericType.U)
 
-  override def outputTypes = Seq(wX + wY).map(NumericTypeNew.U)
+  override def outputTypes = Seq(wX + wY).map(NumericType.U)
 
   /** --------
    * model
@@ -39,7 +39,7 @@ case class IntMultiplier(wX: Int, wY: Int, maxDSP: Int) extends FlopocoOperator 
 
   /** black box used in synthesis
    */
-  override def blackbox = new FlopocoBlackBox {
+  override def blackbox = new FlopocoBlackBoxWithClk {
 
     val X = in Bits (wX bits)
     val Y = in Bits (wY bits)
@@ -50,5 +50,11 @@ case class IntMultiplier(wX: Int, wY: Int, maxDSP: Int) extends FlopocoOperator 
       Y := flowIn.fragment(1).asBits
       flowOut.fragment(0) := R.asUInt.toAFix
     }
+  }
+}
+
+object IntMultiplier {
+  def main(args: Array[String]): Unit = {
+    ChainsawSynthAll(IntMultiplier(wX = 32, wY = 48, maxDSP = 4), "IntMultiplier")
   }
 }
