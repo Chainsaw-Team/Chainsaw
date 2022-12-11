@@ -1,7 +1,7 @@
 package Chainsaw.deprecated
 
 import Chainsaw._
-import Chainsaw.testConfigurations._
+import testConfigurations._
 
 import scala.util.Random
 
