@@ -32,9 +32,10 @@ lazy val Chainsaw = (project in file("."))
     libraryDependencies += "org.json4s" %% "json4s-jackson" % "4.0.3", // for json serialization/deserialization
     libraryDependencies += "org.scalanlp" %% "breeze" % "1.0", // for numeric & matrix operations
     libraryDependencies += "cc.redberry" %% "rings.scaladsl" % "2.5.7", // for finite field operations
-
+    //    libraryDependencies += "cplex.maven" % "cplex" % "12.8", // for cplex solver
     libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.9", // for scala test
     libraryDependencies ++= Seq(optimus, optimusOj, optimusLp),
+
     Compile / unmanagedJars += file("lib/cplex.jar"),
     Compile / unmanagedJars += file("lib/engine.jar")
   )
