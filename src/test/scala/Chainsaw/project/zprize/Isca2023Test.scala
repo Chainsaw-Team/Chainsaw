@@ -1,8 +1,9 @@
 package Chainsaw.project.zprize
 
-import Chainsaw._
+import Chainsaw.{deprecated, _}
 import Chainsaw.arithmetic._
-import Chainsaw.crypto.{Barrett, BarrettFineAlgo, BarrettSearch}
+import Chainsaw.crypto.{BarrettFineAlgo, ModularMultSearch}
+import Chainsaw.deprecated.{Barrett, Bcm, Bm}
 import Chainsaw.project.zprize.ZPrizeMSM.{MPrime, baseModulus}
 import Chainsaw.xilinx.VivadoUtilRequirement
 import org.scalatest.flatspec.AnyFlatSpec
@@ -21,9 +22,9 @@ class Isca2023Test extends AnyFlatSpec {
   /** --------
    * make sure that the algo works
    * -------- */
-  val kara192 = BmSolution((16, 24), Seq(2, 2), FullMultiplier, Seq(true, true))
-  val schoolbook192 = BmSolution((16, 24), Seq(2, 2), FullMultiplier, Seq(false, false))
-  val square192 = BmSolution((16, 16), Seq(2, 2, 3), SquareMultiplier, Seq(false, false, false))
+  val kara192 = BmSolution(BaseDspMult(16, 24), Seq(2, 2), FullMultiplier, Seq(true, true))
+  val schoolbook192 = BmSolution(BaseDspMult(16, 24), Seq(2, 2), FullMultiplier, Seq(false, false))
+  val square192 = BmSolution(BaseDspMult(16, 16), Seq(2, 2, 3), SquareMultiplier, Seq(false, false, false))
 
   ignore should "work on bm solutions" in {
     println(kara192)
@@ -59,7 +60,7 @@ class Isca2023Test extends AnyFlatSpec {
       val width = 1 << i
       fullWidthRecords += width
       val startTime = System.nanoTime()
-      BmSearch.getParetos(width, FullMultiplier)
+      MultSearch.getBmParetos(width, FullMultiplier)
       val endTime = System.nanoTime()
       fullTimeRecords += (endTime - startTime) / 1e6 // ms
 
@@ -80,7 +81,7 @@ class Isca2023Test extends AnyFlatSpec {
       val width = 1 << i
       squareWidthRecords += width
       val startTime = System.nanoTime()
-      BmSearch.getParetos(width, SquareMultiplier)
+      MultSearch.getBmParetos(width, SquareMultiplier)
       val endTime = System.nanoTime()
       squareTimeRecords += (endTime - startTime) / 1e6 // ms
     }
@@ -122,15 +123,15 @@ class Isca2023Test extends AnyFlatSpec {
    * -------- */
   ignore should "work on bm search" in {
     val vu9p = VivadoUtilRequirement(dsp = 6840, lut = 1102400)
-    BmSearch(192, FullMultiplier, vu9p)
-    BmSearch(256, FullMultiplier, vu9p)
-    BmSearch(377, FullMultiplier, vu9p)
-    BmSearch(512, FullMultiplier, vu9p)
-    BmSearch(768, FullMultiplier, vu9p)
-    BmSearch(1024, FullMultiplier, vu9p)
-    BmSearch(2048, FullMultiplier, vu9p)
-    BmSearch(3072, FullMultiplier, vu9p)
-    BmSearch(4096, FullMultiplier, vu9p)
+    MultSearch(192, FullMultiplier, vu9p)
+    MultSearch(256, FullMultiplier, vu9p)
+    MultSearch(377, FullMultiplier, vu9p)
+    MultSearch(512, FullMultiplier, vu9p)
+    MultSearch(768, FullMultiplier, vu9p)
+    MultSearch(1024, FullMultiplier, vu9p)
+    MultSearch(2048, FullMultiplier, vu9p)
+    MultSearch(3072, FullMultiplier, vu9p)
+    MultSearch(4096, FullMultiplier, vu9p)
   }
 
   /** --------
@@ -138,9 +139,9 @@ class Isca2023Test extends AnyFlatSpec {
    * -------- */
   // BM variations
   val width = 377
-  val solution0 = BmSearch.getParetos(width, FullMultiplier).maxBy(_.vivadoUtil.dsp)
-  val solution1 = BmSolution(solution0.dsp, solution0.splits, solution0.multiplierType, true +: Seq.fill(solution0.length - 1)(false))
-  val solution2 = BmSearch.getParetos(width, SquareMultiplier).maxBy(_.vivadoUtil.dsp)
+  val solution0 = MultSearch.getBmParetos(width, FullMultiplier).maxBy(_.vivadoUtil.dsp)
+  val solution1 = BmSolution(solution0.baseMultiplier, solution0.splits, solution0.multiplierType, true +: Seq.fill(solution0.length - 1)(false))
+  val solution2 = MultSearch.getBmParetos(width, SquareMultiplier).maxBy(_.vivadoUtil.dsp)
 
   ignore should s"synth for high dsp 377" in {
     logger.info(solution0.toString)
@@ -149,12 +150,12 @@ class Isca2023Test extends AnyFlatSpec {
 
   ignore should s"synth for schoolbook 377" in {
     logger.info(solution1.toString)
-    ChainsawSynth(Bm(width, None, solution1), s"synthKara$width")
+    ChainsawSynth(deprecated.Bm(width, None, solution1), s"synthKara$width")
   }
 
   ignore should s"synth for square 377" in {
     logger.info(solution2.toString)
-    ChainsawSynth(Bm(width, None, solution2), s"synthKara$width")
+    ChainsawSynth(deprecated.Bm(width, None, solution2), s"synthKara$width")
   }
 
   // Barrett variations
@@ -176,10 +177,10 @@ class Isca2023Test extends AnyFlatSpec {
   testBmImplementation(1024)
 
   def testBmImplementation(width: Int): Unit = {
-    val solution = BmSearch.getParetos(width, FullMultiplier).head
+    val solution = MultSearch.getBmParetos(width, FullMultiplier).head
     ignore should s"synth at width $width" in {
       logger.info(solution.toString)
-      ChainsawSynth(Bm(width, None, solution), s"synthKara$width")
+      ChainsawSynth(deprecated.Bm(width, None, solution), s"synthKara$width")
     }
   }
 
@@ -191,16 +192,16 @@ class Isca2023Test extends AnyFlatSpec {
     val modulus = project.zprize.ZPrizeMSM.baseModulus
     //    BarrettSearch(377, Some(modulus), FullMultiplier, vu9p)
     //    BarrettSearch(377, Some(modulus), FullMultiplier, c1100)
-    BarrettSearch(377, Some(modulus), FullMultiplier, z7020)
+    ModularMultSearch(377, Some(modulus), FullMultiplier, z7020)
   }
 
   ignore should "compare with Kara" in {
-    val solution0 = BmSearch.getParetos(68, FullMultiplier).head
-    ChainsawSynth(Bm(68, None, solution0), "synth68")
-    val solution1 = BmSearch.getParetos(102, FullMultiplier).head
-    ChainsawSynth(Bm(102, None, solution1), "synth102")
-    val solution2 = BmSearch.getParetos(119, FullMultiplier).head
-    ChainsawSynth(Bm(119, None, solution2), "synth119")
+    val solution0 = MultSearch.getBmParetos(68, FullMultiplier).head
+    ChainsawSynth(deprecated.Bm(68, None, solution0), "synth68")
+    val solution1 = MultSearch.getBmParetos(102, FullMultiplier).head
+    ChainsawSynth(deprecated.Bm(102, None, solution1), "synth102")
+    val solution2 = MultSearch.getBmParetos(119, FullMultiplier).head
+    ChainsawSynth(deprecated.Bm(119, None, solution2), "synth119")
   }
 
   ignore should "compare with intel" in {
@@ -208,9 +209,9 @@ class Isca2023Test extends AnyFlatSpec {
   }
 
   ignore should "compare with impress" in {
-    val solutions = BmSearch.getParetos(1024, FullMultiplier)
+    val solutions = MultSearch.getBmParetos(1024, FullMultiplier)
     //    println(BmSearch.getParetos(1024, FullMultiplier).mkString("\n"))
-    solutions.zipWithIndex.foreach { case (solution, i) => ChainsawSynth(Bm(1024, None, solution), s"synth1024$i") }
+    solutions.zipWithIndex.foreach { case (solution, i) => ChainsawSynth(deprecated.Bm(1024, None, solution), s"synth1024$i") }
   }
 
 
