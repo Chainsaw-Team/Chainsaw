@@ -1,10 +1,8 @@
 package Chainsaw.project.zprize
 
-import Chainsaw._
-import Chainsaw.arithmetic.Bcm
-import Chainsaw.arithmetic.Bm
+import Chainsaw.{deprecated, _}
 import Chainsaw.crypto.BarrettFineAlgo
-import Chainsaw.crypto.Barrett
+import Chainsaw.deprecated.{Barrett, Bcm, Bm, ChainsawTest}
 import Chainsaw.project.zprize.ZPrizeModules._
 import Chainsaw.project.zprize.ZPrizeMSM.{baseModulus, poseidonModulus}
 import org.scalatest.flatspec.AnyFlatSpec
@@ -13,6 +11,8 @@ import scala.util.Random
 
 class ZPrizeModulesTest extends AnyFlatSpec {
 
+  behavior of "algos"
+
   behavior of "BCMs"
 
   val dataWidth = 377
@@ -20,13 +20,14 @@ class ZPrizeModulesTest extends AnyFlatSpec {
 
   ignore should "work for ZPRIZE MSB mult" in ChainsawTest("test377Msb", msbMultGen, data).doTest()
   ignore should "work for ZPRIZE LSB mult" in ChainsawTest("test377Lsb", lsbMultGen, data).doTest()
+  ignore should "impl for ZPRIZE LSB mult" in ChainsawImpl(lsbMultGen, "synth377Lsb")
 
   behavior of "Barrett"
 
   /** --------
    * poseidon
    * -------- */
-  val poseidonGen = Barrett(255, Some(poseidonModulus), FullMultiplier)
+  val poseidonGen = deprecated.Barrett(255, Some(poseidonModulus), FullMultiplier)
 
   ignore should "work for poseidon modulus" in BarrettFineAlgo(poseidonModulus).selfTest()
   ignore should "work on hardware for poseidon modulus" in {
@@ -40,7 +41,7 @@ class ZPrizeModulesTest extends AnyFlatSpec {
   /** --------
    * zprize
    * -------- */
-  val zprizeGen = Barrett(377, Some(baseModulus), FullMultiplier)
+  val zprizeGen = deprecated.Barrett(377, Some(baseModulus), FullMultiplier)
 
   ignore should "work for zprize msm" in BarrettFineAlgo(baseModulus).selfTest()
 
@@ -49,6 +50,7 @@ class ZPrizeModulesTest extends AnyFlatSpec {
     zprizeGen.doSelfTest()
   }
 
-  ignore should "impl for zprize msm" in ChainsawSynth(zprizeGen, "synthZPrize")
+  ignore should "synth for zprize msm" in ChainsawSynth(zprizeGen, "synthZPrize")
+  it should "impl for zprize msm" in ChainsawImpl(zprizeGen, "synthZPrize")
 
 }
