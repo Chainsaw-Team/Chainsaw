@@ -1,12 +1,12 @@
 package Chainsaw.phases
 
+import Chainsaw.logger
 import spinal.core._
 import spinal.core.internals._
 import spinal.lib._
 
 class FfIo extends Phase {
   override def impl(pc: PhaseContext): Unit = {
-    //    def buf1[T <: Data](that: T) = KeepAttribute(RegNext(that)).addAttribute("DONT_TOUCH")
 
     def buf[T <: Data](that: T) = KeepAttribute(RegNext(that)).addAttribute("DONT_TOUCH")
 
@@ -25,8 +25,11 @@ class FfIo extends Phase {
         } else ???
       }
     }
+
+    logger.info(s"[Progress] Chainsaw FfIo phase done")
   }
 
   override def hasNetlistImpact = true
 }
+
 

@@ -1,15 +1,27 @@
 package Chainsaw.memory
 
-import org.scalatest.flatspec.AnyFlatSpec
-import spinal.core.sim._
+import Chainsaw.deprecated.{ChainsawTest, DelayByRam}
+import Chainsaw.{ChainsawFlatSpec, ChainsawImpl}
+import spinal.core.sim.{SimConfig, _}
 
-class DynamicDelayTest extends AnyFlatSpec {
+import scala.util.Random
+
+class MemoryIpTests extends ChainsawFlatSpec {
+
+  "belay by Ram" should "work" in {
+    val width = 64
+    val delay = 128
+    val data = Seq.fill(1000)(BigInt(width, Random))
+    ChainsawTest("testDelayByram", DelayByRam(width, delay), data).doTest()
+  }
+
+  it should "run at a high fmax with a huge size" in ChainsawImpl(DelayByRam(512, 1024), "implDelayByRam")
 
   val delayMax = 100
   val width = 32
 
   SimConfig.withFstWave.compile(DynamicDelay(width, delayMax)).doSim { dut =>
-    import dut.{clockDomain, dataIn, dataOut, delayIn, lockedOut}
+    import dut._
 
     def locked = lockedOut.toBoolean
 
