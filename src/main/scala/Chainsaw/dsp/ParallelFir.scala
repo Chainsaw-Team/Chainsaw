@@ -9,6 +9,7 @@ import scala.language.postfixOps
 import scala.util.Random
 
 // TODO: implement upsample & downsample
+
 // when number of outPorts is a multiple of number of downSample -
 case class ParallelFir(coeffs: Seq[Double],
                        coeffType: NumericType,

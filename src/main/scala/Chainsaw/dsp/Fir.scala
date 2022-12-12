@@ -52,16 +52,23 @@ case class Fir(coeffs: Seq[Double],
   override def fmaxEstimation = 600 MHz
 
   override def implH = new ChainsawInfiniteModule(this) {
-    val x = dataIn.head
+    val x = dataIn.head.asSInt()
+
+    // using SInt inside for better inference in Quartus, as AFix multiplication do sign extension, which won't be recognized and optimized by Quartus
+    // SInt datapath
     val xline = Seq.iterate(x.d(2), coeffsInUse.length)(_.d(2))
     val preAdded = if (symmetric) {
       val xlinePost = x.d(coeffsInUse.length * 2)
       xline.map(x => (x +^ xlinePost.d()).d())
     } else xline
-    val scaled = preAdded.zip(coeffsInUse).map { case (port, coeff) => (port * coeffType.fromConstant(coeff).d()).d() }
-    val zero = productType.fromConstant(0.0)
+
+    val sintCoeffs = coeffsInUse.map(coeffType.fromConstant).map(_.asSInt())
+    val scaled = preAdded.zip(sintCoeffs).map { case (port, coeff) => (port * coeff.d()).d() }
+    val zero = S(0, productType.bitWidth bits)
     // the first element is a dummy, it is a must for extreme fmax, or PREG won't be used for the first DSP
-    val ret = (zero +: scaled).reduce((a, b) => (a +| b).d()) // addition without width growth
-    dataOut.head := ret.d()
+    val ret = (zero +: scaled).reduce((a, b) => (a + b).d()) // addition without width growth
+
+    // SInt datapath end
+    dataOut.head.assignFromBits(ret.d().asBits)
   }
 }
