@@ -5,6 +5,7 @@ import Chainsaw.xilinx.VivadoUtil.UNKNOWN
 import ilog.concert._
 import ilog.cplex._
 
+// TODO: resources should be double, rather than int
 case class VivadoUtil(
                        lut: Int,
                        ff: Int,
