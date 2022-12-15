@@ -2,7 +2,7 @@ package Chainsaw.arithmetic
 
 import Chainsaw._
 import Chainsaw.device._
-import Chainsaw.xilinx._
+import Chainsaw.xilinx.{VivadoUtilEstimation, _}
 import spinal.core._
 
 import scala.language.postfixOps
@@ -73,4 +73,44 @@ case class Sm(multiplierType: MultiplierType) extends UnsignedMultiplier {
   }
 
   override def fmaxEstimation = 800 MHz
+}
+
+
+/** efficients size implemented by Vivado + retiming, which consume no LUT at all
+ */
+case class BaseDspMult(widthX: Int, widthY: Int) extends UnsignedMultiplier {
+
+  override val constant = None
+  override val widthOut = widthX + widthY
+  override val multiplierType = FullMultiplier
+
+  val level =
+    if (widthX <= 17 && widthY <= 26) 1
+    else if (widthX == widthY && widthX <= 26) 2
+    else if (widthX <= 34 && widthY <= 34) 4
+    else throw new IllegalArgumentException("unsupported size")
+
+  override def implH = implNaiveH.get
+
+  override def latency() = level match {
+    case 1 => 2
+    case 2 => 5
+    case 4 => 5
+  }
+
+  override def name = s"BaseDspMult_${widthX}_$widthY"
+
+  override def vivadoUtilEstimation = level match {
+    case 1 => VivadoUtilEstimation(dsp = 1, lut = 0)
+    case 2 => VivadoUtilEstimation(dsp = 2, lut = 0)
+    case 4 => VivadoUtilEstimation(dsp = 4, lut = 0)
+  }
+
+  override def fmaxEstimation = 800 MHz
+
+  def prod(x: UInt, y: UInt) = {
+    val core = implH
+    core.dataIn.zip(Seq(x, y)).foreach { case (in, data) => in := data.toAFix }
+    core.dataOut.head.asUInt()
+  }
 }

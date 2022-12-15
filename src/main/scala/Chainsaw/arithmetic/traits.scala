@@ -6,24 +6,15 @@ import spinal.core._
 import scala.language.postfixOps
 
 trait MultAttribute {
-  val constant: Option[BigInt]
+  def constant: Option[BigInt]
 
-  val widthX: Int
-  val widthY: Int
-  val multiplierType: MultiplierType
-  val widthOut: Int
+  def widthX: Int
+  def widthY: Int
+  def multiplierType: MultiplierType
+  def widthOut: Int
 
-  val clbCost: Double
-  val dspCost: Int
-}
-
-case class BaseDspMult(widthX: Int, widthY: Int) extends MultAttribute {
-  require(widthX <= 16 && widthY <= 24)
-  override val constant = None
-  override val widthOut = widthX + widthY
-  override val multiplierType = FullMultiplier
-  override val clbCost = 0.0
-  override val dspCost = 1
+  def clbCost: Double
+  def dspCost: Int
 }
 
 /** unified behavioral model of unsigned multiplier
@@ -82,8 +73,8 @@ trait UnsignedMultiplier extends ChainsawOperatorGenerator with MultAttribute {
     }
   }
 
-  override val clbCost = vivadoUtilEstimation.lut
-  override val dspCost = vivadoUtilEstimation.dsp
+  override def clbCost = vivadoUtilEstimation.lut
+  override def dspCost = vivadoUtilEstimation.dsp
 }
 
 trait UnsignedMerge extends ChainsawOperatorGenerator with Unaligned {

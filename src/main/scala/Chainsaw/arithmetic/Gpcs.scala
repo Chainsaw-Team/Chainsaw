@@ -52,6 +52,7 @@ abstract class Gpc extends ChainsawOperatorGenerator with Compressor {
   val flopocoGen = XilinxGpc(inputFormat.reverse, outputFormat.length)
   require(flopocoGen.latency() == 0)
 
+  // TODO: get rid of flopoco and VHDL(by using verilog blackbox / primitives)
   override def implH = flopocoGen.implH
 }
 
