@@ -15,26 +15,6 @@ case class DynamicDelay(delay: Int, dataType: NumericType, parallel: Int)
 
   override def name = s"DynamicDelay_$delay"
 
-  //  override def model = new ChainsawInfiniteModel {
-  //    override def impl(data: Seq[BigDecimal]) =
-  //      if (!dynamic) data
-  //      else data.grouped(parallel + 1).flatMap(_.init).toSeq
-  //
-  //    override def metric(yours: Seq[BigDecimal], golden: Seq[BigDecimal]) =
-  //      correlationMetric(yours, golden, 0.99)
-  //
-  //    override def testCases =
-  //      if (!dynamic) Seq.fill(1000)(dataType.random)
-  //      else Seq.fill(1000)(Seq.fill(parallel)(dataType.random) :+ BigDecimal(delay / 3)).flatten
-  //
-  //    override def latency = delay / parallel
-  //
-  //    override def offset = delay % parallel
-  //  }
-
-  /** --------
-   * model
-   * -------- */
   override def impl(testCase: TestCase) = testCase.data
 
   override def metric(yours: Seq[BigDecimal], golden: Seq[BigDecimal]) = yours.equals(golden)
