@@ -35,6 +35,8 @@ lazy val Chainsaw = (project in file("."))
     //    libraryDependencies += "cplex.maven" % "cplex" % "12.8", // for cplex solver
     libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.9", // for scala test
     libraryDependencies ++= Seq(optimus, optimusOj, optimusLp),
+//    libraryDependencies += "com.google.code.gson" % "gson" % "2.10",
+//    libraryDependencies += "com.fasterxml.jackson.core" % "jackson-core" % "2.14.1",
 
     Compile / unmanagedJars += file("lib/cplex.jar"),
     Compile / unmanagedJars += file("lib/engine.jar")
