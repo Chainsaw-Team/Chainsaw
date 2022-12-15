@@ -25,18 +25,11 @@ case class BmAlgo(bmSolution: BmSolution) extends HardAlgo {
   var mergeCost = 0
   var cmultCost = 0
 
-  //  def clearCost(): Unit = {
-  //    multCost = 0
-  //    splitCost = 0
-  //    mergeCost = 0
-  //    cmultCost = 0
-  //  }
-
   val weightMax =
     if (bmSolution.multiplierType == LsbMultiplier) bmSolution.widthFull
     else bmSolution.widthFull * 2
 
-  val dspLatency = 3
+  val dspLatency = 2
   val andLatency = 1
 
   /** --------
@@ -44,40 +37,29 @@ case class BmAlgo(bmSolution: BmSolution) extends HardAlgo {
    * -------- */
   def splitN(x: WeightedValue, n: Int): Seq[WeightedValue] = {
     val paddedWidth = x.arithInfo.width.nextMultipleOf(n)
-    val segmentWidth = x.arithInfo.width.divideAndCeil(n)
     val values = x.value.toBitValue(paddedWidth).splitN(n)
-    (0 until n).map(i =>
-      WeightedValue(value = values(i),
-        arithInfo = ArithInfo(width = segmentWidth, weight = x.arithInfo.weight + i * segmentWidth, isPositive = x.arithInfo.isPositive, time = x.arithInfo.time)))
+    values.zip(x.arithInfo.splitN(n))
+      .map { case (value, arithInfo) => WeightedValue(value, arithInfo) }
   }
 
   def splitMSB(x: WeightedValue) = {
     val (msb, main) = x.value.toBitValue(x.arithInfo.width).splitAt(x.arithInfo.width - 1)
-    val msbValue = WeightedValue(value = msb,
-      arithInfo = ArithInfo(width = 1, weight = x.arithInfo.weight + x.arithInfo.width - 1, time = x.arithInfo.time))
-    val mainValue = WeightedValue(value = main,
-      arithInfo = ArithInfo(width = x.arithInfo.width - 1, weight = x.arithInfo.weight, time = x.arithInfo.time))
-    (msbValue, mainValue)
+    val (msbArithInfo, mainArithInfo) = x.arithInfo.splitMsb
+    (WeightedValue(msb, msbArithInfo), WeightedValue(main, mainArithInfo))
   }
 
   def add(v0: WeightedValue, v1: WeightedValue, constant: Boolean = false) = {
     require(v0.arithInfo.width == v1.arithInfo.width, s"v0: ${v0.arithInfo}, v1: ${v1.arithInfo}")
     if (!constant) splitCost += v0.arithInfo.width
-    val width = v0.arithInfo.width + 1
-    val weight = v0.arithInfo.weight // this should be reset after
-    val time = v0.arithInfo.time + v0.arithInfo.width.divideAndCeil(cpaWidthMax)
-    WeightedValue(value = v0.value + v1.value, arithInfo = ArithInfo(width, weight, v0.arithInfo.isPositive, time))
+    WeightedValue(value = v0.value + v1.value, arithInfo = v0.arithInfo + v1.arithInfo)
   }
 
   def mult(v0: WeightedValue, v1: WeightedValue) = {
     require(v0.arithInfo.isPositive == v1.arithInfo.isPositive)
     require(v0.arithInfo.time == v1.arithInfo.time)
-    val width = v0.arithInfo.width + v1.arithInfo.width
-    val weight = v0.arithInfo.weight + v1.arithInfo.weight
-    val time = v0.arithInfo.time + dspLatency
 
     val constantWeight = if (isConstantMult) Csd(v1.value).weight else v1.arithInfo.width
-    val useCMult = (isConstantMult && constantWeight < bmSolution.threshold)
+    val useCMult = isConstantMult && constantWeight < bmSolution.threshold
     if (useCMult) {
       cmultCost += bmSolution.dspSize._1 * (constantWeight - 1) // TODO: more accurate estimation
     } else {
@@ -85,16 +67,11 @@ case class BmAlgo(bmSolution: BmSolution) extends HardAlgo {
       fixCost += bmSolution.baseMultiplier.clbCost.toInt
     }
 
-    WeightedValue(value = v0.value * v1.value, arithInfo = ArithInfo(width, weight, v0.arithInfo.isPositive, time))
+    WeightedValue(value = v0.value * v1.value, arithInfo = v0.arithInfo * v1.arithInfo)
   }
 
   def and(v0: WeightedValue, v1: WeightedValue) = {
-    require(v1.arithInfo.width == 1)
-    val width = v0.arithInfo.width
-    val weight = v0.arithInfo.weight + v1.arithInfo.weight
-    val time = v0.arithInfo.time + andLatency
-    WeightedValue(value = v0.value * v1.value,
-      arithInfo = ArithInfo(width = width, weight = weight, time = time))
+    WeightedValue(value = v0.value * v1.value, arithInfo = v0.arithInfo & v1.arithInfo)
   }
 
   def merge(weightedValues: Seq[WeightedValue], widthOut: Int): WeightedValue = {
@@ -102,7 +79,7 @@ case class BmAlgo(bmSolution: BmSolution) extends HardAlgo {
     mergeCost += weightedValues.map(_.arithInfo.width).sum - widthOut
     val value = weightedValues.map(_.eval).sum >> base
     WeightedValue(value = value,
-      arithInfo = ArithInfo(widthOut, base, isPositive = true, weightedValues.map(_.arithInfo.time).max))
+      arithInfo = weightedValues.head.arithInfo.mergeWith(weightedValues.tail.map(_.arithInfo), widthOut))
   }
 
   /** --------
@@ -259,7 +236,7 @@ case class BmAlgo(bmSolution: BmSolution) extends HardAlgo {
   /** --------
    * determine cost while initializing
    * -------- */
-  impl(BigInt(bmSolution.widthFull, Random), BigInt(bmSolution.widthFull, Random), verbose = false)
+  impl(BigInt(bmSolution.widthFull, Random), BigInt(bmSolution.widthFull, Random))
   val eff = 1.0 // TODO: vary for different sizes
   val clbCost = (splitCost + fixCost + (mergeCost + cmultCost) / eff).toInt
 

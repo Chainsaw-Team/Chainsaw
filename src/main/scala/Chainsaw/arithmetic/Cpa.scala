@@ -9,10 +9,11 @@ import scala.language.postfixOps
 case class Cpa(adderType: AdderType, width: Int)
   extends UnsignedMerge {
 
-  override val inputTimes = inputTypes.map(_ => 0)
-  override val outputTimes = Seq(0)
+  override def inputTimes = inputTypes.map(_ => 0)
 
-  override val arithInfos = {
+  override def outputTimes = Seq(0)
+
+  override def arithInfos = {
     val signs = adderType match {
       case BinaryAdder => Seq(true, true)
       case BinarySubtractor => Seq(true, false)
@@ -32,4 +33,11 @@ case class Cpa(adderType: AdderType, width: Int)
   override def vivadoUtilEstimation = VivadoUtilEstimation(lut = width + 2, carry8 = (width + 2).divideAndCeil(8))
 
   override def fmaxEstimation = 600 MHz
+
+  def sum(data: UInt*) = {
+    // FIXME: use implH
+    val core = implNaiveH.get
+    core.dataIn.zip(data).foreach { case (in, data) => in := data.toAFix }
+    core.dataOut.head.asUInt()
+  }
 }

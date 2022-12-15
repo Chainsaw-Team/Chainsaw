@@ -19,7 +19,7 @@ case class ArithInfo(width: Int, weight: Int, isPositive: Boolean = true, time: 
   val high = low + width - 1
   val range = high downto low
 
-  val maxValue = if(isPositive) (Pow2(width) - 1) << weight else BigInt(0)
+  val maxValue = if (isPositive) (Pow2(width) - 1) << weight else BigInt(0)
 
   def <<(shiftLeft: Int) = ArithInfo(width, weight + shiftLeft, isPositive)
 
@@ -33,6 +33,41 @@ case class ArithInfo(width: Int, weight: Int, isPositive: Boolean = true, time: 
   }
 
   def withCarry(carry: Int) = ArithInfo(width + carry, weight, isPositive, time)
+
+  /** --------
+   * FIXME: following methods are for Bm only
+   * -------- */
+  def splitN(n: Int) = {
+    val segmentWidth = width.divideAndCeil(n)
+    (0 until n).map(i =>
+      ArithInfo(width = segmentWidth, weight = weight + i * segmentWidth, isPositive, time))
+  }
+
+  def splitMsb = {
+    require(isPositive)
+    (ArithInfo(width = 1, weight, isPositive = true, time), ArithInfo(width = width - 1, weight, isPositive = true, time))
+  }
+
+  def +(that: ArithInfo) = {
+    require(this.width == that.width)
+    ArithInfo(width + 1, weight, isPositive, time + width.divideAndCeil(cpaWidthMax))
+  }
+
+  def *(that: ArithInfo) = {
+    ArithInfo(this.width + that.width, weight + that.weight, isPositive, time + 2)
+  }
+
+  def &(that: ArithInfo) = {
+    require(that.width == 1)
+    ArithInfo(width, weight + that.weight, isPositive, time)
+  }
+
+  def mergeWith(tail: Seq[ArithInfo], widthOut:Int) = {
+    val all = this +: tail
+    val base = all.map(_.weight).min
+    ArithInfo(widthOut, base, isPositive = true, all.map(_.time).max)
+  }
+
 }
 
 /** BigInt with ArithInfo, used for simulating UInt arithmetic
@@ -47,6 +82,16 @@ case class WeightedValue(value: BigInt, arithInfo: ArithInfo) {
   def unary_- = WeightedValue(value, -arithInfo)
 
   def withWeight(weight: Int) = WeightedValue(value, ArithInfo(arithInfo.width, weight, arithInfo.isPositive, arithInfo.time))
+}
+
+case class WeightedUInt(value: UInt, arithInfo: ArithInfo) {
+  require(value.getBitsWidth <= arithInfo.width, s"the value width ${value.getBitsWidth} is too large for the target width ${arithInfo.width}")
+
+  def <<(shiftLeft: Int) = WeightedUInt(value, arithInfo << shiftLeft)
+
+  def unary_- = WeightedUInt(value, -arithInfo)
+
+  def withWeight(weight: Int) = WeightedUInt(value, ArithInfo(arithInfo.width, weight, arithInfo.isPositive, arithInfo.time))
 }
 
 object ArithInfoGenerator {

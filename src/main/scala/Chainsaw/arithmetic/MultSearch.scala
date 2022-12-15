@@ -12,12 +12,14 @@ import scala.collection.mutable.ArrayBuffer
  *          - 1. divide-and-conquer based implementation of big multiplier
  *            [[BmAlgo]], [[Bm]]
  *
- *          - 2. bit heap compression based implementation of big multiplier
+ *          - 2. bit heap compression based implementation of big constant multiplier
  *            [[BcmAlgo]] [[Bcm]]
  *
  *          - 3. RNS-based implementation of mid multiplier
  *
  *          - 4. look up table based implementation of small multiplier
+ *
+ *          - 5. array based implementation
  */
 object MultSearch {
 
@@ -33,6 +35,7 @@ object MultSearch {
   // FIXME: 17 X 17 leads to problem, why?
   val baseMultipliers = Seq(
     BaseDspMult(16, 16), BaseDspMult(12, 24), BaseDspMult(16, 24), BaseDspMult(16, 20), // use dsp as pure multiplier
+    BaseDspMult(26, 26), BaseDspMult(34,34), // efficient size implemented by Vivado + retiming
     Sm(FullMultiplier), // taking advantage of dsps' pre-adder/post-adder
   )
 
@@ -64,7 +67,6 @@ object MultSearch {
     val naiveSolution = {
       val stage = log2Up((width + 15) / 16)
       BmSolution(baseMultipliers.head, Seq.fill(stage)(2), multiplierType, Seq.fill(stage)(true))
-      //      BmSolution(baseMultipliers.head, Seq.fill(stage)(2), multiplierType, Seq.fill(stage)(false))
     }
 
     solutionSet(naiveSolution.widthFull) = ArrayBuffer[BmSolution]()

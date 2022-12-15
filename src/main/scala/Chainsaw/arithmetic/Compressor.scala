@@ -43,6 +43,5 @@ trait Compressor {
   def fmaxEstimation: HertzNumber = 600 MHz // target for all compressors
 
   def latency = 0
-
 }
 
