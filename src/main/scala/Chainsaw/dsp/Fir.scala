@@ -32,7 +32,6 @@ case class Fir(coeffs: Seq[Double],
     fir(testCase.data.toArray.map(_.toDouble), coeffs).drop(coeffs.length - 1).map(BigDecimal(_))
   }
 
-
   override def metric(yours: Seq[BigDecimal], golden: Seq[BigDecimal]) = {
     correlationMetric(yours, golden, 0.9)
   }
