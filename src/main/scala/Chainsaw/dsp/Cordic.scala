@@ -6,6 +6,7 @@ import Chainsaw.xilinx.{VivadoUtilEstimation, VivadoUtilRequirement}
 import breeze.numerics._
 import breeze.numerics.constants.Pi
 import spinal.core._
+import spinal.lib.LatencyAnalysis
 
 import scala.language.postfixOps
 import scala.util.Random
@@ -13,7 +14,8 @@ import scala.util.Random
 case class Cordic(algebraicMode: AlgebraicMode,
                   rotationMode: RotationMode,
                   iteration: Int, fractional: Int,
-                  initValues: Seq[Option[Double]] = Seq(None, None, None)
+                  initValues: Seq[Option[Double]] = Seq(None, None, None),
+                  speedLevel: Int = 2
                  )
   extends ChainsawOperatorGenerator {
 
@@ -62,7 +64,12 @@ case class Cordic(algebraicMode: AlgebraicMode,
 
   override def implNaiveH = None
 
-  override def latency() = iteration + 1
+  require(Seq(1, 2).contains(speedLevel))
+  val quadrantShiftLatency = speedLevel
+  val iterationLatency = iteration * speedLevel
+  val scalingLatency = speedLevel
+
+  override def latency() = quadrantShiftLatency + iterationLatency + scalingLatency
 
   /** --------
    * model
@@ -131,110 +138,133 @@ case class Cordic(algebraicMode: AlgebraicMode,
 
   override def vivadoUtilEstimation = VivadoUtilEstimation()
 
-  override def fmaxEstimation = 600 MHz
+  override def fmaxEstimation = if(speedLevel == 1) 400 MHz else 600 MHz
 
-  override def implH = new ChainsawOperatorModule(this) {
+  override def implH =
+    new ChainsawOperatorModule(this) {
 
-    implicit val mode: AlgebraicMode = algebraicMode
+      implicit val mode: AlgebraicMode = algebraicMode
 
-    val shiftingCoeffs = // shift value at each stage
-      if (algebraicMode == HYPERBOLIC) getHyperbolicSequence(iteration)
-      else 0 until iteration
+      val shiftingCoeffs = // shift value at each stage
+        if (algebraicMode == HYPERBOLIC) getHyperbolicSequence(iteration)
+        else 0 until iteration
 
-    val scaleType = NumericType(1, 16, signed = true) // for 18 bit multiplier
-    val scaleComplement = scaleType.fromConstant(getScaleComplement(iteration))
-    logger.info(s"compensation = ${getScaleComplement(iteration)}")
+      val scaleType = NumericType(1, 16, signed = true) // for 18 bit multiplier
+      val scaleComplement = scaleType.fromConstant(getScaleComplement(iteration))
+      logger.info(s"compensation = ${getScaleComplement(iteration)}")
 
-    def getCounterclockwise(group: Seq[AFix]) = rotationMode match {
-      case ROTATION => ~group(2).asBits.msb // Z > 0
-      case VECTORING => group(1).asBits.msb // Y < 0
-    }
-
-    var current = 0
-
-    // get initial values according to initValues
-    val dataInUse = Seq(amplitudeType, amplitudeType, phaseType).zipWithIndex
-      .map { case (t, i) =>
-        if (initValues(i).isDefined) t.fromConstant(initValues(i).get)
-        else {
-          current += 1
-          dataIn(current - 1)
+      /** --------
+       * getDataIn
+       * -------- */
+      var current = 0
+      val dataInUse = Seq(amplitudeType, amplitudeType, phaseType).zipWithIndex
+        .map { case (t, i) =>
+          if (initValues(i).isDefined) t.fromConstant(initValues(i).get)
+          else {
+            current += 1
+            dataIn(current - 1)
+          }
         }
+
+      /** --------
+       * quadrant shift, latency = 0
+       * -------- */
+      val Seq(x, y, z) = dataInUse
+      val xyzPrev, xyz = Vec(dataInUse.map(cloneOf(_)))
+
+      // stage 0, add/sub
+      val determinant = (y.raw.msb ## x.raw.msb).asUInt.d()
+      val yNegate = y.symmetricNegate.d()
+      val xNegate = x.symmetricNegate.d()
+      val zUp = (z +| phaseType.fromConstant(Pi / 2)).d()
+      val zDown = (z -| phaseType.fromConstant(Pi / 2)).d()
+      // stage 1, mult
+      algebraicMode match {
+        case CIRCULAR =>
+          // for atan(rather than angle, take reverse Z in second & third quadrant)
+          switch(determinant) { // range extension
+            is(U(1))(xyzPrev := Seq(y.d(), xNegate, zUp)) // second quadrant
+            is(U(3))(xyzPrev := Seq(yNegate, x.d(), zDown)) // third quadrant
+            default(xyzPrev := dataInUse.map(_.d()))
+          }
+        // TODO: extension for hyper and linear mode
+        case HYPERBOLIC => ???
+        case LINEAR => ???
       }
-    val Seq(x, y, z) = dataInUse
-    val determinant = (y.raw.msb ## x.raw.msb).asUInt
+      xyz := xyzPrev.d(speedLevel - 1)
 
-    /** --------
-     * quadrant shift
-     * -------- */
-    val xyz = Vec(dataInUse.map(cloneOf(_)))
+      /** --------
+       * iteration datapath, latency = iteration - 1
+       * -------- */
+      def getCounterclockwise(group: Seq[AFix]) = rotationMode match {
+        case ROTATION => ~group(2).asBits.msb // Z > 0
+        case VECTORING => group(1).asBits.msb // Y < 0
+      }
 
-    // TODO: extension for hyper and linear mode?
-    algebraicMode match {
-      case CIRCULAR =>
-        switch(determinant) { // range extension
-          is(U(1)) { // second quadrant
-            val phaseShift = rotationMode match {
-              case ROTATION => phaseType.fromConstant(Pi / 2)
-              case VECTORING => phaseType.fromConstant(Pi / 2).symmetricNegate
-            }
-            xyz := Seq(y, x.symmetricNegate, z +| phaseShift)
-          }
-          is(U(3)) { // third quadrant
-            val phaseShift = rotationMode match {
-              case ROTATION => phaseType.fromConstant(Pi / 2).symmetricNegate
-              case VECTORING => phaseType.fromConstant(Pi / 2)
-            }
-            xyz := Seq(y.symmetricNegate, x, z +| phaseShift)
-          }
-          default(xyz := dataInUse)
-        }
-      case HYPERBOLIC => ???
-      case LINEAR => ???
+      // TODO: better width growth strategy
+
+      val ret = Seq.iterate((xyz, 0), iteration + 1) {
+        case (Seq(x, y, z), i) =>
+          val shift = shiftingCoeffs(i)
+          val phaseStep = phaseType.fromConstant(getPhaseCoeff(i))
+          // stage 0, add/sub
+          val xShifted = (x >> shift).fixTo(amplitudeType())
+          val yShifted = (y >> shift).fixTo(amplitudeType())
+          val direction = getCounterclockwise(Seq(x, y, z)).d()
+          val xUp = (x +| yShifted).d()
+          val yUp = (y +| xShifted).d()
+          val xDown = (x -| yShifted).d()
+          val yDown = (y -| xShifted).d()
+          val zDown = (z -| phaseStep).d()
+          val zUp = (z +| phaseStep).d()
+          // stage 1, mux
+          // TODO: implement this by addSub with latency = 1?
+          val xNext = (algebraicMode match {
+            case CIRCULAR => Mux(direction, xDown, xUp)
+            case HYPERBOLIC => Mux(direction, xUp, xDown)
+            case LINEAR => x.d()
+          }).d(speedLevel - 1)
+          val yNext = Mux(direction, yUp, yDown).d(speedLevel - 1)
+          val zNext = Mux(direction, zDown, zUp).d(speedLevel - 1)
+          direction.setName(s"det_$i")
+          xNext.setName(s"x_$i") // for better analysis
+          yNext.setName(s"y_$i")
+          zNext.setName(s"z_$i")
+          (Vec(xNext, yNext, zNext), i + 1)
+      }.last._1
+
+      val Seq(xOut, yOut, zOut) = ret
+      logger.info(s"output: x: ${xOut.numericType}, y: ${yOut.numericType}, z: ${zOut.numericType}")
+
+      dataOut(0) := (xOut * scaleComplement).d(speedLevel).truncated
+      dataOut(1) := (yOut * scaleComplement).d(speedLevel).truncated
+      dataOut(2) := zOut.d(speedLevel)
+
+      def phaseOut = dataOut(2)
+
+      def cosOut = dataOut(0)
+
+      def sinOut = dataOut(0)
     }
-
-    /** --------
-     * datapath
-     * -------- */
-    // TODO: better width growth strategy
-    val ret = Seq.iterate((xyz, 0), iteration + 1) {
-      case (Seq(x, y, z), i) =>
-        val shift = shiftingCoeffs(i)
-        val phaseStep = phaseType.fromConstant(getPhaseCoeff(i))
-        val xShifted = (x >> shift).fixTo(amplitudeType())
-        val yShifted = (y >> shift).fixTo(amplitudeType())
-        val direction = getCounterclockwise(Seq(x, y, z))
-        // next-stage logic
-        val xNext = (algebraicMode match {
-          case CIRCULAR => Mux(direction, x -| yShifted, x +| yShifted)
-          case HYPERBOLIC => Mux(direction, x +| yShifted, x -| yShifted)
-          case LINEAR => x
-        }).d()
-        val yNext = Mux(direction, y +| xShifted, y -| xShifted).d()
-        val zNext = Mux(direction, z -| phaseStep, z +| phaseStep).d()
-
-        (Vec(xNext, yNext, zNext), i + 1)
-    }.last._1
-
-    val Seq(xOut, yOut, zOut) = ret
-    logger.info(s"output: x: ${xOut.numericType}, y: ${yOut.numericType}, z: ${zOut.numericType}")
-
-    dataOut(0) := (xOut * scaleComplement).d().truncated
-    dataOut(1) := (yOut * scaleComplement).d().truncated
-    dataOut(2) := zOut.d()
-
-    def phaseOut = dataOut(2)
-
-    def cosOut = dataOut(0)
-
-    def sinOut = dataOut(0)
-  }
 }
 
 object ComplexToMagnitudeAngle {
   def apply(iteration: Int, fractional: Int) = {
     new Cordic(CIRCULAR, VECTORING, iteration, fractional, Seq(None, None, Some(0.0))) {
       override def name = s"ComplexToMagnitudeAngle_${iteration}_$fractional"
+
+      override def impl(testCase: TestCase) = {
+        val Seq(x, y) = testCase.data.map(_.toDouble)
+        val at = BigDecimal(atan(y / x))
+        val angle = if (x < 0 && y > 0) at + Pi else if (x < 0 && y < 0) at - Pi else at
+        Seq(0, 0, angle)
+      }
+
+      override def metric(yours: Seq[BigDecimal], golden: Seq[BigDecimal]) = {
+        if ((yours.last - golden.last).abs > 0.1) println(yours.last - golden.last)
+        true
+        (yours.last - golden.last).abs <= 0.1
+      }
     }
   }
 }

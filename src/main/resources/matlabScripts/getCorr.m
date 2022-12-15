@@ -4,8 +4,8 @@ l = min(length(yours), length(golden));
 golden = golden(1:l);
 yours = yours(1:l);
 
-golden = golden - mean(golden);
-yours = yours - mean(yours);
+%golden = golden - mean(golden);
+%yours = yours - mean(yours);
 
 % lag value shold be within 1000 elements
 %[value, lags] = xcorr(golden(1:1000), yours(1:1000));
@@ -20,14 +20,20 @@ y = yours;
 %g = g(abs(lag): end - abs(lag));
 %y = y(abs(lag): end - abs(lag));
 
+disp(['your latency is larger than true latency by ', num2str(lag), ' elements'])
+corrMatrix = corrcoef(y, g);
+corrFactor = corrMatrix(1,2); % 相关系数
+
+%if corrFactor < 0.9
+
+figure()
+
 plot(y, 'y')
 hold on
 plot(g, 'g')
 legend('yours', 'golden')
 
-%saveas(gcf, 'src/main/resources/matlabGenerated/corr.png')
 saveas(gcf, '/home/ltr/Chainsaw/src/main/resources/matlabGenerated/corr.png')
-disp(['your latency is larger than true latency by ', num2str(lag), ' elements'])
 
 figure()
 
@@ -40,5 +46,4 @@ plot(f1, 10*log10(p1 / 2), 'g')
 legend('yours', 'golden')
 saveas(gcf, '/home/ltr/Chainsaw/src/main/resources/matlabGenerated/spectrum.png')
 
-corrMatrix = corrcoef(y, g);
-corrFactor = corrMatrix(1,2); % 相关系数
+%end
