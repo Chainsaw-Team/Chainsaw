@@ -16,6 +16,7 @@ object Report extends Enumeration {
   val RESOURCE, TIMING = Value
 }
 
+// TODO: better workspace configuration
 class QuartusFlow[T <: Component](dut: => T = null, workspace: String = "quartusWorkspace", netlistDir: Option[File] = None) {
 
   val revisionName = "tempRef"

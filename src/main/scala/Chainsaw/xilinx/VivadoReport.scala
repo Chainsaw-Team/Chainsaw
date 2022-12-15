@@ -80,7 +80,7 @@ class VivadoReport(
   val DSP = getIntAfterHeader("DSPs")
   val BRAM = getIntAfterHeader("Block RAM Tile")
   // FIXME: extract uram correctly
-  val URAM = getIntAfterHeader("URAM")
+  val URAM = getIntAfterHeader("URAM288")
   val CARRY8 = getIntAfterHeader("CARRY8")
 
   val ConstraintPeriod = getDoubleAfterHeader("Requirement")

@@ -30,10 +30,12 @@ package object dsp {
 
   def upSample(dataIn: Signal, up: Int): Signal = dataIn.flatMap(d => d +: Seq.fill(up - 1)(BigDecimal(0.0)))
 
-  /** --------
-   * matlabUtils
-   * -------- */
-  def getTimeSeries[T](file: File) = {
+
+  /** read simulink output in time series format
+   *
+   * @param file filepath
+   */
+  def getTimeSeries[T](file: File): T = {
     logger.info(s"loading ${file.getAbsolutePath} ...")
     matlabEngine.eval(s"ret = load('${file.getAbsolutePath}').ans.Data;")
     matlabEngine.eval(s"ret = double(ret);")
@@ -47,8 +49,10 @@ package object dsp {
     matlabEngine.eval(s"addpath('${matlabScriptDir.getAbsolutePath}')")
     val ret = matlabEngine.feval("getCorr", a, b).asInstanceOf[Double]
     logger.info(s"corr factor = $ret")
-    val pngFile = new File("src/main/resources/matlabGenerated/corr.png")
-    logger.info(s"view ${pngFile.getAbsolutePath}")
+    if (ret < 0.9) {
+      val pngFile = new File("src/main/resources/matlabGenerated/corr.png")
+      logger.info(s"view ${pngFile.getAbsolutePath}")
+    }
     ret
   }
 
@@ -65,7 +69,7 @@ package object dsp {
       golden.map(_.toDouble).toArray
     ) > threshold
 
-  def plot(signal: MatlabSignal, name:String): Unit = {
+  def plot(signal: MatlabSignal, name: String): Unit = {
     matlabEngine.putVariable("data", signal)
     matlabEngine.eval(s"plot(data); title('$name');")
     val pngFile = new File(s"src/main/resources/matlabGenerated/$name.png")
@@ -111,13 +115,13 @@ package object dsp {
     Seq.fill(parallel)(dataType) :+ NumericType.U(controlWidth)
   }
 
-  def splitDataWithControl(raw: Seq[BigDecimal], parallel:Int) = {
+  def splitDataWithControl(raw: Seq[BigDecimal], parallel: Int) = {
     val payload = raw.grouped(parallel + 1).flatMap(_.init).toSeq
     val control = raw.grouped(parallel + 1).map(_.last).toSeq
     (payload, control)
   }
 
-  def setAsOutput[T <: Data](data:T) ={
+  def setAsOutput[T <: Data](data: T) = {
     val ret = out cloneOf data
     ret := data
     ret

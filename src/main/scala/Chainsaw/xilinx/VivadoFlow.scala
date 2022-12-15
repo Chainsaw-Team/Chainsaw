@@ -52,7 +52,7 @@ class VivadoFlow[T <: Component](
           targetDirectory = workspacePath.getAbsolutePath + "/",
           oneFilePerComponent = true)
         // TODO: subtract the additional FFs from synth/impl result?
-        //        config.addTransformationPhase(new phases.FfIo)
+        config.addTransformationPhase(new phases.FfIo)
         val spinalReport = config.generateVerilog(design.setDefinitionName(topModuleName))
         //        spinalReport.rtlSourcesPaths
         val lstFile = Source.fromFile(new File(workspacePath, s"$topModuleName.lst"))
@@ -129,6 +129,7 @@ class VivadoFlow[T <: Component](
 
     // do flow
     def addSynth(): Unit = {
+      //      script += s"synth_design -part ${xilinxDevice.part} -top $topModuleName -mode out_of_context -retiming\n"
       script += s"synth_design -part ${xilinxDevice.part} -top $topModuleName -mode out_of_context\n"
       script += s"write_checkpoint -force ${topModuleName}_after_synth.dcp\n"
       script += s"report_timing\n"
