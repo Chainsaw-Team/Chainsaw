@@ -16,14 +16,6 @@ package object xilinx {
 
   object Series7 extends XilinxDeviceFamily
 
-  sealed trait EdaFlowType
-
-  object SYNTH extends EdaFlowType
-
-  object IMPL extends EdaFlowType
-
-  object BITGEN extends EdaFlowType // generate bitstream
-
   val xilinxCDConfig = ClockDomainConfig( // recommended by Xilinx UG901
     clockEdge = RISING,
     resetKind = ASYNC,
