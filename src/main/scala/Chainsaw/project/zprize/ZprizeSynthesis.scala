@@ -1,12 +1,12 @@
 package Chainsaw.project.zprize
 
-import Chainsaw.{ChainsawSynth, logger}
+import Chainsaw.{ChainsawSynthOld, logger}
 import Chainsaw.project.zprize.ZPrizeModules.{lsbMultGen, msbMultGen}
 
 object ZprizeSynthesis extends App {
 
   logger.info("BCMs synthesis")
-  ChainsawSynth(msbMultGen, "synth377Msb")
-  ChainsawSynth(lsbMultGen, "synth377Lsb")
+  ChainsawSynthOld(msbMultGen, "synth377Msb")
+  ChainsawSynthOld(lsbMultGen, "synth377Lsb")
 
 }

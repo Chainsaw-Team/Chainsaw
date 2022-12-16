@@ -33,8 +33,6 @@ trait ChainsawBaseGenerator {
 
   def testCases: Seq[TestCase]
 
-  def latency(control: Seq[BigDecimal]): Int
-
   def resetCycle: Int
 
   /** --------
@@ -55,17 +53,25 @@ trait ChainsawBaseGenerator {
   // impl selection
   def setAsNaive(): Unit = naiveSet += className(this)
 
-  def useNaive: Boolean = naiveSet.contains(this.getClass.getSimpleName)
+  def useNaive: Boolean = naiveSet.contains(className(this))
 
   def getImplH: ChainsawBaseModule = {
-    if (useNaive) {
+
+    def getNaive: ChainsawBaseModule =
       if (!atSimTime) implPass
       else implNaiveH match {
         case Some(impl) => impl
         case None => throw new IllegalArgumentException("no naive implementation found")
       }
+
+    if (useNaive) getNaive
+    else {
+      if (implH == null) {
+        logger.warn(s"as no full implementation found for generator ${className(this)}, a ${if(atSimTime) "simplified" else "pass-through" } version is used")
+        getNaive
+      }
+      else implH
     }
-    else implH
   }
 
   def inPortWidth = inputTypes.length
@@ -119,16 +125,22 @@ trait SemiInfinite
 
 trait Operator
 
-trait Dynamic {
+trait FixedLatency {
+  def latency(): Int
+}
+
+trait DynamicLatency {
+  def latency(control: Seq[BigDecimal]): Int
+}
+
+trait OverwriteLatency
+
+trait Dynamic extends DynamicLatency {
   def controlTypes: Seq[NumericType]
 
   def controlPortWidth = controlTypes.length
 
   def randomControlVector = controlTypes.map(_.random)
-}
-
-trait FixedLatency {
-  def latency(): Int
 }
 
 trait Frame {
@@ -148,8 +160,6 @@ trait Frame {
 trait ChainsawOperatorGenerator extends ChainsawBaseGenerator with Operator with FixedLatency {
 
   override def resetCycle = 0
-
-  override def latency(control: Seq[BigDecimal]) = latency()
 
   override def implH: ChainsawOperatorModule
 
@@ -178,8 +188,6 @@ trait ChainsawDynamicOperatorGenerator extends ChainsawBaseGenerator with Operat
 }
 
 trait ChainsawFrameGenerator extends ChainsawBaseGenerator with FixedLatency with Frame {
-
-  override def latency(control: Seq[BigDecimal]) = latency()
 
   def inputFrameFormat: FrameFormat
 
@@ -232,8 +240,6 @@ trait ChainsawDynamicFrameGenerator extends ChainsawBaseGenerator with Frame wit
 
 trait ChainsawInfiniteGenerator extends ChainsawBaseGenerator with FixedLatency with SemiInfinite {
 
-  override def latency(control: Seq[BigDecimal]) = latency()
-
   override def implH: ChainsawInfiniteModule
 
   override def implNaiveH: Option[ChainsawInfiniteModule]
@@ -260,11 +266,11 @@ trait ChainsawDynamicInfiniteGenerator extends ChainsawBaseGenerator with Dynami
 
 
 trait Unaligned {
-  val inputTimes: Seq[Int]
+  def inputTimes: Seq[Int]
 
   def inputInterval = inputTimes.max - inputTimes.min
 
-  val outputTimes: Seq[Int]
+  def outputTimes: Seq[Int]
 
   def outputInterval = outputTimes.max - outputTimes.min
 }

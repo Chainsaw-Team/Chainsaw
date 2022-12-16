@@ -33,6 +33,8 @@ class NumericType(val maxRaw: BigInt, val minRaw: BigInt, val exp: Int) {
         realInstance.step)
     }
 
+  def qFormat = QFormat(if (signed) bitWidth - 1 else bitWidth, fractional, signed)
+
   /** --------
    * methods using global data
    * -------- */
@@ -88,7 +90,7 @@ class NumericType(val maxRaw: BigInt, val minRaw: BigInt, val exp: Int) {
 
   def withCarry(bitWidth: Int) = NumericType(integral + bitWidth, fractional, signed)
 
-  override def toString = s"${if (signed) "S" else "U"}Q${integral}_$fractional"
+  override def toString = s"${if (signed) "S" else "U"}Q${integral}_$fractional".replace("-", "N")
 
   def same(your: BigDecimal, golden: BigDecimal, absTolerance: Double, relativeTolerance: Double) = {
     val ret = (your - golden).abs <= step || (your - golden).abs <= absTolerance || (your - golden).abs / (golden.abs + step) <= relativeTolerance
