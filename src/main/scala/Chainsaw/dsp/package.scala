@@ -42,6 +42,7 @@ package object dsp {
     matlabEngine.getVariable("ret").asInstanceOf[T]
   }
 
+  // TODO: implement xcorr in Scala, and paint the result by matplotlib, rather than Matlab
   def getCorr(yours: MatlabSignal, golden: MatlabSignal) = {
     val length = yours.length min golden.length
     val a = yours.take(length)

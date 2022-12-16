@@ -5,6 +5,9 @@ import spinal.core._
 import spinal.core.internals._
 import spinal.lib._
 
+/** add FFs before input / after output for meaningful synthesis timing report
+ *
+ */
 class FfIo extends Phase {
   override def impl(pc: PhaseContext): Unit = {
 
