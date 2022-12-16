@@ -15,7 +15,9 @@ case class Csa(arithInfos: Seq[ArithInfo]) extends UnsignedMerge {
   override val inputTimes = arithInfos.map(_.time)
   override val outputTimes = Seq(0)
 
-  override def implH = ???
+  // TODO: implementation
+  // TODO: considering separating CSA and CPA
+  override def implH = null
 
   override def latency() = inputInterval + 1
 
@@ -24,7 +26,7 @@ case class Csa(arithInfos: Seq[ArithInfo]) extends UnsignedMerge {
   override def fmaxEstimation = ???
 
   def sum(data: Seq[UInt]) = {
-    val core = implNaiveH.get
+    val core = getImplH
     core.dataIn.zip(data).foreach { case (in, data) => in := data.toAFix }
     core.dataOut.head.asUInt()
   }
