@@ -8,30 +8,28 @@ import scala.language.postfixOps
 case class Bcm(theConstant: BigInt,
                override val multiplierType: MultiplierType,
                widthIn: Int,
-               widthInvolved: Int,
+               override val widthInvolved: Int,
                override val widthOut: Int)
-  extends UnsignedMultiplier {
-
-  def algo = BcmAlgo(theConstant, multiplierType, widthIn, widthInvolved, widthOut, useCsd = true)
-  val outputModulus = Pow2(widthOut)
-  override val widthX = widthIn
-  override val widthY = theConstant.bitLength
-  override val constant = Some(theConstant)
-
-  override def latency() = 1
+  extends BcmAlgo(theConstant, multiplierType, widthIn, widthInvolved, widthOut, true)
+    with UnsignedMultiplier {
 
   override def name = s"${className(multiplierType)}_Bcm_${widthIn}_${widthInvolved}_${widthOut}_${hashName(theConstant)}"
 
-  override def vivadoUtilEstimation = algo.vivadoUtilEstimation
+  val outputModulus = Pow2(widthOut)
+  val csaGen = Csa(infos)
 
-  override def fmaxEstimation = 600 MHz
+  override def latency() = 1
+
+  override def fmaxEstimation: HertzNumber = 600 MHz
 
   override def metric(yours: Seq[BigDecimal], golden: Seq[BigDecimal]) = {
     val yourData = yours.head.toBigInt()
     val goldenData = golden.head.toBigInt()
     val det = multiplierType match {
       case FullMultiplier => yourData == goldenData
-      case MsbMultiplier => (yourData - goldenData).abs <= 1 // introduced by compensation shift
+      case MsbMultiplier =>
+        logger.info(s"$lowerBound <= error = ${goldenData - yourData} <= $upperBound")
+        lowerBound <= (goldenData - yourData) && (goldenData - yourData) <= upperBound
       case LsbMultiplier => yourData.mod(outputModulus) == goldenData.mod(outputModulus)
     }
 
@@ -44,7 +42,21 @@ case class Bcm(theConstant: BigInt,
     det
   }
 
-  override def implH = ???
+  override def testCases = {
+    val extra = Seq(dataForUpper, dataForLower).map(data => TestCase(Seq(BigDecimal(data))))
+    super.testCases ++ extra
+  }
+
+  override def implH = new ChainsawOperatorModule(this) {
+    val data = dataIn.head.asUInt()
+    val operands = sliceAndInfos.map(_._1) // slices of input UInt
+      .map { slice => data(slice.last downto slice.head) }
+    val rawOutput = csaGen.sum(operands)
+    dataOut.head := (multiplierType match {
+      case MsbMultiplier => (rawOutput >> widthNotOutputted).resize(widthOut).toAFix
+      case _ => rawOutput.resize(widthOut).toAFix
+    })
+  }
 }
 
 object FullBcm {

@@ -10,21 +10,32 @@ import scala.util.Random
 
 /** implement big constant multiplication by compressor tree
  *
- * @param constant       constant multiplicand
+ * @param theConstant    constant multiplicand
  * @param multiplierType MSB/LSB/FULL
  * @param widthIn        width of variable multiplicand
  * @param widthInvolved  width of bits involved in calculation
  * @param widthOut       width of product
  * @param useCsd         use canonical signed digit to represent the constant
  */
-case class BcmAlgo(constant: BigInt, multiplierType: MultiplierType,
-                   widthIn: Int, widthInvolved: Int, widthOut: Int,
-                   useCsd: Boolean = false) extends HardAlgo {
+class BcmAlgo(theConstant: BigInt,
+              override val multiplierType: MultiplierType,
+              widthIn: Int,
+              val widthInvolved: Int,
+              override val widthOut: Int,
+              useCsd: Boolean = false) extends HardAlgo with MultAttribute {
+
+  override def constant: Option[BigInt] = Some(theConstant)
+
+  override def widthX = widthIn
+
+  override def widthY = theConstant.bitLength
+
+  override def dspCost = 0
 
   /** --------
    * width calculation
    * -------- */
-  val widthFull = constant.bitLength + widthIn
+  val widthFull = theConstant.bitLength + widthIn
 
   // requirements
   multiplierType match {
@@ -45,7 +56,7 @@ case class BcmAlgo(constant: BigInt, multiplierType: MultiplierType,
    * operands construction
    * -------- */
   // get digits of the constant, low to high
-  val constantDigits: String = (if (useCsd) Csd(constant).csd else constant.toString(2)).reverse // low to high
+  val constantDigits: String = (if (useCsd) Csd(theConstant).csd else theConstant.toString(2)).reverse // low to high
 
   val sliceAndInfos: Seq[(IndexedSeq[Int], ArithInfo)] =
     constantDigits.zipWithIndex // digit and its weight
@@ -59,11 +70,13 @@ case class BcmAlgo(constant: BigInt, multiplierType: MultiplierType,
       .filterNot(_._1.isEmpty) // skip empty slices
       .map { case (slice, info) => (slice, info << slice.head) } // true weight
 
-  val clbCost = sliceAndInfos.map(_._2).map(_.width).sum
+  val slices = sliceAndInfos.map(_._1)
+  val infos = sliceAndInfos.map(_._2)
+
+  override def vivadoUtilEstimation = VivadoUtilEstimation(lut = sliceAndInfos.map(_._2).map(_.width).sum)
 
   // TODO: take compressor efficiency into consideration
   // TODO: more accurate estimation
-  override val vivadoUtilEstimation = VivadoUtilEstimation(lut = clbCost, ff = clbCost * 2, dsp = 0, bram36 = 0, uram288 = 0)
 
   /** --------
    * calculation & verification
@@ -72,9 +85,9 @@ case class BcmAlgo(constant: BigInt, multiplierType: MultiplierType,
   def target(x: BigInt): BigInt = { // target of calculation
     require(x.bitLength <= widthIn)
     multiplierType match {
-      case FullMultiplier => x * constant
-      case MsbMultiplier => (x * constant).toBitValue(widthFull).takeHigh(widthOut)
-      case LsbMultiplier => (x * constant).toBitValue(widthFull).takeLow(widthOut)
+      case FullMultiplier => x * theConstant
+      case MsbMultiplier => (x * theConstant).toBitValue(widthFull).takeHigh(widthOut)
+      case LsbMultiplier => (x * theConstant).toBitValue(widthFull).takeLow(widthOut)
     }
   }
 
@@ -119,7 +132,7 @@ case class BcmAlgo(constant: BigInt, multiplierType: MultiplierType,
 
       val constantDropped = // the constant which a bit should have been multiplied by (its weight)
         if (useCsd) Csd(constantDigits.reverse).takeLow(widthDropped).evaluate
-        else constant.toBitValue().takeLow(widthDropped)
+        else theConstant.toBitValue().takeLow(widthDropped)
 
       if (constantDropped >= BigInt(0)) {
         upperBound += constantDropped << i
@@ -135,6 +148,12 @@ case class BcmAlgo(constant: BigInt, multiplierType: MultiplierType,
 
     assert(error(dataForUpper) <= upperBound && error(dataForUpper) >= upperBound - 1, s"${error(dataForUpper)}, $upperBound")
     assert(error(dataForLower) >= lowerBound && error(dataForLower) <= lowerBound + 1, s"${error(dataForLower)}, $lowerBound")
+  }
+}
+
+object BcmAlgo {
+  def apply(constant: BigInt, multiplierType: MultiplierType, widthIn: Int, widthInvolved: Int, widthOut: Int, useCsd: Boolean = false): BcmAlgo = {
+    new BcmAlgo(constant, multiplierType, widthIn, widthInvolved, widthOut, useCsd)
   }
 }
 

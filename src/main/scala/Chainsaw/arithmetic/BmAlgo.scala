@@ -7,14 +7,27 @@ import scala.util.Random
 
 /** long multiplication implemented by divide-and-conquer
  */
-case class BmAlgo(bmSolution: BmSolution) extends HardAlgo {
+class BmAlgo(val bmSolution: BmSolution)
+  extends HardAlgo with MultAttribute {
 
   // more accurate concept for clbCost
 
   // TODO: latency estimation
   // TODO: apply cmults by DSP limit
 
-  val isConstantMult = bmSolution.constant.isDefined
+
+  override def constant = bmSolution.constant
+
+  override def widthX = bmSolution.widthFull
+
+  override def widthY = if (isConstantMult) constant.get.bitLength else bmSolution.widthFull
+
+  override def multiplierType = bmSolution.multiplierType
+
+  override def widthOut =
+    if (multiplierType == MsbMultiplier || multiplierType == LsbMultiplier) bmSolution.widthFull
+    else bmSolution.widthOut
+
 
   /** --------
    * cost statistics
@@ -64,7 +77,7 @@ case class BmAlgo(bmSolution: BmSolution) extends HardAlgo {
       cmultCost += bmSolution.dspSize._1 * (constantWeight - 1) // TODO: more accurate estimation
     } else {
       multCost += bmSolution.baseMultiplier.dspCost
-      fixCost += bmSolution.baseMultiplier.clbCost.toInt
+      fixCost += bmSolution.baseMultiplier.clbCost
     }
 
     WeightedValue(value = v0.value * v1.value, arithInfo = v0.arithInfo * v1.arithInfo)
@@ -93,14 +106,17 @@ case class BmAlgo(bmSolution: BmSolution) extends HardAlgo {
     else {
 
       val current = bmSolution.topDecomposition
+      val currentType = current.multiplierType
+      val currentWidthOut = current.widthOut
       import current._
+
 
       val aWords = splitN(x, aSplit) // width = baseHeight
       val bWords = splitN(y, bSplit) // width = baseWidth
 
       def doNSplit(aWords: Seq[WeightedValue], bWords: Seq[WeightedValue]): Seq[WeightedValue] = {
 
-        multiplierType match {
+        currentType match {
           case FullMultiplier =>
             if (isKara) {
               val diagonals: Seq[WeightedValue] = (0 until split).map { i =>
@@ -140,7 +156,8 @@ case class BmAlgo(bmSolution: BmSolution) extends HardAlgo {
           case SquareMultiplier =>
             Seq.tabulate(split, split) { (i, j) =>
               if (i >= j) { // upper triangular
-                val prod = doRectangular(aWords(i), bWords(j), bmSolution.subSolution(FullMultiplier))
+                val multType = if (i == j) bmSolution.multiplierType else FullMultiplier
+                val prod = doRectangular(aWords(i), bWords(j), bmSolution.subSolution(multType))
                 val ret = if (i != j) prod << 1 else prod
                 Some(ret)
               } else None
@@ -177,7 +194,7 @@ case class BmAlgo(bmSolution: BmSolution) extends HardAlgo {
 
       val validSegments = segments.filter(_.arithInfo.weight < weightMax)
       assert(validSegments.forall(_.arithInfo.width != 0))
-      val ret = merge(validSegments, widthOut)
+      val ret = merge(validSegments, currentWidthOut)
       ret
     }
   }
@@ -238,7 +255,15 @@ case class BmAlgo(bmSolution: BmSolution) extends HardAlgo {
    * -------- */
   impl(BigInt(bmSolution.widthFull, Random), BigInt(bmSolution.widthFull, Random))
   val eff = 1.0 // TODO: vary for different sizes
-  val clbCost = (splitCost + fixCost + (mergeCost + cmultCost) / eff).toInt
 
-  override def vivadoUtilEstimation = VivadoUtilEstimation(dsp = multCost, lut = clbCost, ff = clbCost * 2, bram36 = 0, uram288 = 0)
+  override def clbCost = (splitCost + fixCost + (mergeCost + cmultCost) / eff).toInt
+
+  override def dspCost = multCost
+
+  override def vivadoUtilEstimation =
+    VivadoUtilEstimation(dsp = multCost, lut = clbCost, ff = clbCost * 2, bram36 = 0, uram288 = 0)
+}
+
+object BmAlgo {
+  def apply(bmSolution: BmSolution): BmAlgo = new BmAlgo(bmSolution)
 }
