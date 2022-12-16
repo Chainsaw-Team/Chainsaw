@@ -19,11 +19,13 @@ class VivadoFlow[T <: Component](
                                   taskType: EdaFlowType,
                                   xilinxDevice: XilinxDevice,
                                   topModuleName: String,
-                                  workspacePath: File,
+                                  workspaceDir: File,
                                   xdcFile: Option[File] = None,
-                                  netlistFile: Option[File] = None
+                                  netlistDir: Option[File] = None,
+                                  customizedConfig: Option[SpinalConfig] = None
                                 ) {
 
+  // TODO: for windows
   val isWindows = System.getProperty("os.name").toLowerCase().contains("win")
 
   /** core function of Vivado flow, used to run a synth/impl task
@@ -34,30 +36,38 @@ class VivadoFlow[T <: Component](
     atSimTime = false // synth, rather than sim
 
     // create workspace directory
-    workspacePath.mkdirs()
-    val tclFile = new File(workspacePath, "doit.tcl")
-    val simpleXdcFile = new File(workspacePath, "doit.xdc")
-    val logFile = new File(workspacePath, "doit.log")
+    workspaceDir.mkdirs()
+    // files used in the flow
+    val tclFile = new File(workspaceDir, "doit.tcl")
+    val simpleXdcFile = new File(workspaceDir, "doit.xdc")
+    val logFile = new File(workspaceDir, "doit.log")
 
-    // generate sources from dut
+    // generate RTL sources from dut
     // TODO: use netlistDir instead of netlistFile
-    val rtlResources = netlistFile match {
-      case Some(src) =>
-        val des = new File(workspacePath, src.getName)
-        FileUtils.copyFile(src, des)
-        Seq(des.getAbsolutePath)
-      case None =>
+
+    val config = customizedConfig match {
+      case Some(value) => value
+      case None => // for general Component
         val config = SpinalConfig(
           defaultConfigForClockDomains = xilinxCDConfig,
-          targetDirectory = workspacePath.getAbsolutePath + "/",
+          targetDirectory = workspaceDir.getAbsolutePath + "/",
           oneFilePerComponent = true)
-        // TODO: subtract the additional FFs from synth/impl result?
         config.addTransformationPhase(new phases.FfIo)
-        val spinalReport = config.generateVerilog(design.setDefinitionName(topModuleName))
-        //        spinalReport.rtlSourcesPaths
-        val lstFile = Source.fromFile(new File(workspacePath, s"$topModuleName.lst"))
+    }
+
+    val rtlResources: Seq[String] = netlistDir match {
+      case Some(src) =>
+        val des = new File(workspaceDir, src.getName)
+        FileUtils.copyDirectory(src, workspaceDir)
+        des.listFiles().toSeq.map(_.getAbsolutePath)
+      case None =>
+        config.generateVerilog(design.setDefinitionName(topModuleName))
+        val targetDir = new File(config.targetDirectory)
+        if (customizedConfig.isDefined) {
+          FileUtils.copyDirectory(targetDir, workspaceDir)
+        }
+        val lstFile = Source.fromFile(new File(workspaceDir, s"$topModuleName.lst"))
         val ret = lstFile.getLines().map { line => new File(line) }.map(_.getAbsolutePath).toSeq
-        //        lstFile.close()
         ret
     }
 
@@ -77,7 +87,7 @@ class VivadoFlow[T <: Component](
     // run vivado
     DoCmd.doCmd(
       s"${vivadoPath.getAbsolutePath} -stack 2000 -nojournal -log ${logFile.getAbsolutePath} -mode batch -source ${tclFile.getAbsolutePath}",
-      workspacePath.getAbsolutePath
+      workspaceDir.getAbsolutePath
     )
 
     /** --------
@@ -97,30 +107,15 @@ class VivadoFlow[T <: Component](
   def getTcl(dutRtlSources: Seq[String], xdcFile: File): String = {
     var script = ""
 
-    def getReadCommand(sourcePath: File) = {
+    /** rtl file path -> read command
+     */
+    def getReadCommand(sourcePath: File): String = {
       if (sourcePath.getPath.endsWith(".sv")) s"read_verilog -sv $sourcePath \n"
       else if (sourcePath.getPath.endsWith(".v")) s"read_verilog $sourcePath \n"
-      else if (sourcePath.getPath.endsWith(".vhdl") || sourcePath.getPath.endsWith(".vhd"))
-        s"read_vhdl $sourcePath \n"
+      else if (sourcePath.getPath.endsWith(".vhdl") || sourcePath.getPath.endsWith(".vhd")) s"read_vhdl $sourcePath \n"
       else if (sourcePath.getPath.endsWith(".bin")) "\n"
-      else
-        throw new IllegalArgumentException(
-          s"invalid RTL source path $sourcePath"
-        )
+      else throw new IllegalArgumentException(s"invalid RTL source path $sourcePath")
     }
-
-    // read design sources
-    // sources from dut
-    //    netlistFile match {
-    //      case Some(netlist) => script += getReadCommand(netlist)
-    //      case None =>
-    //        val lstFile = Source.fromFile(new File(workspacePath, s"$topModuleName.lst"))
-    //        lstFile.getLines().foreach { line =>
-    //          val sourceFile = new File(line)
-    //          script += getReadCommand(sourceFile)
-    //        }
-    //        lstFile.close()
-    //    }
 
     dutRtlSources.foreach(path => script += getReadCommand(new File(path)))
 
@@ -173,20 +168,26 @@ object VivadoFlow {
 }
 
 object DefaultVivadoFlow {
-  def general[T <: Module](design: => T, name: String, flowType: EdaFlowType, netlistFile: Option[File]) = {
-    val flow = new VivadoFlow(design, flowType, vu9p, name, new File(synthWorkspace, name), netlistFile = netlistFile)
+  def general[T <: Module](design: => T, name: String, flowType: EdaFlowType, netlistFile: Option[File], config: Option[SpinalConfig]) = {
+    val flow = new VivadoFlow(design, flowType, vu9p, name, new File(synthWorkspace, name), netlistDir = netlistFile, customizedConfig = config)
     flow.doFlow()
   }
 }
 
 object VivadoSynth {
-  def apply[T <: Module](design: => T, name: String) = DefaultVivadoFlow.general(design, name, SYNTH, None)
+  def apply[T <: Module](design: => T, name: String) = DefaultVivadoFlow.general(design, name, SYNTH, None, None)
 
-  def apply[T <: Module](netlistFile: File, topModuleName: String) = DefaultVivadoFlow.general(null, topModuleName, SYNTH, Some(netlistFile))
+  def apply[T <: Module](design: => T, name: String, config: SpinalConfig) =
+    DefaultVivadoFlow.general(design, name, SYNTH, None, Some(config))
+
+  def apply[T <: Module](netlistFile: File, topModuleName: String) = DefaultVivadoFlow.general(null, topModuleName, SYNTH, Some(netlistFile), None)
 }
 
 object VivadoImpl {
-  def apply[T <: Module](design: => T, name: String) = DefaultVivadoFlow.general(design, name, IMPL, None)
+  def apply[T <: Module](design: => T, name: String) = DefaultVivadoFlow.general(design, name, IMPL, None, None)
 
-  def apply[T <: Module](netlistFile: File, topModuleName: String) = DefaultVivadoFlow.general(null, topModuleName, IMPL, Some(netlistFile))
+  def apply[T <: Module](design: => T, name: String, config: SpinalConfig) =
+    DefaultVivadoFlow.general(design, name, IMPL, None, Some(config))
+
+  def apply[T <: Module](netlistFile: File, topModuleName: String) = DefaultVivadoFlow.general(null, topModuleName, IMPL, Some(netlistFile), None)
 }
