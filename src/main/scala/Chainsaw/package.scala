@@ -1,5 +1,5 @@
 
-import Chainsaw.deprecated.{ChainsawGenerator, NumericType}
+import Chainsaw.deprecated.ChainsawGenerator
 import Chainsaw.xilinx.xilinxCDConfig
 import cc.redberry.rings.scaladsl.IntZ
 import com.mathworks.engine.MatlabEngine
@@ -18,8 +18,8 @@ import scala.math.BigInt
 import scala.reflect.ClassTag
 import scala.reflect.runtime.universe
 import scala.reflect.runtime.universe._
-import scala.reflect.runtime.universe.runtimeMirror
 import scala.util.Random
+import spinal.core.internals._
 
 package object Chainsaw {
 
@@ -44,9 +44,6 @@ package object Chainsaw {
     }
   }
 
-  def ChainsawSpinalConfig = SpinalConfig(
-    defaultConfigForClockDomains = xilinxCDConfig,
-    oneFilePerComponent = true)
 
   // for numeric type calculation
   //  val virtualGlob = new GlobalData(SpinalConfig())
@@ -63,6 +60,8 @@ package object Chainsaw {
 
   def setAsNaive(generator: Any*) = naiveSet += generator.getClass.getSimpleName.replace("$", "")
 
+
+  var allowSynthAndImpl = false // TODO: implement this by a config file
   var testFlopoco = false
   var testVhdl = false
   var atSimTime = true
@@ -136,7 +135,7 @@ package object Chainsaw {
       (value >> lowWidth, value % base)
     }
 
-    def toBinaryBigInt = if (value >= 0) value else (BigInt(1) << (width)) + value
+    def toBinaryBigInt = if (value >= 0) value else (BigInt(1) << width) + value
 
     def takeLow(n: Int) = splitAt(n)._2
 
@@ -220,6 +219,27 @@ package object Chainsaw {
     def rotateRight(that: UInt): Vec[T] = vecShiftWrapper(bits.rotateLeft, that)
   }
 
+  type ChainsawFlow = Flow[Fragment[Vec[AFix]]]
+
+  implicit class ChainsawFlowUtil(flow: ChainsawFlow) {
+    def mapFragment(func: Seq[AFix] => Seq[AFix], latency: Int = 0): ChainsawFlow = {
+      val temp = func(flow.fragment)
+      val newFragment = Vec(temp)
+      val ret = new Flow(new Fragment(newFragment))
+      ret.fragment := newFragment
+      ret.valid := flow.valid.validAfter(latency)
+      ret.last := flow.last.validAfter(latency)
+      ret
+    }
+
+    def >>(that: ChainsawBaseModule): Unit = that.flowIn := flow
+
+    def foreach(func: BaseType => Unit): Unit = {
+      flow.fragment.map(_.raw).foreach(func)
+      func(flow.valid)
+      func(flow.last)
+    }
+  }
 
   /** --------
    * Flows
@@ -235,28 +255,30 @@ package object Chainsaw {
       .generateVerilog(gen.implH.setDefinitionName(name))
   }
 
-  def ChainsawSynth(gen: ChainsawGenerator, name: String, withRequirement: Boolean = false) = {
+  def ChainsawSynthOld(gen: ChainsawGenerator, name: String, withRequirement: Boolean = false) = {
     // TODO: with requirement, + ffs before and after the component, - ffs before comparison
     val report = VivadoSynth(gen.implH, name)
     if (withRequirement) report.require(gen.utilEstimation, gen.fmaxEstimation)
     report
   }
 
-  def ChainsawImpl(gen: ChainsawGenerator, name: String, withRequirement: Boolean = false) = {
+  def ChainsawImplOld(gen: ChainsawGenerator, name: String, withRequirement: Boolean = false) = {
     val report = VivadoImpl(gen.implH, name)
     if (withRequirement) report.require(gen.utilEstimation.toRequirement, gen.fmaxEstimation)
     report
   }
 
-  def ChainsawSynthAll(gen: ChainsawBaseGenerator, name: String, withRequirement: Boolean = false) = {
+  def ChainsawSynth(gen: ChainsawBaseGenerator, withRequirement: Boolean = false) = {
     // TODO: with requirement, + ffs before and after the component, - ffs before comparison
-    val report = VivadoSynth(gen.implH, name)
+    atSimTime = false
+    val report = VivadoSynth(gen.implH, gen.name, ChainsawSpinalConfig(gen))
     if (withRequirement) report.require(gen.vivadoUtilEstimation.toRequirement, gen.fmaxEstimation)
     report
   }
 
-  def ChainsawImplAll(gen: ChainsawBaseGenerator, name: String, withRequirement: Boolean = false) = {
-    val report = VivadoImpl(gen.implH, name)
+  def ChainsawImpl(gen: ChainsawBaseGenerator, withRequirement: Boolean = false) = {
+    atSimTime = false
+    val report = VivadoImpl(gen.implH, gen.name, ChainsawSpinalConfig(gen))
     if (withRequirement) report.require(gen.vivadoUtilEstimation.toRequirement, gen.fmaxEstimation)
     report
   }
@@ -295,6 +317,7 @@ package object Chainsaw {
 
   def hashName(any: Any) = any.hashCode().toString.replace("-", "N")
 
+  @deprecated
   def getAutoName[T: TypeTag](obj: T)(implicit tag: ClassTag[T]) = {
     val fieldSymbols = typeOf[T].members
       .filter(_.isMethod)
@@ -308,7 +331,6 @@ package object Chainsaw {
     def getFieldName(name: String, value: Any) = {
       value match {
         case boolean: Boolean => if (boolean) name.trim else s"not${name.trim}"
-        case chainsawSolution: ChainsawSolution => hashName(chainsawSolution)
         case chainsawEnum: ChainsawEnum => className(chainsawEnum)
         case sim: SpinalSimBackendSel => className(sim)
         case bigInt: BigInt => hashName(bigInt).replace('-', 'N')
@@ -338,15 +360,5 @@ package object Chainsaw {
   /** --------
    * matlab utils
    * -------- */
-  //  type MComplex = types.Complex
   lazy val matlabEngine = MatlabEngine.startMatlab()
-  //
-  //  /** implicit conversion from Matlab Complex to Breeze Complex
-  //   */
-  //  implicit def ComplexConversion(mcomplex: MComplex): Complex = Complex(mcomplex.real, mcomplex.imag)
-
-  //  implicit class mcomplexConversion(mcomplex: MComplex){
-  //    def toComplex = Complex(mcomplex.real, mcomplex.imag)
-  //  }
-
 }

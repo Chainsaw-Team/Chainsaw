@@ -19,6 +19,11 @@ abstract class ChainsawBaseModule(val gen: ChainsawBaseGenerator) extends Compon
   val validOut = flowOut.valid
   val lastOut = flowOut.last
 
+  dataIn.foreach(_.addTag(CHAINSAWIO))
+  dataOut.foreach(_.addTag(CHAINSAWIO))
+
+  def dataIo = dataIn.map(_.raw) ++ dataOut.map(_.raw)
+
   // these pointers can be modified by elaboration phases
   var flowInPointer = flowIn
   var flowOutPointer = flowOut
@@ -33,8 +38,18 @@ abstract class ChainsawBaseModule(val gen: ChainsawBaseGenerator) extends Compon
     segmentCounter.value.setName("segmentId")
   }
 
-  setDefinitionName(gen.name)
+  // SpinalHDL will generate multiple copies of same module when multiple modules contains a same ROM file
+
+  // FIXME: "already used once for a different layout", when multiple modules contains a same ROM file
+  //  setDefinitionName(gen.name)
   setName(gen.name, weak = true)
+
+  /** --------
+   * connection utils
+   * -------- */
+  def map(func: Seq[AFix] => Seq[AFix], latency: Int = 0): ChainsawFlow = flowOut.mapFragment(func, latency)
+
+  def fixTo(af: AFix) = map(_.map(_.fixTo(af)))
 }
 
 trait DynamicModule {

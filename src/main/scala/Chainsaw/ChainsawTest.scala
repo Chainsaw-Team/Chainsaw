@@ -1,15 +1,13 @@
 package Chainsaw
 
 import Chainsaw.phases.IoAlign
+import spinal.core._
 import spinal.core.sim._
+import spinal.lib._
 import spinal.sim.SimThread
 
 import scala.collection.mutable.ArrayBuffer
 import scala.util.Random
-import spinal.core._
-import spinal.core.sim._
-import spinal.lib._
-import spinal.lib.fsm._
 
 case class ChainsawTest(
                          testName: String = "testTemp",
@@ -23,8 +21,7 @@ case class ChainsawTest(
   import gen._
 
   def simConfig = {
-    val spinalConfig = ChainsawSpinalConfig
-    if (gen.isInstanceOf[Unaligned]) spinalConfig.addTransformationPhase(new IoAlign) // for unaligned generator, pad the input and output
+    val spinalConfig = ChainsawSpinalConfig(gen)
     val ret = SimConfig
       .workspaceName(testName)
       .withFstWave
@@ -38,6 +35,9 @@ case class ChainsawTest(
    * -------- */
   val inputSegments: Seq[TestCase] = stimulus.getOrElse(testCases)
     .sortBy(_.control.headOption.getOrElse(BigDecimal(0)))
+
+  if (gen.isInstanceOf[SemiInfinite] && inputSegments.forall(_.data.length == inputSegments.head.data.length))
+    logger.warn("all testCases have a same length, which may miss the problem in reset logic")
 
   if (inPortWidth != 0) {
     val pass = gen match { // check data length
@@ -77,6 +77,7 @@ case class ChainsawTest(
     } // probability = 1/ratio
     inputSegmentsWithInvalid += ((testCase, valid))
   }
+  inputSegmentsWithInvalid.insert(0, (getResetInterrupt, false)) // for initialization
 
   val sortedValids = inputSegmentsWithInvalid.filter(_._2).map(_._1)
 
@@ -84,7 +85,11 @@ case class ChainsawTest(
    * get golden segments
    * -------- */
   val goldenSegments: Seq[Seq[BigDecimal]] = golden.getOrElse(sortedValids.map(impl))
-  val latencies = sortedValids.map(testCase => latency(testCase.control))
+  val latencies = gen match {
+    case overwriteLatency: OverwriteLatency => sortedValids.map(_ => -1)
+    case fixedLatency: FixedLatency => sortedValids.map(_ => fixedLatency.latency())
+    case dynamicLatency: DynamicLatency => sortedValids.map(testCase => dynamicLatency.latency(testCase.control))
+  }
 
   val pass = gen match { // check golden length
     case frame: Frame =>
@@ -212,7 +217,7 @@ case class ChainsawTest(
 
   val passRecord = inputSegments.indices.map { i =>
     val payloadPass = metric(outputSegments(i), goldenSegments(i))
-    val latencyPass = actualLatencies(i) == latencies(i)
+    val latencyPass = actualLatencies(i) == latencies(i) || latencies(i) == -1
     payloadPass && latencyPass
   }
 
@@ -221,9 +226,9 @@ case class ChainsawTest(
   def log(index: Int) = {
     s"-----$index-th segment-----\n" +
       s"${sortedValids(index)}\n" +
-      s"yours  : ${outputSegments(index).mkString(",")}\n" +
-      s"golden : ${goldenSegments(index).mkString(",")}\n" +
-      s"expected latency: ${latencies(index)}, actual latency: ${actualLatencies(index)}\n"
+      s"yours  : ${outputSegments(index).take(500).mkString(",")}\n" +
+      s"golden : ${goldenSegments(index).take(500).mkString(",")}\n" +
+      s"expected latency: ${if (latencies(index) < 0) "undetermined" else latencies(index).toString}, actual latency: ${actualLatencies(index)}\n"
   }
 
   val logIndices = if (success) Seq(outputSegments.length - 1) else passRecord.zipWithIndex.filter(!_._1).map(_._2)
@@ -232,4 +237,9 @@ case class ChainsawTest(
   if (!success) logger.error(s"failures:\n$allLog")
   else logger.info(s"test $testName passed\n$allLog")
   assert(success)
+}
+
+object ChainsawTestWithData {
+  def apply(testName: String, gen: ChainsawBaseGenerator, data: Seq[TestCase], golden: Seq[Seq[BigDecimal]]) =
+    ChainsawTest(testName, gen, Some(data), Some(golden))
 }

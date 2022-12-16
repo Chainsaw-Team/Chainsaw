@@ -44,18 +44,18 @@ class DspIpTests extends ChainsawFlatSpec {
 
   def testCordic(): Unit = {
     // CORDIC under all 6 modes
-    val algebraicModes = Seq(CIRCULAR)
-    val rotationModes = Seq(ROTATION, VECTORING)
-    algebraicModes.foreach(alg =>
-      rotationModes.foreach(rot =>
-        testOperator(Cordic(alg, rot, iteration = testIteration, fractional = testFraction), generatorConfigTable("Cordic"))
-      )
-    )
+    //    val algebraicModes = Seq(CIRCULAR)
+    //    val rotationModes = Seq(ROTATION, VECTORING)
+    //    algebraicModes.foreach(alg =>
+    //      rotationModes.foreach(rot =>
+    //        testOperator(Cordic(alg, rot, iteration = testIteration, fractional = testFraction), generatorConfigTable("Cordic"))
+    //      )
+    //    )
 
     // most frequently used CORDIC modes(with initValues)
     testOperator(ComplexToMagnitudeAngle(iteration = testIteration, fractional = testFraction), generatorConfigTable("Cordic"))
-    testOperator(CordicCos(iteration = testIteration, fractional = testFraction), generatorConfigTable("Cordic"))
-    testOperator(CordicSin(iteration = testIteration, fractional = testFraction), generatorConfigTable("Cordic"))
+    //    testOperator(CordicCos(iteration = testIteration, fractional = testFraction), generatorConfigTable("Cordic"))
+    //    testOperator(CordicSin(iteration = testIteration, fractional = testFraction), generatorConfigTable("Cordic"))
   }
 
   /** --------
@@ -63,9 +63,8 @@ class DspIpTests extends ChainsawFlatSpec {
    * -------- */
 
   def testFirs(): Unit = {
-
     // Pipelined FIR
-    //    coeffs.foreach(coeff => testDspGenerator(FirNew(coeff, coeffType, dataType), synth = filterSynth, impl = filterImpl))
+    coeffs.foreach(coeff => testOperator(Fir(coeff, coeffType, dataType), generatorConfigTable("Fir")))
     // Pipelined FIR with symmetric coefficients
     symmetricCoeffs.foreach(coeff => testOperator(Fir(coeff, coeffType, dataType, symmetric = true), generatorConfigTable("Fir")))
     // Parallel FIR by poly phase decomposition
@@ -106,16 +105,22 @@ class DspIpTests extends ChainsawFlatSpec {
     }
   }
 
+  def testMovingAverage(): Unit = {
+    val sizes = Seq(20, 50, 100)
+    sizes.foreach(size => testOperator(DynamicMovingAverage(size, dataType), generatorConfigTable("MovingAverage")))
+  }
+
   /** --------
    * tests
    * -------- */
 
   override def generatorConfigTable = Map(
-    "ComplexMult" ->  TestConfig(full = true, naive = false, synth = true, impl = false),
-    "Cordic" ->       TestConfig(full = true, naive = false, synth = true, impl = false),
+    "ComplexMult" -> TestConfig(full = true, naive = false, synth = true, impl = false),
+    "Cordic" -> TestConfig(full = true, naive = false, synth = true, impl = false),
     "DynamicDelay" -> TestConfig(full = true, naive = false, synth = true, impl = false),
-    "Fir" ->          TestConfig(full = true, naive = false, synth = true, impl = false),
-    "Dds" ->          TestConfig(full = true, naive = false, synth = true, impl = false),
+    "Fir" -> TestConfig(full = true, naive = false, synth = true, impl = false),
+    "Dds" -> TestConfig(full = true, naive = false, synth = true, impl = false),
+    "MovingAverage" -> TestConfig(full = true, naive = false, synth = true, impl = false),
   )
 
   testComplexMult()
@@ -123,6 +128,5 @@ class DspIpTests extends ChainsawFlatSpec {
   testDelay()
   testFirs()
   testDds()
-  //  testMovingAverage()
-
+  testMovingAverage()
 }

@@ -66,13 +66,29 @@ object NumericExt {
       ret
     }
 
-    def normalized = afix >> (if (afix.signed) (afix.intWidth - 1) else afix.intWidth)
+    /** scaling the range to [-1,1)
+     */
+    def normalized = afix >> (if (afix.signed) afix.intWidth - 1 else afix.intWidth)
+
+    // FIXME: precise range will be lost
+    //    def fixTo(that: NumericType) = afix.fixTo(that.qFormat)
   }
 
   implicit class hardVecUtil(vec: Seq[AFix]) {
+
     def toComplexFix = vec.grouped(2).toSeq.map { case Seq(a, b) => ComplexFix(a, b) }
 
+    def pipelinedBalancedTree(op: (AFix, AFix) => AFix, latency: Int) = {
+      def pipeline(op: AFix, i: Int) = op.d(latency)
+
+      vec.reduceBalancedTree(op, pipeline)
+    }
+
+    def fixTo(af:AFix) = vec.map(_.fixTo(af))
+
+    def normalized = vec.map(_.normalized)
   }
+
 
   implicit class softVecUtil(vec: Seq[BigDecimal]) {
     def toComplex = vec.map(_.toDouble).grouped(2).toSeq.map { case Seq(a, b) => Complex(a, b) }

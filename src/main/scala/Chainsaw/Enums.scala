@@ -64,8 +64,6 @@ object S2M extends CpaMode
 
 object S2S extends CpaMode
 
-trait ChainsawSolution
-
 sealed trait FilterType extends ChainsawEnum
 
 object Direct1 extends FilterType
@@ -103,3 +101,13 @@ sealed trait DdsSignalType extends ChainsawEnum
 object SINE extends DdsSignalType
 
 object PULSE extends DdsSignalType
+
+object CHAINSAWIO extends spinal.core.SpinalTag
+
+sealed trait EdaFlowType extends ChainsawEnum
+
+object SYNTH extends EdaFlowType
+
+object IMPL extends EdaFlowType
+
+object BITGEN extends EdaFlowType // generate bitstream

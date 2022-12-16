@@ -3,6 +3,7 @@ package Chainsaw
 import Chainsaw.arithmetic.flopoco.FlopocoOperator
 import Chainsaw.deprecated.ChainsawGenerator
 import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest._
 
 import scala.util.Try
 import org.apache.commons.io.FileUtils
@@ -43,10 +44,8 @@ abstract class ChainsawFlatSpec extends AnyFlatSpec {
     behavior of gen.name
 
     it should "have a correct naive implementation" in {
-      //      if (gen.implNaiveH.isDefined) {
       gen.setAsNaive()
       gen.doSelfTest()
-      //      }
     }
 
     it should "have a correct implementation" in {
@@ -56,11 +55,11 @@ abstract class ChainsawFlatSpec extends AnyFlatSpec {
 
     if (synth)
       it should "meet the util requirement after synth" in
-        ChainsawSynth(gen, s"synth_${gen.name}", withRequirement = true)
+        ChainsawSynthOld(gen, s"synth_${gen.name}", withRequirement = true)
 
     if (impl)
       it should "meet the util requirement after impl" in
-        ChainsawImpl(gen, s"impl_${gen.name}", withRequirement = true)
+        ChainsawImplOld(gen, s"impl_${gen.name}", withRequirement = true)
   }
 
   def testOperator(gen: => ChainsawBaseGenerator, testConfig: TestConfig): Unit = {
@@ -84,14 +83,14 @@ abstract class ChainsawFlatSpec extends AnyFlatSpec {
       }
     }
 
-    if (synth && !impl) { // when impl is set, synth is not necessary
+    if (synth && allowSynthAndImpl) { // when impl is set, synth is not necessary
       it should "meet the util & fmax requirement after synth" in
-        ChainsawSynthAll(gen, s"synth_${gen.name}", withRequirement = true)
+        ChainsawSynth(gen, withRequirement = true)
     }
 
-    if (impl) {
+    if (impl && allowSynthAndImpl) {
       it should "meet the util & fmax requirement after impl" in
-        ChainsawImplAll(gen, s"impl_${gen.name}", withRequirement = true)
+        ChainsawImpl(gen, withRequirement = true)
     }
   }
 
@@ -119,13 +118,13 @@ abstract class ChainsawFlatSpec extends AnyFlatSpec {
     if (synth) {
       //      atSimTime = false
       it should "meet the util & fmax requirement after synth" in
-        ChainsawSynthAll(gen, s"synth_${gen.name}", withRequirement = true)
+        ChainsawSynth(gen, withRequirement = true)
     }
 
     if (impl) {
       //      atSimTime = false
       it should "meet the util & fmax requirement after impl" in
-        ChainsawImplAll(gen, s"impl_${gen.name}", withRequirement = true)
+        ChainsawImpl(gen, withRequirement = true)
     }
   }
 }
