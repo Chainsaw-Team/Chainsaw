@@ -34,6 +34,8 @@ case class ArithInfo(width: Int, weight: Int, isPositive: Boolean = true, time: 
 
   def withCarry(carry: Int) = ArithInfo(width + carry, weight, isPositive, time)
 
+  def withTime(newTime: Int) = ArithInfo(width, weight, isPositive, newTime)
+
   /** --------
    * FIXME: following methods are for Bm only
    * -------- */
@@ -62,7 +64,7 @@ case class ArithInfo(width: Int, weight: Int, isPositive: Boolean = true, time: 
     ArithInfo(width, weight + that.weight, isPositive, time)
   }
 
-  def mergeWith(tail: Seq[ArithInfo], widthOut:Int) = {
+  def mergeWith(tail: Seq[ArithInfo], widthOut: Int) = {
     val all = this +: tail
     val base = all.map(_.weight).min
     ArithInfo(widthOut, base, isPositive = true, all.map(_.time).max)

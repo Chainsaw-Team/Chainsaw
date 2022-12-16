@@ -55,6 +55,6 @@ case class IntMultiplier(wX: Int, wY: Int, maxDSP: Int) extends FlopocoOperator 
 
 object IntMultiplier {
   def main(args: Array[String]): Unit = {
-    ChainsawSynthAll(IntMultiplier(wX = 32, wY = 48, maxDSP = 4), "IntMultiplier")
+    ChainsawSynth(IntMultiplier(wX = 32, wY = 48, maxDSP = 4))
   }
 }

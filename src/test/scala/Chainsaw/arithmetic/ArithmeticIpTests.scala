@@ -1,8 +1,9 @@
 package Chainsaw.arithmetic
 
 import Chainsaw._
-import Chainsaw.arithmetic.ArithInfoGenerator.RectangularInfos
 import Chainsaw.project.zprize.ZPrizeMSM
+
+import scala.util.Random
 
 class ArithmeticIpTests extends ChainsawFlatSpec {
 
@@ -93,7 +94,8 @@ class ArithmeticIpTests extends ChainsawFlatSpec {
     val constant = lsbConstants.head.get
 
     val extraWidths = Seq(0, 4, 8)
-    val multTypes = Seq(FullMultiplier, MsbMultiplier, LsbMultiplier)
+    //    val multTypes = Seq(FullMultiplier, MsbMultiplier, LsbMultiplier)
+    val multTypes: Seq[MultiplierType] = Seq(MsbMultiplier)
     multTypes.foreach { multType =>
       val extras = if (multType == MsbMultiplier) extraWidths else Seq(0)
       extras.foreach { extraWidth =>
@@ -124,7 +126,11 @@ class ArithmeticIpTests extends ChainsawFlatSpec {
 
   def testDspMults(): Unit = {
     val multTypes = Seq(FullMultiplier, MsbMultiplier, LsbMultiplier)
-    multTypes.foreach(multType => testOperator(Sm(multType), generatorConfigTable("Dsp")))
+    val smallDivideAndConquers = multTypes.map(Sm)
+    val smallTilings = Seq(BaseDspMult(17, 26), BaseDspMult(26, 26), BaseDspMult(34, 34))
+
+    val allMults = smallDivideAndConquers ++ smallTilings
+    allMults.foreach(testOperator(_, generatorConfigTable("Dsp")))
   }
 
   def testMultSearch(): Unit = {
@@ -134,6 +140,10 @@ class ArithmeticIpTests extends ChainsawFlatSpec {
       MultSearch.getBmParetos(377, FullMultiplier)
       MultSearch.getBmParetos(377, LsbMultiplier)
       MultSearch.getBmParetos(377, MsbMultiplier)
+
+      MultSearch.getBmParetos(377, FullMultiplier, Some(project.zprize.ZPrizeMSM.baseModulus))
+      MultSearch.getBmParetos(377, LsbMultiplier, Some(project.zprize.ZPrizeMSM.baseModulus))
+      MultSearch.getBmParetos(377, MsbMultiplier, Some(project.zprize.ZPrizeMSM.baseModulus))
     }
   }
 
@@ -155,21 +165,21 @@ class ArithmeticIpTests extends ChainsawFlatSpec {
   override def algoNames = Seq("BmAlgo", "BcmAlgo", "MultSearch")
 
   override val generatorConfigTable = Map(
-    "Bm" -> TestConfig(full = false, naive = true, synth = false, impl = false),
-    "Bcm" -> TestConfig(full = false, naive = true, synth = false, impl = false),
-    "Compressor" -> TestConfig(full = false, naive = true, synth = true, impl = false),
-    "Dsp" -> TestConfig(full = true, naive = true, synth = false, impl = true),
+    "Bm" -> TestConfig(full = true, naive = true, synth = false, impl = false),
+    "Bcm" -> TestConfig(full = true, naive = true, synth = false, impl = false),
+    "Compressor" -> TestConfig(full = true, naive = true, synth = false, impl = false),
+    "Dsp" -> TestConfig(full = true, naive = true, synth = true, impl = false),
     "Cpa" -> TestConfig(full = false, naive = true, synth = false, impl = false),
     "Csa" -> TestConfig(full = false, naive = true, synth = false, impl = false),
   )
 
-  //  testBmAlgo()
-  //  testBm()
-  //  testBcmAlgo()
-  //  testBcm()
-  //  testCompressors()
-  //  testDspMults()
-  //  testMultSearch()
-  //  testCpa()
+  testBmAlgo()
+  testBm()
+  testBcmAlgo()
+  testBcm()
+  testCompressors()
+  testDspMults()
+  testMultSearch()
+  testCpa()
   testCsa()
 }
