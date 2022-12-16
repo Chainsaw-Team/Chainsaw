@@ -20,7 +20,7 @@ class ZPrizeModulesTest extends AnyFlatSpec {
 
   ignore should "work for ZPRIZE MSB mult" in ChainsawTest("test377Msb", msbMultGen, data).doTest()
   ignore should "work for ZPRIZE LSB mult" in ChainsawTest("test377Lsb", lsbMultGen, data).doTest()
-  ignore should "impl for ZPRIZE LSB mult" in ChainsawImpl(lsbMultGen, "synth377Lsb")
+  ignore should "impl for ZPRIZE LSB mult" in ChainsawImplOld(lsbMultGen, "synth377Lsb")
 
   behavior of "Barrett"
 
@@ -35,8 +35,8 @@ class ZPrizeModulesTest extends AnyFlatSpec {
     poseidonGen.doSelfTest()
   }
 
-  ignore should "synth for poseidon modulus" in ChainsawSynth(poseidonGen, "synthPoseidon")
-  ignore should "impl for poseidon modulus" in ChainsawImpl(poseidonGen, "implPoseidon")
+  ignore should "synth for poseidon modulus" in ChainsawSynthOld(poseidonGen, "synthPoseidon")
+  ignore should "impl for poseidon modulus" in ChainsawImplOld(poseidonGen, "implPoseidon")
 
   /** --------
    * zprize
@@ -50,7 +50,7 @@ class ZPrizeModulesTest extends AnyFlatSpec {
     zprizeGen.doSelfTest()
   }
 
-  ignore should "synth for zprize msm" in ChainsawSynth(zprizeGen, "synthZPrize")
-  it should "impl for zprize msm" in ChainsawImpl(zprizeGen, "synthZPrize")
+  ignore should "synth for zprize msm" in ChainsawSynthOld(zprizeGen, "synthZPrize")
+  it should "impl for zprize msm" in ChainsawImplOld(zprizeGen, "synthZPrize")
 
 }
