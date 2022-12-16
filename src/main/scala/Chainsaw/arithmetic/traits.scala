@@ -1,6 +1,8 @@
 package Chainsaw.arithmetic
 
 import Chainsaw._
+import Chainsaw.xilinx.{VivadoUtil, VivadoUtilEstimation}
+import breeze.numerics.ceil
 import spinal.core._
 
 import scala.language.postfixOps
@@ -9,20 +11,31 @@ trait MultAttribute {
   def constant: Option[BigInt]
 
   def widthX: Int
+
   def widthY: Int
+
   def multiplierType: MultiplierType
+
   def widthOut: Int
 
-  def clbCost: Double
-  def dspCost: Int
+  def isConstantMult = constant.isDefined
+
+  def vivadoUtilEstimation: VivadoUtil
+
+  def clbCost = vivadoUtilEstimation.lut
+
+  def dspCost = vivadoUtilEstimation.dsp
+
+  def report(methodName: String) = {
+    s"$methodName Solution for $widthX X $widthY bit ${className(multiplierType)}: " +
+      s"\n\tdspCost = $dspCost, clbCost = $clbCost"
+  }
 }
 
 /** unified behavioral model of unsigned multiplier
  *
  */
 trait UnsignedMultiplier extends ChainsawOperatorGenerator with MultAttribute {
-
-  def isConstantMult = constant.isDefined
 
   override def inputTypes =
     if (isConstantMult || multiplierType == SquareMultiplier) Seq(NumericType.U(widthX))
@@ -62,7 +75,7 @@ trait UnsignedMultiplier extends ChainsawOperatorGenerator with MultAttribute {
       }.toAFix.d(latency())
     })
 
-  override def testCases = Seq.fill(100)(TestCase(randomDataVector))
+  override def testCases = Seq.fill(10000)(TestCase(randomDataVector))
 
   override def metric(yours: Seq[BigDecimal], golden: Seq[BigDecimal]) = {
     multiplierType match {
@@ -72,9 +85,6 @@ trait UnsignedMultiplier extends ChainsawOperatorGenerator with MultAttribute {
       case _ => yours.equals(golden)
     }
   }
-
-  override def clbCost = vivadoUtilEstimation.lut
-  override def dspCost = vivadoUtilEstimation.dsp
 }
 
 trait UnsignedMerge extends ChainsawOperatorGenerator with Unaligned {
@@ -85,6 +95,7 @@ trait UnsignedMerge extends ChainsawOperatorGenerator with Unaligned {
 
   def maxValue = arithInfos.map(_.maxValue).sum
 
+  // the output is full-width, regardless of base
   override def outputTypes = Seq(NumericType.U(maxValue.bitLength))
 
   override def impl(testCase: TestCase) = {
