@@ -1,6 +1,6 @@
 package Chainsaw.deprecated
 
-import Chainsaw.arithmetic.MultSearch
+import Chainsaw.arithmetic.{BmSolution, MultSearch}
 import Chainsaw.crypto.BarrettFineAlgo
 import Chainsaw._
 
@@ -58,8 +58,8 @@ case class Barrett(widthIn: Int, constantModulus: Option[BigInt] = None, multipl
       val o = OutputVertex(UIntInfo(k))
 
       // declaration of operators
-      val solution = MultSearch.getBmParetos(k, multiplierType).minBy(_.dspSize)
-      val multFull = deprecated.Bm(k, None, solution).asVertex
+      val solution = MultSearch.getBmParetos(k, multiplierType).minBy(_.dspCost)
+      val multFull = deprecated.Bm(k, None, solution.asInstanceOf[BmSolution]).asVertex
       val multMsb = MsbBcm(algo.MPrime, widthIn = k + 1, widthInvolved = msbWidthInvolved, widthOut = k + 1, useCsd = true).asVertex
       val multLsb = LsbBcm(modulus, widthIn = k + 1, widthOut = lsbWidthInvolved, useCsd = true).asVertex
       val sub = CpaS2S(TernarySubtractor1, lsbWidthInvolved, withCarry = false).asVertex // cpa before reduction
@@ -80,12 +80,12 @@ case class Barrett(widthIn: Int, constantModulus: Option[BigInt] = None, multipl
       val mPrime = InputVertex(UIntInfo(k + 1))
       val o = OutputVertex(UIntInfo(k))
 
-      val solution0 = MultSearch.getBmParetos(k, multiplierType).minBy(_.dspSize)
-      val multFull = deprecated.Bm(k, None, solution0).asVertex
-      val solution1 = MultSearch.getBmParetos(k + 1, FullMultiplier).minBy(_.dspSize)
-      val multMsb = deprecated.Bm(k + 1, None, solution1).asVertex
-      val solution2 = MultSearch.getBmParetos(k + 1, FullMultiplier).minBy(_.dspSize)
-      val multLsb = deprecated.Bm(k + 1, None, solution2).asVertex
+      val solution0 = MultSearch.getBmParetos(k, multiplierType).minBy(_.dspCost)
+      val multFull = deprecated.Bm(k, None, solution0.asInstanceOf[BmSolution]).asVertex
+      val solution1 = MultSearch.getBmParetos(k + 1, FullMultiplier).minBy(_.dspCost)
+      val multMsb = deprecated.Bm(k + 1, None, solution1.asInstanceOf[BmSolution]).asVertex
+      val solution2 = MultSearch.getBmParetos(k + 1, FullMultiplier).minBy(_.dspCost)
+      val multLsb = deprecated.Bm(k + 1, None, solution2.asInstanceOf[BmSolution]).asVertex
       val sub = CpaS2S(BinarySubtractor, k + 4, withCarry = false).asVertex // cpa before reduction
       // FIXME: fineReduction for variable modulus
       val reduction = FineReduction((BigInt(1) << 376) + 1, 10).asVertex // fine reduction

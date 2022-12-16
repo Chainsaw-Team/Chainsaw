@@ -1,7 +1,7 @@
 package Chainsaw.deprecated
 
 import Chainsaw._
-import Chainsaw.arithmetic.{BmAlgo, MultSearch}
+import Chainsaw.arithmetic.{BmAlgo, BmSolution, MultSearch}
 import org.scalatest.flatspec.AnyFlatSpec
 
 class BmAlgoTest extends AnyFlatSpec {
@@ -14,7 +14,7 @@ class BmAlgoTest extends AnyFlatSpec {
     multTypes.foreach { multType =>
       it should s"work for $width bit ${className(multType)}" in {
         val solution = MultSearch.getBmParetos(width, multType).head
-        BmAlgo(solution).selfTest()
+        BmAlgo(solution.asInstanceOf[BmSolution]).selfTest()
       }
     }
   )

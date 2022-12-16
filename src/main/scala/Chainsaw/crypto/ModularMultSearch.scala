@@ -20,7 +20,7 @@ object ModularMultSearch {
         val multLsb = LsbBcm(modulus, widthIn = k + 1, widthOut = lsbWidthInvolved, useCsd = true)
         logger.info(s"bcm part estimation = ${multMsb.utilEstimation + multLsb.utilEstimation}")
         logger.warn(s"${multLsb.compressorGen.bitsCount}")
-        val utils = multSolutions.map(_.vivadoUtil + multMsb.utilEstimation + multLsb.utilEstimation)
+        val utils = multSolutions.map(_.vivadoUtilEstimation + multMsb.utilEstimation + multLsb.utilEstimation)
         budget.solveBestScheme(utils, Seq(0, 2))
       case None => ???
     }

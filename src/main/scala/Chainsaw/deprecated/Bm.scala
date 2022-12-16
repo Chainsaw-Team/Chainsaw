@@ -24,14 +24,13 @@ case class Bm(width: Int, constant: Option[BigInt] = None, bmSolution: BmSolutio
     def <<(shiftLeft: Int) = WeightedPort(port, arithInfo << shiftLeft)
   }
 
-
   override def generateTestCases = Seq.fill(1000)(BigInt(width, Random))
 
   override def name = getAutoName(this)
 
   override def impl(dataIn: Seq[Any]) = Seq(dataIn.asInstanceOf[Seq[BigInt]].product)
 
-  val algo = BmAlgo(bmSolution)
+  val algo = new BmAlgo(bmSolution)
   logger.info(s"${algo.bmSolution}")
 
   def getValidWidths(width: Int) = {

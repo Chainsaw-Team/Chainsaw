@@ -139,23 +139,23 @@ class Isca2023Test extends AnyFlatSpec {
    * -------- */
   // BM variations
   val width = 377
-  val solution0 = MultSearch.getBmParetos(width, FullMultiplier).maxBy(_.vivadoUtil.dsp)
+  val solution0 = MultSearch.getBmParetos(width, FullMultiplier).maxBy(_.vivadoUtilEstimation.dsp).asInstanceOf[BmSolution]
   val solution1 = BmSolution(solution0.baseMultiplier, solution0.splits, solution0.multiplierType, true +: Seq.fill(solution0.length - 1)(false))
-  val solution2 = MultSearch.getBmParetos(width, SquareMultiplier).maxBy(_.vivadoUtil.dsp)
+  val solution2 = MultSearch.getBmParetos(width, SquareMultiplier).maxBy(_.vivadoUtilEstimation.dsp).asInstanceOf[BmSolution]
 
   ignore should s"synth for high dsp 377" in {
     logger.info(solution0.toString)
-    ChainsawSynth(Bm(width, None, solution0), s"synthKara$width")
+    ChainsawSynthOld(Bm(width, None, solution0), s"synthKara$width")
   }
 
   ignore should s"synth for schoolbook 377" in {
     logger.info(solution1.toString)
-    ChainsawSynth(deprecated.Bm(width, None, solution1), s"synthKara$width")
+    ChainsawSynthOld(deprecated.Bm(width, None, solution1), s"synthKara$width")
   }
 
   ignore should s"synth for square 377" in {
     logger.info(solution2.toString)
-    ChainsawSynth(deprecated.Bm(width, None, solution2), s"synthKara$width")
+    ChainsawSynthOld(deprecated.Bm(width, None, solution2), s"synthKara$width")
   }
 
   // Barrett variations
@@ -163,7 +163,7 @@ class Isca2023Test extends AnyFlatSpec {
     val M = project.zprize.ZPrizeMSM.baseModulus
     //    ChainsawSynth(Barrett(377, Some(M), FullMultiplier), "testBarrett3770")
     //    ChainsawSynth(Barrett(377, Some(M), SquareMultiplier), "testBarrett3771")
-    ChainsawSynth(Barrett(377, None, FullMultiplier), "testBarrett3772")
+    ChainsawSynthOld(Barrett(377, None, FullMultiplier), "testBarrett3772")
   }
 
   /** --------
@@ -177,10 +177,10 @@ class Isca2023Test extends AnyFlatSpec {
   testBmImplementation(1024)
 
   def testBmImplementation(width: Int): Unit = {
-    val solution = MultSearch.getBmParetos(width, FullMultiplier).head
+    val solution = MultSearch.getBmParetos(width, FullMultiplier).head.asInstanceOf[BmSolution]
     ignore should s"synth at width $width" in {
       logger.info(solution.toString)
-      ChainsawSynth(deprecated.Bm(width, None, solution), s"synthKara$width")
+      ChainsawSynthOld(deprecated.Bm(width, None, solution), s"synthKara$width")
     }
   }
 
@@ -196,12 +196,12 @@ class Isca2023Test extends AnyFlatSpec {
   }
 
   ignore should "compare with Kara" in {
-    val solution0 = MultSearch.getBmParetos(68, FullMultiplier).head
-    ChainsawSynth(deprecated.Bm(68, None, solution0), "synth68")
-    val solution1 = MultSearch.getBmParetos(102, FullMultiplier).head
-    ChainsawSynth(deprecated.Bm(102, None, solution1), "synth102")
-    val solution2 = MultSearch.getBmParetos(119, FullMultiplier).head
-    ChainsawSynth(deprecated.Bm(119, None, solution2), "synth119")
+    val solution0 = MultSearch.getBmParetos(68, FullMultiplier).head.asInstanceOf[BmSolution]
+    ChainsawSynthOld(deprecated.Bm(68, None, solution0), "synth68")
+    val solution1 = MultSearch.getBmParetos(102, FullMultiplier).head.asInstanceOf[BmSolution]
+    ChainsawSynthOld(deprecated.Bm(102, None, solution1), "synth102")
+    val solution2 = MultSearch.getBmParetos(119, FullMultiplier).head.asInstanceOf[BmSolution]
+    ChainsawSynthOld(deprecated.Bm(119, None, solution2), "synth119")
   }
 
   ignore should "compare with intel" in {
@@ -209,9 +209,9 @@ class Isca2023Test extends AnyFlatSpec {
   }
 
   ignore should "compare with impress" in {
-    val solutions = MultSearch.getBmParetos(1024, FullMultiplier)
+    val solutions = MultSearch.getBmParetos(1024, FullMultiplier).map(_.asInstanceOf[BmSolution])
     //    println(BmSearch.getParetos(1024, FullMultiplier).mkString("\n"))
-    solutions.zipWithIndex.foreach { case (solution, i) => ChainsawSynth(deprecated.Bm(1024, None, solution), s"synth1024$i") }
+    solutions.zipWithIndex.foreach { case (solution, i) => ChainsawSynthOld(deprecated.Bm(1024, None, solution), s"synth1024$i") }
   }
 
 
@@ -224,6 +224,6 @@ class Isca2023Test extends AnyFlatSpec {
 
   def lsbMultGen = Bcm(baseModulus, LsbMultiplier, widthIn = dataWidth, widthInvolved = lsbWidthInvolved, widthOut = lsbWidthInvolved, useCsd = true)
 
-  ignore should "work for ZPRIZE MSB mult" in ChainsawSynth(msbMultGen, "synth377Msb")
-  ignore should "work for ZPRIZE LSB mult" in ChainsawSynth(lsbMultGen, "synth377Lsb")
+  ignore should "work for ZPRIZE MSB mult" in ChainsawSynthOld(msbMultGen, "synth377Msb")
+  ignore should "work for ZPRIZE LSB mult" in ChainsawSynthOld(lsbMultGen, "synth377Lsb")
 }

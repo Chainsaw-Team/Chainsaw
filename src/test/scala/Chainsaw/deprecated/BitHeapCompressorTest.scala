@@ -15,7 +15,7 @@ class BitHeapCompressorTest extends ChainsawFlatSpec {
 //    ))
 
   it should "impl" in {
-    ChainsawImpl(BitHeapCompressor(Seq.fill(100)(ArithInfo(377,0)), outputAsCsa = false), "implBitHeapCompressor")
+    ChainsawImplOld(BitHeapCompressor(Seq.fill(100)(ArithInfo(377,0)), outputAsCsa = false), "implBitHeapCompressor")
   }
 
   def testFuncForInfosOnce(infos: Seq[ArithInfo], target: CompressTreeType): Unit = {
