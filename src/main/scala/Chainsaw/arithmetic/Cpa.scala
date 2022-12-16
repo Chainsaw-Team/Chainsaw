@@ -24,7 +24,8 @@ case class Cpa(adderType: AdderType, width: Int)
     signs.map(sign => ArithInfo(width, 0, sign))
   }
 
-  override def implH = ???
+  // TODO: implementation
+  override def implH = null
 
   override def latency() = width.divideAndCeil(cpaWidthMax)
 
@@ -35,8 +36,7 @@ case class Cpa(adderType: AdderType, width: Int)
   override def fmaxEstimation = 600 MHz
 
   def sum(data: UInt*) = {
-    // FIXME: use implH
-    val core = implNaiveH.get
+    val core = getImplH
     core.dataIn.zip(data).foreach { case (in, data) => in := data.toAFix }
     core.dataOut.head.asUInt()
   }

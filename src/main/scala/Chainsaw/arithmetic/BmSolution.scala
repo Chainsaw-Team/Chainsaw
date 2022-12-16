@@ -9,7 +9,7 @@ import breeze.numerics.ceil
 
 /** blueprint to build a big multiplier by divide-and-conquer method
  *
- * @param baseMultiplier            size and cost of embedded multiplier
+ * @param baseMultiplier size and cost of embedded multiplier
  * @param splits         number of splits for each layer, bottom-up
  * @param multiplierType multiplication target
  * @param isKaras        use Karatsuba/School book BmDecomposition for each layer, bottom-up
@@ -22,7 +22,7 @@ case class BmSolution(baseMultiplier: MultAttribute, // TODO: provide a series o
                       isKaras: Seq[Boolean],
                       constant: Option[BigInt] = None,
                       threshold: Int = 0)
-  extends ChainsawSolution {
+  extends MultAttribute {
 
   require(splits.length == isKaras.length)
 
@@ -33,24 +33,27 @@ case class BmSolution(baseMultiplier: MultAttribute, // TODO: provide a series o
 
   /** baseWidth of each layer in bottom-up order
    */
-  lazy val allBaseWidths: Seq[(Int, Int)] = Seq.iterate((dspSize, 0), layerCount) { case (width, i) =>
+  val allBaseWidths: Seq[(Int, Int)] = Seq.iterate((dspSize, 0), layerCount) { case (width, i) =>
     val widthNext = BmDecomposition.widthNext(width, splits(i))
     ((widthNext, widthNext), i + 1)
   }.map(_._1)
 
-  lazy val topDecomposition = BmDecomposition(allBaseWidths.last, splits.last, multiplierType, isKaras.last)
+  def topDecomposition = BmDecomposition(allBaseWidths.last, splits.last, multiplierType, isKaras.last)
 
-  lazy val widthFull: Int = if (isEmpty) {
+  def widthFull: Int = if (isEmpty) {
     require(dspSize._1 == dspSize._2)
     dspSize._1
   } else topDecomposition.widthNext
-  lazy val widthOut: Int = widthFull * 2
 
-  lazy val algo = BmAlgo(this)
+  def widthOut: Int = widthFull * 2
 
-  def dspCost: Int = algo.multCost
+  override def widthX = widthFull
 
-  def clbCost: Double = algo.clbCost
+  override def widthY = widthFull
+
+  lazy val algo = new BmAlgo(this)
+
+  override def vivadoUtilEstimation = algo.vivadoUtilEstimation
 
   def vivadoUtil = VivadoUtilRequirement(lut = ceil(clbCost).toInt, dsp = dspCost)
 
