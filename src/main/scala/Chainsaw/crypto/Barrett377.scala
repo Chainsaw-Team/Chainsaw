@@ -25,6 +25,7 @@ case class Barrett377() extends ModularReduction
     constant = Some(MPrime << (384 - 378)), threshold = 0)
   val msbGen = Bm(msbSolution)
   val lsbGen = LsbBcm(constant = baseModulus, widthIn = 378, widthOut = 379)
+  val cpaGen = Cpa(BinarySubtractor, 379)
 
   override def implH = new ChainsawOperatorModule(this) {
 
@@ -36,7 +37,7 @@ case class Barrett377() extends ModularReduction
     val u = msbGen.process(Seq(xHighPadded.toAFix)).head.asUInt()
     val E = u.takeHigh(378).asUInt
     val r = lsbGen.process(Seq(E.toAFix)).head.asUInt()
-    val diff = xLow - r
+    val diff = cpaGen.process(Seq(xLow.toAFix, r.toAFix)).head.asUInt()
     val ret = diff % baseModulus
 
     dataOut.head := ret.toAFix.truncated

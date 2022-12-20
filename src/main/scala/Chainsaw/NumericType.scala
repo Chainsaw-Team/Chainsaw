@@ -21,17 +21,19 @@ class NumericType(val maxRaw: BigInt, val minRaw: BigInt, val exp: Int) {
    * get core attributes from AFix in virtual global data, to assure the consistency with SpinalHDL
    * -------- */
 
-  val (bitWidth, fractional, integral, signed, maxValue, minValue, step) =
+  val (bitWidth, fractional, tempIntegral, signed, maxValue, minValue, step) =
     inVirtualGlob {
       val realInstance = afixType()
       (realInstance.bitWidth,
         realInstance.fracWidth,
-        realInstance.intWidth - 1,
+        realInstance.intWidth, // including sign bit
         realInstance.signed,
         realInstance.maxValue,
         realInstance.minValue,
         realInstance.step)
     }
+
+  val integral = tempIntegral - (if(signed) 1 else 0) // exclude sign bit
 
   def qFormat = QFormat(if (signed) bitWidth - 1 else bitWidth, fractional, signed)
 
