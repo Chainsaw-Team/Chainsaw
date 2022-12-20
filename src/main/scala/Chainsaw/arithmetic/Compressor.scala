@@ -85,4 +85,5 @@ trait CompressorGenerator extends ChainsawOperatorGenerator with Compressor {
     }
     columns
   }
+
 }

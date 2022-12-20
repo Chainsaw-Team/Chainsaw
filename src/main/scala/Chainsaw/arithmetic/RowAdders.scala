@@ -104,5 +104,6 @@ case class Compressor1to1(width: Int) extends RowAdder {
 }
 
 object RowAdders {
+
   def apply(): Seq[Seq[RowAdder]] = Seq(Seq(Compressor1to1(1))) :+ (8 to cpaWidthMax).map { width => Compressor3to1(width) } :+ (8 to cpaWidthMax).map { width => Compressor4to2(width) }
 }
