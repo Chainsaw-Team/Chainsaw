@@ -1,4 +1,7 @@
-val mhz250 = BigInt("80000000", 16)
-def getFreq(mhz: Int) = (mhz250 * mhz / 250).toLong
-val freq80 = (getFreq(80) + 1).toHexString
-val freq100 = (getFreq(100) + 1).toHexString
+import scala.collection.mutable.ArrayBuffer
+
+val a = ArrayBuffer(1,2,3,4,5)
+
+a.remove(3)
+
+a

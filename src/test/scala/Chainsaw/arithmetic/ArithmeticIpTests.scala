@@ -8,7 +8,7 @@ import scala.util.Random
 
 class ArithmeticIpTests extends ChainsawFlatSpec {
 
-  val multTypes    = Seq(FullMultiplier, MsbMultiplier, LsbMultiplier, SquareMultiplier)
+  val multTypes = Seq(FullMultiplier, MsbMultiplier, LsbMultiplier, SquareMultiplier)
   val lsbConstants = Seq(Some(ZPrizeMSM.baseModulus), None)
   val msbConstants = Seq(Some(ZPrizeMSM.MPrime), None)
 
@@ -111,12 +111,11 @@ class ArithmeticIpTests extends ChainsawFlatSpec {
   }
 
   def testCompressors() = {
-    //    testVhdl = true // for full behavior
     // row adders
     testOperator(Compressor4to2(8), generatorConfigTable("Compressor"))
     testOperator(Compressor4to2(cpaWidthMax), generatorConfigTable("Compressor"))
-    //    testOperator(Compressor3to1(8), generatorConfigTable("Compressor"))
-    //    testOperator(Compressor3to1(cpaWidthMax), generatorConfigTable("Compressor"))
+    testOperator(Compressor3to1(8), generatorConfigTable("Compressor"))
+    testOperator(Compressor3to1(cpaWidthMax), generatorConfigTable("Compressor"))
     // gpcs
     val gpcs = Seq(
       Compressor6to3, Compressor3to2,
@@ -150,14 +149,24 @@ class ArithmeticIpTests extends ChainsawFlatSpec {
   }
 
   def testCpa(): Unit = {
+    val widths = Seq(63, 127)
     val adderTypes = Seq(BinaryAdder, BinarySubtractor, TernaryAdder, TernarySubtractor1, TernarySubtractor2)
-    adderTypes.foreach(adderType => testOperator(Cpa(adderType, 128), generatorConfigTable("Cpa")))
+    adderTypes.foreach(adderType =>
+      widths.foreach(width =>
+        testOperator(Cpa(adderType, width), generatorConfigTable("Cpa"))
+      )
+    )
+  }
+
+  def testBitHeap(): Unit = {
+    val infoWithDiffTime = Seq.fill(10)(ArithInfo(width = 10, weight = 0, isPositive = true, time = 0))
+    testOperator(BitHeapCompressor(infoWithDiffTime, outputAsCsa = false), generatorConfigTable("BitHeap"))
   }
 
   def testCsa(): Unit = {
     // TODO: reimplement CSA and its tests
     val infoWithDiffTime = Seq(ArithInfo(10, 0, true, 0), ArithInfo(10, 0, true, 1))
-    val gen              = Csa(infoWithDiffTime)
+    val gen = Csa(infoWithDiffTime)
     testOperator(gen, generatorConfigTable("Csa"))
   }
 
@@ -167,21 +176,24 @@ class ArithmeticIpTests extends ChainsawFlatSpec {
   override def algoNames = Seq("BmAlgo", "BcmAlgo", "MultSearch")
 
   override val generatorConfigTable = Map(
-    "Bm" -> TestConfig(full = true, naive = true, synth = false, impl = false),
-    "Bcm" -> TestConfig(full = true, naive = true, synth = false, impl = false),
+    "Dsp" -> TestConfig(full = true, naive = true, synth = false, impl = false),
     "Compressor" -> TestConfig(full = true, naive = true, synth = false, impl = false),
-    "Dsp" -> TestConfig(full = true, naive = true, synth = true, impl = false),
-    "Cpa" -> TestConfig(full = false, naive = true, synth = false, impl = false),
-    "Csa" -> TestConfig(full = false, naive = true, synth = false, impl = false),
+    "Cpa" -> TestConfig(full = true, naive = true, synth = false, impl = false),
+    "BitHeap" -> TestConfig(full = true, naive = true, synth = false, impl = false),
+    "Csa" -> TestConfig(full = true, naive = true, synth = false, impl = false),
+    "Bcm" -> TestConfig(full = true, naive = true, synth = false, impl = false),
+    "Bm" -> TestConfig(full = true, naive = true, synth = false, impl = false),
   )
 
-  testBmAlgo()
-  testBm()
-  testBcmAlgo()
-  testBcm()
-  testCompressors()
-  testDspMults()
-  testMultSearch()
+  //  testDspMults()
   testCpa()
-  testCsa()
+  //  testCompressors()
+  //  testBitHeap()
+  //  testCsa()
+  //  testBmAlgo()
+  //  testBm()
+  //  testBcmAlgo()
+  //  testBcm()
+  //  testMultSearch()
+
 }
