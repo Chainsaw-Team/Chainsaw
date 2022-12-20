@@ -15,6 +15,8 @@ case class FrameFormat(flow: Seq[Seq[Int]]) {
 
   def portSize: Int = flow.head.length
 
+  def allDataCount = period * portSize
+
   def rawData: Seq[Int] = flow.flatten.filter(_ >= 0)
 
   def rawDataCount: Int = rawData.distinct.length
@@ -73,6 +75,13 @@ case class FrameFormat(flow: Seq[Seq[Int]]) {
   /** --------
    * simulation utils
    * -------- */
+
+  def fromRawToFrame(raw: Seq[BigDecimal]) = {
+    flow.flatMap(_.map(index => if (index >= 0) raw(index) else BigDecimal(0)))
+  }
+
+  def fromFrameToRaw(frame:Seq[BigDecimal]) = frame.zip(flow.flatten).filter(_._2 >= 0).map(_._1)
+
   // build input frame from raw data
   def fromRawData[T](seq: Seq[T], zero: T) = {
     val data = flow.map(_.map(index => if (index >= 0) seq(index) else zero)) //
@@ -132,6 +141,13 @@ object FrameFormat {
 object MatrixFormat {
   def apply(streamWidth: Int, period: Int) = {
     val flow = (0 until streamWidth * period).grouped(streamWidth).toSeq
+    FrameFormat(flow)
+  }
+}
+
+object MatrixFormatAddBubble {
+  def apply(streamWidth: Int, valid: Int, bubble: Int) = {
+    val flow = (0 until streamWidth * valid).grouped(streamWidth).toSeq ++ Seq.fill(bubble)(Seq.fill(streamWidth)(-1))
     FrameFormat(flow)
   }
 }

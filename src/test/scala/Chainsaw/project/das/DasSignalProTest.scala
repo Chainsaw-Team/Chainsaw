@@ -18,7 +18,7 @@ class DasSignalProTest extends ChainsawFlatSpec {
     )
 
     ChainsawTestWithData(
-      testName = "testDasSiganalPro",
+      testName = "testDasSignalPro",
       gen = DasSignalPro(),
       data = testCases,
       golden = goldens

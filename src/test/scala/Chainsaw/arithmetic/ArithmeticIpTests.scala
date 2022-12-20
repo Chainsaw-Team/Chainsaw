@@ -4,6 +4,8 @@ import Chainsaw._
 import Chainsaw.arithmetic.ArithInfoGenerator.RectangularInfos
 import Chainsaw.project.zprize.ZPrizeMSM
 
+import scala.util.Random
+
 class ArithmeticIpTests extends ChainsawFlatSpec {
 
   val multTypes    = Seq(FullMultiplier, MsbMultiplier, LsbMultiplier, SquareMultiplier)
@@ -46,8 +48,13 @@ class ArithmeticIpTests extends ChainsawFlatSpec {
     multTypes.foreach { multType =>
       lsbConstants.foreach { constant =>
         if (constant.isEmpty || multType != SquareMultiplier) {
-          val solution = BmSolution(baseMultiplier = BaseDspMult(16, 24), splits = Seq(2, 2, 2), multiplierType = multType, isKaras = Seq(true, true, true), constant = constant)
-          val gen      = Bm(solution)
+          val solution = BmSolution(
+            baseMultiplier = BaseDspMult(16, 24),
+            splits = Seq(2, 2, 2),
+            multiplierType = multType,
+            isKaras = Seq(true, true, true),
+            constant = constant)
+          val gen = Bm(solution)
           testOperator(gen, generatorConfigTable("Bm"))
         }
       }
@@ -57,12 +64,12 @@ class ArithmeticIpTests extends ChainsawFlatSpec {
   def testBcmAlgo(): Unit = {
     behavior of "BcmAlgo"
 
-    val widthIn  = 377
+    val widthIn = 377
     val constant = lsbConstants.head.get
 
     val extraWidths = Seq(0, 4, 8)
-    val multTypes   = Seq(FullMultiplier, MsbMultiplier, LsbMultiplier)
-    val useCsds     = Seq(true, false)
+    val multTypes = Seq(FullMultiplier, MsbMultiplier, LsbMultiplier)
+    val useCsds = Seq(true, false)
 
     multTypes.foreach(multType =>
       useCsds.foreach { useCsd =>
@@ -71,8 +78,8 @@ class ArithmeticIpTests extends ChainsawFlatSpec {
           it should s"work for $widthIn bit ${className(multType)} using ${widthIn + extraWidth} bit and ${if (useCsd) "csd" else "binary"} encoding" in {
             val algo = multType match {
               case FullMultiplier => FullConstantMult(constant = constant, widthIn = widthIn, useCsd = useCsd)
-              case MsbMultiplier  => MsbConstantMult(constant = constant, widthIn = widthIn, widthInvolved = widthIn + extraWidth, widthOut = widthIn, useCsd = useCsd)
-              case LsbMultiplier  => LsbConstantMult(constant = constant, widthIn = widthIn, widthOut = widthIn, useCsd = useCsd)
+              case MsbMultiplier => MsbConstantMult(constant = constant, widthIn = widthIn, widthInvolved = widthIn + extraWidth, widthOut = widthIn, useCsd = useCsd)
+              case LsbMultiplier => LsbConstantMult(constant = constant, widthIn = widthIn, widthOut = widthIn, useCsd = useCsd)
             }
             if (multType == MsbMultiplier) logger.info(s"error bound of msbMult0: ${algo.lowerBound}, ${algo.upperBound}")
             logger.info(s"clb cost of Bcm = ${algo.clbCost}")
@@ -84,18 +91,19 @@ class ArithmeticIpTests extends ChainsawFlatSpec {
   }
 
   def testBcm(): Unit = {
-    val widthIn  = 377
+    val widthIn = 377
     val constant = lsbConstants.head.get
 
     val extraWidths = Seq(0, 4, 8)
-    val multTypes   = Seq(FullMultiplier, MsbMultiplier, LsbMultiplier)
+    //    val multTypes = Seq(FullMultiplier, MsbMultiplier, LsbMultiplier)
+    val multTypes: Seq[MultiplierType] = Seq(MsbMultiplier)
     multTypes.foreach { multType =>
       val extras = if (multType == MsbMultiplier) extraWidths else Seq(0)
       extras.foreach { extraWidth =>
         val gen = multType match {
           case FullMultiplier => FullBcm(constant = constant, widthIn = widthIn)
-          case MsbMultiplier  => MsbBcm(constant = constant, widthIn = widthIn, widthInvolved = widthIn + extraWidth, widthOut = widthIn)
-          case LsbMultiplier  => LsbBcm(constant = constant, widthIn = widthIn, widthOut = widthIn)
+          case MsbMultiplier => MsbBcm(constant = constant, widthIn = widthIn, widthInvolved = widthIn + extraWidth, widthOut = widthIn)
+          case LsbMultiplier => LsbBcm(constant = constant, widthIn = widthIn, widthOut = widthIn)
         }
         testOperator(gen, generatorConfigTable("Bcm"))
       }
@@ -106,31 +114,25 @@ class ArithmeticIpTests extends ChainsawFlatSpec {
     //    testVhdl = true // for full behavior
     // row adders
     testOperator(Compressor4to2(8), generatorConfigTable("Compressor"))
-//    testOperator(Compressor4to2(cpaWidthMax), generatorConfigTable("Compressor"))
-    testOperator(Compressor3to1(8), generatorConfigTable("Compressor"))
+    testOperator(Compressor4to2(cpaWidthMax), generatorConfigTable("Compressor"))
+    //    testOperator(Compressor3to1(8), generatorConfigTable("Compressor"))
     //    testOperator(Compressor3to1(cpaWidthMax), generatorConfigTable("Compressor"))
-    testOperator(Compressor1to1(8), generatorConfigTable("Compressor"))
     // gpcs
     val gpcs = Seq(
-//      Compressor6to3,
-//      Compressor3to2,
-//      Compressor606to5,
-//      Compressor606,
-//      Compressor607,
-//      Compressor615,
-//      Compressor623,
-//      Compressor1325,
-//      Compressor1415,
-//      Compressor1406,
-//      Compressor1407,
-//      Compressor2117
+      Compressor6to3, Compressor3to2,
+      Compressor606, Compressor607, Compressor615, Compressor623,
+      Compressor1325, Compressor1415, Compressor1406, Compressor1407, Compressor2117
     )
     gpcs.foreach(testOperator(_, generatorConfigTable("Compressor")))
   }
 
   def testDspMults(): Unit = {
     val multTypes = Seq(FullMultiplier, MsbMultiplier, LsbMultiplier)
-    multTypes.foreach(multType => testOperator(Sm(multType), generatorConfigTable("Dsp")))
+    val smallDivideAndConquers = multTypes.map(Sm)
+    val smallTilings = Seq(BaseDspMult(17, 26), BaseDspMult(26, 26), BaseDspMult(34, 34))
+
+    val allMults = smallDivideAndConquers ++ smallTilings
+    allMults.foreach(testOperator(_, generatorConfigTable("Dsp")))
   }
 
   def testMultSearch(): Unit = {
@@ -140,6 +142,10 @@ class ArithmeticIpTests extends ChainsawFlatSpec {
       MultSearch.getBmParetos(377, FullMultiplier)
       MultSearch.getBmParetos(377, LsbMultiplier)
       MultSearch.getBmParetos(377, MsbMultiplier)
+
+      MultSearch.getBmParetos(377, FullMultiplier, Some(project.zprize.ZPrizeMSM.baseModulus))
+      MultSearch.getBmParetos(377, LsbMultiplier, Some(project.zprize.ZPrizeMSM.baseModulus))
+      MultSearch.getBmParetos(377, MsbMultiplier, Some(project.zprize.ZPrizeMSM.baseModulus))
     }
   }
 
@@ -155,27 +161,27 @@ class ArithmeticIpTests extends ChainsawFlatSpec {
     testOperator(gen, generatorConfigTable("Csa"))
   }
 
-  /** -------- tests
-    * --------
-    */
+  /** --------
+   * tests
+   * -------- */
   override def algoNames = Seq("BmAlgo", "BcmAlgo", "MultSearch")
 
   override val generatorConfigTable = Map(
-    "Bm" -> TestConfig(full = false, naive = true, synth = false, impl = false),
-    "Bcm" -> TestConfig(full = false, naive = true, synth = false, impl = false),
-    "Compressor" -> TestConfig(full = true, naive = true, synth = true, impl = false),
-    "Dsp" -> TestConfig(full = true, naive = true, synth = false, impl = true),
+    "Bm" -> TestConfig(full = true, naive = true, synth = false, impl = false),
+    "Bcm" -> TestConfig(full = true, naive = true, synth = false, impl = false),
+    "Compressor" -> TestConfig(full = true, naive = true, synth = false, impl = false),
+    "Dsp" -> TestConfig(full = true, naive = true, synth = true, impl = false),
     "Cpa" -> TestConfig(full = false, naive = true, synth = false, impl = false),
-    "Csa" -> TestConfig(full = false, naive = true, synth = false, impl = false)
+    "Csa" -> TestConfig(full = false, naive = true, synth = false, impl = false),
   )
 
-  //  testBmAlgo()
-  //  testBm()
-  //  testBcmAlgo()
-  //  testBcm()
-//  testCompressors()
-  //  testDspMults()
-  //  testMultSearch()
+  testBmAlgo()
+  testBm()
+  testBcmAlgo()
+  testBcm()
+  testCompressors()
+  testDspMults()
+  testMultSearch()
   testCpa()
-//  testCsa()
+  testCsa()
 }

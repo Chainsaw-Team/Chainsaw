@@ -68,15 +68,11 @@ case class Bm(override val bmSolution: BmSolution)
         if (x.arithInfo.weight + y.arithInfo.weight < weightMax) mult(x, y) else WeightedUInt(0, ArithInfo(0, x.arithInfo.weight + y.arithInfo.weight))
       }
       else {
-
         val current = bmSolution.topDecomposition
         import current.{multiplierType => _, widthOut => _, _}
-
         val aWords = splitN(x, aSplit) // width = baseHeight
         val bWords = splitN(y, bSplit) // width = baseWidth
-
         def doNSplit(aWords: Seq[WeightedUInt], bWords: Seq[WeightedUInt]): Seq[WeightedUInt] = {
-
           bmSolution.multiplierType match {
             case FullMultiplier =>
               if (isKara) {
@@ -113,7 +109,6 @@ case class Bm(override val bmSolution: BmSolution)
                   doRectangular(aWords(i), bWords(j), bmSolution.subSolution(bmSolution.multiplierType))
                 }.flatten
               }
-
             case SquareMultiplier =>
               Seq.tabulate(split, split) { (i, j) =>
                 if (i >= j) { // upper triangular
@@ -123,7 +118,6 @@ case class Bm(override val bmSolution: BmSolution)
                   Some(ret)
                 } else None
               }.flatten.flatten
-
             case MsbMultiplier =>
               Seq.tabulate(split, split) { (i, j) =>
                 if (i + j >= split - 1) {
@@ -133,7 +127,6 @@ case class Bm(override val bmSolution: BmSolution)
                 }
                 else None
               }.flatten.flatten
-
             case LsbMultiplier =>
               Seq.tabulate(split, split) { (i, j) =>
                 if (i + j <= split - 1) {

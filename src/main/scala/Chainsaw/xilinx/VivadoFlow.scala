@@ -57,9 +57,9 @@ class VivadoFlow[T <: Component](
 
     val rtlResources: Seq[String] = netlistDir match {
       case Some(src) =>
-        val des = new File(workspaceDir, src.getName)
         FileUtils.copyDirectory(src, workspaceDir)
-        des.listFiles().toSeq.map(_.getAbsolutePath)
+        val postfixes = Seq(".v", ".sv", ".vhd", ".vhdl")
+        workspaceDir.listFiles().toSeq.map(_.getAbsolutePath).filter(path => postfixes.exists(postfix => path endsWith postfix))
       case None =>
         config.generateVerilog(design.setDefinitionName(topModuleName))
         val targetDir = new File(config.targetDirectory)
@@ -156,8 +156,8 @@ class VivadoFlow[T <: Component](
       case BITGEN => ???
     }
     // util & timing can't be reported after synth/impl
-    //    script += s"report_utilization -hierarchical -hierarchical_depth 2\n"
-    script += s"report_utilization\n"
+    script += s"report_utilization -hierarchical -hierarchical_depth 10\n"
+    //    script += s"report_utilization\n"
     script
   }
 }
@@ -180,7 +180,7 @@ object VivadoSynth {
   def apply[T <: Module](design: => T, name: String, config: SpinalConfig) =
     DefaultVivadoFlow.general(design, name, SYNTH, None, Some(config))
 
-  def apply[T <: Module](netlistFile: File, topModuleName: String) = DefaultVivadoFlow.general(null, topModuleName, SYNTH, Some(netlistFile), None)
+  def apply[T <: Module](netlistDir: File, topModuleName: String) = DefaultVivadoFlow.general(null, topModuleName, SYNTH, Some(netlistDir), None)
 }
 
 object VivadoImpl {

@@ -44,18 +44,18 @@ class DspIpTests extends ChainsawFlatSpec {
 
   def testCordic(): Unit = {
     // CORDIC under all 6 modes
-    //    val algebraicModes = Seq(CIRCULAR)
-    //    val rotationModes = Seq(ROTATION, VECTORING)
-    //    algebraicModes.foreach(alg =>
-    //      rotationModes.foreach(rot =>
-    //        testOperator(Cordic(alg, rot, iteration = testIteration, fractional = testFraction), generatorConfigTable("Cordic"))
-    //      )
-    //    )
+    val algebraicModes = Seq(CIRCULAR)
+    val rotationModes = Seq(ROTATION, VECTORING)
+    algebraicModes.foreach(alg =>
+      rotationModes.foreach(rot =>
+        testOperator(Cordic(alg, rot, iteration = testIteration, fractional = testFraction), generatorConfigTable("Cordic"))
+      )
+    )
 
     // most frequently used CORDIC modes(with initValues)
     testOperator(ComplexToMagnitudeAngle(iteration = testIteration, fractional = testFraction), generatorConfigTable("Cordic"))
-    //    testOperator(CordicCos(iteration = testIteration, fractional = testFraction), generatorConfigTable("Cordic"))
-    //    testOperator(CordicSin(iteration = testIteration, fractional = testFraction), generatorConfigTable("Cordic"))
+    testOperator(CordicCos(iteration = testIteration, fractional = testFraction), generatorConfigTable("Cordic"))
+    testOperator(CordicSin(iteration = testIteration, fractional = testFraction), generatorConfigTable("Cordic"))
   }
 
   /** --------

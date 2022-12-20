@@ -195,7 +195,7 @@ trait ChainsawFrameGenerator extends ChainsawBaseGenerator with FixedLatency wit
 
   override def inputFrameFormat(control: Seq[BigDecimal]) = inputFrameFormat
 
-  override def outputFrameFormat(control: Seq[BigDecimal]) = inputFrameFormat
+  override def outputFrameFormat(control: Seq[BigDecimal]) = outputFrameFormat
 
   override def implH: ChainsawFrameModule
 

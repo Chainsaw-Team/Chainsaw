@@ -20,6 +20,6 @@ package object arithmetic {
 
   val defaultCompressorPerfGraphPath = new File("src/main/resources/compressorPerfs")
 
-  val cpaWidthMax = 64
+  val cpaWidthMax = 96
 
 }

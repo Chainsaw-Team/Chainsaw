@@ -2,7 +2,7 @@ package Chainsaw.arithmetic
 
 import Chainsaw._
 import Chainsaw.deprecated.Bcm
-import Chainsaw.xilinx.{VivadoUtil, VivadoUtilRequirement}
+import Chainsaw.xilinx.{VivadoUtil, VivadoUtilEstimation, VivadoUtilRequirement}
 import spinal.core._
 
 import scala.collection.mutable
@@ -31,11 +31,25 @@ object MultSearch {
     logger.info(s"LUT: ${util.lut} / ${budget.lut}, DSP: ${util.dsp} / ${budget.dsp}")
   }
 
+  val void96 = new MultAttribute {
+    override def constant = None
+
+    override def widthX = 96
+
+    override def widthY = 96
+
+    override def multiplierType = FullMultiplier
+
+    override def widthOut = 192
+
+    override def vivadoUtilEstimation = VivadoUtilEstimation(lut = 600, dsp = 18)
+  }
+
   // available starting points
   // FIXME: 17 X 17 leads to problem, why?
-  val baseMultipliers = Seq(
+  val baseMultipliers: Seq[MultAttribute] = Seq(
     BaseDspMult(16, 16), BaseDspMult(12, 24), BaseDspMult(16, 24), BaseDspMult(16, 20), // use dsp as pure multiplier
-    BaseDspMult(26, 26), BaseDspMult(34, 34), // efficient size implemented by Vivado + retiming
+    BaseDspMult(26, 26), BaseDspMult(34, 34), BaseDspMult(48, 48), // efficient size implemented by Vivado + retiming
     Sm(FullMultiplier), // taking advantage of dsps' pre-adder/post-adder
   )
 
@@ -45,7 +59,7 @@ object MultSearch {
    */
   def getBmParetos(width: Int, multiplierType: MultiplierType, constant: Option[BigInt] = None): Seq[MultAttribute] = {
 
-    // TODO: search for MSB/LSB multipliers, with optimized base multipliers(LSB/MSB version)
+
     // TODO: search for constant multipliers with thresholds implemented by divide-and-conquer, with optimized base multipliers(LSB/MSB version)
 
     val solutionSet = mutable.Map[Int, ArrayBuffer[MultAttribute]]() // width -> solutions

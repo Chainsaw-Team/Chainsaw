@@ -87,7 +87,7 @@ case class Cordic(algebraicMode: AlgebraicMode,
     val ret = algebraicMode match {
       case CIRCULAR => rotationMode match {
         case ROTATION => Seq(x * cos(z) - y * sin(z), y * cos(z) + x * sin(z), 0.0)
-        case VECTORING => Seq(sqrt(x * x + y * y), 0.0, z + atan(y / x)) // atan is not the same as angle
+        case VECTORING => Seq(sqrt(x * x + y * y), 0.0, z + atan2(y, x)) // get angle by atan2
       }
       case HYPERBOLIC => rotationMode match {
         case ROTATION => Seq(x * cosh(z) - y * sinh(z), y * cosh(z) + x * sinh(z), 0.0)
@@ -115,7 +115,7 @@ case class Cordic(algebraicMode: AlgebraicMode,
     def getGroup = (algebraicMode match {
       case CIRCULAR =>
         val phase0 = getOne * Pi // [-Pi, Pi]
-        val length = getOne.abs
+        val length = getOne.abs * 0.95 + 0.05 // avoid values too close to 0
         val phase1 = 0.0
         Seq(cos(phase0) * length, sin(phase0) * length, phase1)
       case HYPERBOLIC => ???
@@ -138,7 +138,7 @@ case class Cordic(algebraicMode: AlgebraicMode,
 
   override def vivadoUtilEstimation = VivadoUtilEstimation()
 
-  override def fmaxEstimation = if(speedLevel == 1) 400 MHz else 600 MHz
+  override def fmaxEstimation = if (speedLevel == 1) 400 MHz else 600 MHz
 
   override def implH =
     new ChainsawOperatorModule(this) {
@@ -252,19 +252,6 @@ object ComplexToMagnitudeAngle {
   def apply(iteration: Int, fractional: Int) = {
     new Cordic(CIRCULAR, VECTORING, iteration, fractional, Seq(None, None, Some(0.0))) {
       override def name = s"ComplexToMagnitudeAngle_${iteration}_$fractional"
-
-      override def impl(testCase: TestCase) = {
-        val Seq(x, y) = testCase.data.map(_.toDouble)
-        val at = BigDecimal(atan(y / x))
-        val angle = if (x < 0 && y > 0) at + Pi else if (x < 0 && y < 0) at - Pi else at
-        Seq(0, 0, angle)
-      }
-
-      override def metric(yours: Seq[BigDecimal], golden: Seq[BigDecimal]) = {
-        if ((yours.last - golden.last).abs > 0.1) println(yours.last - golden.last)
-        true
-        (yours.last - golden.last).abs <= 0.1
-      }
     }
   }
 }

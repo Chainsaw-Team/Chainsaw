@@ -15,7 +15,6 @@ class BmAlgo(val bmSolution: BmSolution)
   // TODO: latency estimation
   // TODO: apply cmults by DSP limit
 
-
   override def constant = bmSolution.constant
 
   override def widthX = bmSolution.widthFull
@@ -89,7 +88,7 @@ class BmAlgo(val bmSolution: BmSolution)
 
   def merge(weightedValues: Seq[WeightedValue], widthOut: Int): WeightedValue = {
     val base = weightedValues.map(_.arithInfo.weight).min
-    mergeCost += weightedValues.map(_.arithInfo.width).sum - widthOut
+    mergeCost += (weightedValues.map(_.arithInfo.width).sum - widthOut)
     val value = weightedValues.map(_.eval).sum >> base
     WeightedValue(value = value,
       arithInfo = weightedValues.head.arithInfo.mergeWith(weightedValues.tail.map(_.arithInfo), widthOut))
