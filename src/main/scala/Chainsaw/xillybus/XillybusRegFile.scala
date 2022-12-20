@@ -3,10 +3,9 @@ package Chainsaw.xillybus
 import spinal.core._
 import spinal.lib.bus.regif.BusIf
 
-
 import scala.language.postfixOps
 
-/** a simple bus for host -> device control
+/** a simple bus for host -> device control by register file
  *
  * @param ctrlDevice xillybus device of the control interface
  */

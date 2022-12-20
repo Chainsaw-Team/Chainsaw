@@ -837,7 +837,8 @@ case class BitHeaps[T](bitHeapConfigInfo: BitHeapConfigInfo[T]*) {
         BitHeaps(BitHeapConfigInfo(bitHeap, weightLow, time))
       val width = log2Up(singleBitHeap.maxValue)
       val heights = singleBitHeap.heights.head
-      dotDiagram += s"time = $time ; weightLow = $weightLow\n" + heights
+//      dotDiagram += s"time = $time ; weightLow = $weightLow\n" + heights
+      dotDiagram += heights
         .padTo(width, 0)
         .map(columnHeight => Seq.fill(columnHeight)(s"$dot").padTo(singleBitHeap.height, " "))
         .reverse

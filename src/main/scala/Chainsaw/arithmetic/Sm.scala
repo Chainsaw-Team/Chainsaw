@@ -88,14 +88,38 @@ case class BaseDspMult(widthX: Int, widthY: Int) extends UnsignedMultiplier {
     if (widthX <= 17 && widthY <= 26) 1
     else if (widthX == widthY && widthX <= 26) 2
     else if (widthX <= 34 && widthY <= 34) 4
+    else if (widthX <= 48 && widthY <= 48) 6
     else throw new IllegalArgumentException("unsupported size")
 
-  override def implH = implNaiveH.get
+  override def implH = level match {
+    case 6 => new ChainsawOperatorModule(this) {
+      // TODO: padding for width between 34 and 48
+      val Seq(x, y) = dataIn.map(_.asUInt())
+
+      val xWords = x.subdivideIn(16 bits)
+      val yWords = y.subdivideIn(24 bits)
+
+      val partials = xWords.zipWithIndex.map { case (xWord, i) =>
+        val Seq(yLow, yHigh) = yWords
+        val prodLow = (xWord * yLow).d(2)
+        val prodHigh = (xWord.d() * yHigh.d()).d()
+        val sum = (prodLow.takeHigh(16).asUInt +^ prodHigh).d()
+        val whole = sum @@ prodLow.takeLow(24).asUInt.d() // latency = 3
+        whole << (i * 16)
+      }.map(_.resize(96 bits))
+
+      val ternaryGen = Compressor3to1(96)
+      // TODO: replace ternary adder with merge operator
+      dataOut.head := ternaryGen.process((partials ++ Seq.fill(2)(U(0, 1 bits))).map(_.toAFix)).head.d().truncated
+    }
+    case _ => implNaiveH.get
+  }
 
   override def latency() = level match {
     case 1 => 2
     case 2 => 5
     case 4 => 5
+    case 6 => 4
   }
 
   override def name = s"BaseDspMult_${widthX}_$widthY"
@@ -104,9 +128,13 @@ case class BaseDspMult(widthX: Int, widthY: Int) extends UnsignedMultiplier {
     case 1 => VivadoUtilEstimation(dsp = 1, lut = 0)
     case 2 => VivadoUtilEstimation(dsp = 2, lut = 0)
     case 4 => VivadoUtilEstimation(dsp = 4, lut = 0)
+    case 6 => VivadoUtilEstimation(dsp = 6, lut = 96)
   }
 
-  override def fmaxEstimation = 800 MHz
+  override def fmaxEstimation = level match {
+    case 6 => 600 MHz
+    case _ => 800 MHz
+  }
 
   def prod(x: UInt, y: UInt) = {
     val core = implH

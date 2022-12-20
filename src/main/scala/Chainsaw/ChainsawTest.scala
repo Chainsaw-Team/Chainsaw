@@ -6,6 +6,7 @@ import spinal.core.sim._
 import spinal.lib._
 import spinal.sim.SimThread
 
+import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.util.Random
 
@@ -33,8 +34,16 @@ case class ChainsawTest(
   /** --------
    * get input segments
    * -------- */
-  val inputSegments: Seq[TestCase] = stimulus.getOrElse(testCases)
-    .sortBy(_.control.headOption.getOrElse(BigDecimal(0)))
+  val inputSegments: Seq[TestCase] = {
+    val raw = stimulus.getOrElse(testCases)
+    gen match {
+      case frame: Frame => raw.map { case TestCase(seg, control) =>
+        val padded = frame.inputFrameFormat(control).fromRawToFrame(seg)
+        TestCase(padded, control)
+      }
+      case _ => raw
+    }
+  }.sortBy(_.control.headOption.getOrElse(BigDecimal(0)))
 
   if (gen.isInstanceOf[SemiInfinite] && inputSegments.forall(_.data.length == inputSegments.head.data.length))
     logger.warn("all testCases have a same length, which may miss the problem in reset logic")
@@ -42,7 +51,7 @@ case class ChainsawTest(
   if (inPortWidth != 0) {
     val pass = gen match { // check data length
       case frame: Frame => inputSegments.forall { case TestCase(data, control) =>
-        data.length == frame.inputFrameFormat(control).rawDataCount
+        data.length == frame.inputFrameFormat(control).allDataCount
       }
       case _: Operator => inputSegments.map(_.data).forall(_.length == inPortWidth)
       case _ => true
@@ -62,7 +71,7 @@ case class ChainsawTest(
     case _ => Seq[BigDecimal]()
   }
 
-  def getRandomInterrupt = TestCase(Seq.fill(Random.nextInt(10))(randomDataVector).flatten, getRandomControl)
+  def getRandomInterrupt = TestCase(Seq.fill(Random.nextInt(10) + 1)(randomDataVector).flatten, getRandomControl)
 
   def getResetInterrupt = TestCase(Seq.fill(resetCycle max 1)(randomDataVector).flatten, getRandomControl)
 
@@ -84,7 +93,16 @@ case class ChainsawTest(
   /** --------
    * get golden segments
    * -------- */
-  val goldenSegments: Seq[Seq[BigDecimal]] = golden.getOrElse(sortedValids.map(impl))
+  val goldenSegments: Seq[Seq[BigDecimal]] = {
+    val raw = golden.getOrElse(sortedValids.map(impl))
+    gen match {
+      case frame: Frame => raw.zip(sortedValids).map { case (seg, TestCase(_, control)) =>
+        frame.outputFrameFormat(control).fromRawToFrame(seg)
+      }
+      case _ => raw
+    }
+  }
+
   val latencies = gen match {
     case overwriteLatency: OverwriteLatency => sortedValids.map(_ => -1)
     case fixedLatency: FixedLatency => sortedValids.map(_ => fixedLatency.latency())
@@ -105,9 +123,14 @@ case class ChainsawTest(
 
   // segments -> vectors
   val inputVectorSize = if (inPortWidth == 0) 1 else inPortWidth // when inPortWidth is 0, the module is driven by clock
-  val inputVectorsWithValid = inputSegmentsWithInvalid.flatMap { case (TestCase(segment, control), valid) =>
-    segment.grouped(inputVectorSize).toSeq.map((_, control, valid))
-  }
+  val inputVectorsWithValid: mutable.Seq[(Seq[BigDecimal], Seq[BigDecimal], Boolean, Boolean)] =
+    inputSegmentsWithInvalid.flatMap { case (TestCase(segment, control), valid) =>
+      val dataVectors = segment.grouped(inputVectorSize).toSeq
+      gen match {
+        case frame: Frame => dataVectors.init.map((_, control, valid, false)) :+ (dataVectors.last, control, valid, true)
+        case _ => dataVectors.map((_, control, valid, true))
+      }
+    }
 
   // data containers
   val outputVectors = ArrayBuffer[Seq[BigDecimal]]()
@@ -124,6 +147,7 @@ case class ChainsawTest(
     // init
     def init(): Unit = {
       flowInPointer.valid #= false
+      flowInPointer.last #= false
       clockDomain.forkStimulus(2)
       clockDomain.waitSampling()
     }
@@ -132,16 +156,18 @@ case class ChainsawTest(
       var i = 0
       while (true) {
         if (i < inputVectorsWithValid.length) {
-          val (data, control, valid) = inputVectorsWithValid(i)
+          val (data, control, valid, last) = inputVectorsWithValid(i)
           flowInPointer.payload.zip(data).foreach { case (fix, decimal) => fix #= decimal }
           dut match {
             case dynamicModule: DynamicModule => dynamicModule.controlIn.zip(control).foreach { case (fix, decimal) => fix #= decimal }
             case _ => // no control
           }
           flowInPointer.valid #= valid
+          flowInPointer.last #= last
           if (valid) inputTimes += simTime()
         } else {
           flowInPointer.valid #= false
+          flowInPointer.last #= false
         }
         i += 1
         clockDomain.waitSampling()

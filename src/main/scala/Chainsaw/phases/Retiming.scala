@@ -55,6 +55,7 @@ class RetimingGraph extends ExpressionGraph {
       val weight = getEdgeWeight(e)
       if (srcVertex != desVertex) graph.addEdge(srcVertex, desVertex, weight)
     })
+    graph.exportPng("beforeRetiming")
     graph
   }
 
@@ -134,15 +135,16 @@ class RetimingGraph extends ExpressionGraph {
         val drivers = incomingEdgesOf(v)
         val paddings = drivers.asScala.map { e =>
           val src = getEdgeSource(e).asInstanceOf[BaseType]
-          if (src.component == v.component) throw new IllegalArgumentException(s"path inside leaf component appears: $src -> $v")
-          else {
-            val srcValue = retimingInfo(if (top.getAllIo.contains(src)) src else src.component)
-            val desValue = retimingInfo(if (top.getAllIo.contains(v)) v else v.component)
-            val componentLatency =
-              if (top.getAllIo.contains(src)) 0
-              else src.component.asInstanceOf[ChainsawBaseModule].gen.asInstanceOf[FixedLatency].latency()
-            desValue - srcValue - componentLatency - getEdgeWeight(e).toInt // padding value
-          }
+//          if (src.component == v.component) throw new IllegalArgumentException(s"path inside leaf component appears: $src -> $v")
+//          else {
+//
+//          }
+          val srcValue = retimingInfo(if (top.getAllIo.contains(src)) src else src.component)
+          val desValue = retimingInfo(if (top.getAllIo.contains(v)) v else v.component)
+          val componentLatency =
+            if (top.getAllIo.contains(src)) 0
+            else src.component.asInstanceOf[ChainsawBaseModule].gen.asInstanceOf[FixedLatency].latency()
+          desValue - srcValue - componentLatency - getEdgeWeight(e).toInt // padding value
         }
         require(paddings.forall(padding => padding == paddings.head && padding >= 0), s"padding value of $v is not the same: ${paddings.mkString(" ")}")
         if (paddings.nonEmpty && paddings.head > 0) {
@@ -178,7 +180,7 @@ object RetimingGraph {
     def dfs(current: Component): Unit = {
       current.children.foreach { c =>
         val child = c.asInstanceOf[ChainsawBaseModule]
-        if (child.gen.isInstanceOf[FixedLatency]) leaves += child
+        if (!child.gen.isInstanceOf[OverwriteLatency]) leaves += child
         else {
           if (child.children.isEmpty) throw new IllegalArgumentException(s"component $child is a leaf, but has no fixed latency")
           else dfs(child)
@@ -214,7 +216,7 @@ object RetimingGraph {
     val targets = topIos.filter(_.isOutput) ++ innerIos.filter(_.isInput)
 
     targets.foreach { des =>
-      val sources = des.getSourcesAndWeights(retimingFilter, latencyEval)
+      val sources = des.getSourcesAndDepths(retimingFilter, latencyEval)
       sources.foreach { case (src, d) =>
         graph.addEdge(src, des, d.toInt)
       }

@@ -9,10 +9,9 @@ import scala.collection.mutable.ArrayBuffer
 import scala.language.postfixOps
 
 trait Compressor {
-
-  /** -------- definition
-    * --------
-    */
+  /** --------
+   * definition
+   * -------- */
 
   def inputFormat: Seq[Int]
 
@@ -20,9 +19,9 @@ trait Compressor {
 
   def compress(bitsIn: BitHeapHard): BitHeapHard
 
-  /** -------- attributes
-    * --------
-    */
+  /** --------
+   * attributes
+   * -------- */
   def inputBitsCount = inputFormat.sum
 
   def outputBitsCount = outputFormat.sum
@@ -51,17 +50,17 @@ trait Compressor {
 
   def latency = 0
 
-  // visualization
-  override def toString() = {
-    val dotsIn    = BitHeaps.getHeapFromHeights(Seq(inputFormat), Seq(0), Seq(0)).toString
-    val dotsOut   = BitHeaps.getHeapFromHeights(Seq(outputFormat), Seq(0), Seq(0)).toString
-    val length    = outputFormat.length
+  // TODO: link to newly implemented bitheap
+  override def toString = {
+    val title = s"compressor (${inputFormat.mkString(" ")}) -> ${outputFormat.mkString(" ")}"
+    val dotsIn = BitHeaps.getHeapFromHeights(Seq(inputFormat), Seq(0), Seq(0)).toString
+    val dotsOut = BitHeaps.getHeapFromHeights(Seq(outputFormat), Seq(0), Seq(0)).toString
+    val length = outputFormat.length
     val arrowLine = s"${" " * (length / 2) * 2}$downArrow"
     val shiftedDotsIn =
       dotsIn.split("\n").head + "\n" + dotsIn.split("\n").tail.map(_.padToLeft(length * 2 - 1, ' ')).mkString("\n")
-    s"$shiftedDotsIn\n$arrowLine\n$dotsOut"
+    s"$title\n$shiftedDotsIn\n$arrowLine\n$dotsOut"
   }
-
 }
 
 trait CompressorGenerator extends ChainsawOperatorGenerator with Compressor {

@@ -53,7 +53,8 @@ case class FifoReadInterface(width: Int)
  */
 case class XillybusWrapper(devices: Seq[XillybusDevice]) extends Component {
 
-  val userClk = in Bool() // clock from user application domain(rather than xillybus domain)
+  val dataClk = in Bool() // clock from user application domain(rather than xillybus domain)
+  val ctrlClk = in Bool() // same as above
   val pcie = PcieBundle()
 
   val xillybus = Xillybus(devices) // xillybus IP
@@ -68,7 +69,9 @@ case class XillybusWrapper(devices: Seq[XillybusDevice]) extends Component {
   // global connections
   pcie <> xillybus.pcie
 
-  val userDomain = ClockDomain(clock = userClk, reset = xillybus.pcie.perstn,
+  val dataDomain = ClockDomain(clock = dataClk, reset = xillybus.pcie.perstn,
+    config = ClockDomainConfig(resetActiveLevel = LOW))
+  val ctrlDomain = ClockDomain(clock = ctrlClk, reset = xillybus.pcie.perstn,
     config = ClockDomainConfig(resetActiveLevel = LOW))
   val xillyDomain = ClockDomain(clock = xillybus.bus_clk, reset = xillybus.pcie.perstn,
     config = ClockDomainConfig(resetActiveLevel = LOW))
@@ -76,7 +79,7 @@ case class XillybusWrapper(devices: Seq[XillybusDevice]) extends Component {
   // stream channels connections
   xillybus.streamsRead.zip(xillybus.streamReadInterfaces.zip(fifoWriteInterfaces))
     .foreach { case (device, (busSide, userSide)) =>
-      val dcFifo = StreamFifoCC(Bits(device.bitWidth bits), 512, userDomain, xillyDomain)
+      val dcFifo = StreamFifoCC(Bits(device.bitWidth bits), 512, dataDomain, xillyDomain)
       dcFifo.setName(s"${device.name}_fifo")
       // xillybus <-> FIFO
       dcFifo.io.pop.ready := busSide.rden
@@ -94,7 +97,7 @@ case class XillybusWrapper(devices: Seq[XillybusDevice]) extends Component {
 
   xillybus.streamsWrite.zip(xillybus.streamWriteInterfaces.zip(fifoReadInterfaces))
     .foreach { case (device, (busSide, userSide)) =>
-      val dcFifo = StreamFifoCC(Bits(device.bitWidth bits), 512, xillyDomain, userDomain)
+      val dcFifo = StreamFifoCC(Bits(device.bitWidth bits), 512, xillyDomain, dataDomain)
       dcFifo.setName(s"${device.name}_fifo")
       // xillybus <-> FIFO
       dcFifo.io.push.valid := busSide.wren
@@ -111,7 +114,7 @@ case class XillybusWrapper(devices: Seq[XillybusDevice]) extends Component {
   ctrlChannel.full := False // as we use a register file
 
   val combinedType = HardType(UInt(ctrlDevice.bitWidth + ctrlDevice.addrWidth bits))
-  val ctrlFifo = StreamFifoCC(combinedType, 16, xillyDomain, userDomain)
+  val ctrlFifo = StreamFifoCC(combinedType, 16, xillyDomain, ctrlDomain)
   ctrlFifo.setName(s"${ctrlDevice.name}_fifo")
   ctrlFifo.io.push.valid := ctrlChannel.wren
   ctrlFifo.io.push.payload := ctrlChannel.addr @@ ctrlChannel.data

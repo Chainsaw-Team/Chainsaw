@@ -21,7 +21,7 @@ case class BmSolution(baseMultiplier: MultAttribute, // TODO: provide a series o
                       multiplierType: MultiplierType,
                       isKaras: Seq[Boolean],
                       constant: Option[BigInt] = None,
-                      threshold: Int = 0)
+                      threshold: Int = 8)
   extends MultAttribute {
 
   require(splits.length == isKaras.length)
@@ -61,7 +61,7 @@ case class BmSolution(baseMultiplier: MultAttribute, // TODO: provide a series o
    * operations
    * -------- */
 
-  def expand(split: Int, isKara: Boolean) = BmSolution(baseMultiplier, splits :+ split, multiplierType, isKaras :+ isKara)
+  def expand(split: Int, isKara: Boolean) = BmSolution(baseMultiplier, splits :+ split, multiplierType, isKaras :+ isKara, threshold = threshold)
 
   def subSolution(typeSub: MultiplierType) = BmSolution(baseMultiplier, splits.init, typeSub, isKaras.init)
 

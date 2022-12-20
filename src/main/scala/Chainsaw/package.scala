@@ -61,7 +61,7 @@ package object Chainsaw {
   def setAsNaive(generator: Any*) = naiveSet += generator.getClass.getSimpleName.replace("$", "")
 
 
-  var allowSynthAndImpl = false // TODO: implement this by a config file
+  var allowSynthAndImpl = true // TODO: implement this by a config file
   var testFlopoco = false
   var testVhdl = false
   var atSimTime = true
@@ -79,6 +79,7 @@ package object Chainsaw {
    * -------- */
   val vivadoPath = new File("/tools/Xilinx/Vivado/2021.1/bin/vivado") // vivado executable path TODO: should be read from environment variables
   val quartusDir = new File("/tools/quartus/bin")
+  val quartusPath = new File(quartusDir, "quartus")
   val unisimDir = new File("src/main/resources/unisims")
   val genWorkspace = new File("genWorkspace")
   val simWorkspace = new File("simWorkspace")
