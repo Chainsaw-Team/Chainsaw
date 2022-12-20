@@ -116,6 +116,7 @@ object Compressor3to2 extends PrimitiveGpc(Seq(3), Compressor3to2Primitive, Viva
 object Compressor606to5 extends PrimitiveGpc(Seq(6, 0, 6), Compressor606to5Primitive, VivadoUtilEstimation(lut = 4, ff = 5))
 
 object Gpcs {
+
   def apply(): Seq[Seq[Gpc]] = Seq(
     Seq(Compressor6to3),
     Seq(Compressor3to2),

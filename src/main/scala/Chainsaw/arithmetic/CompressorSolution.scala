@@ -58,6 +58,7 @@ case class CompressTreeSolution(solutions: Seq[StageSolution]) {
         s"\n\t${if (actualWidth > srcBitHeap.maxValue.bitLength) "output is redundant, need to be resized" else "output isn't redundant"}"
     )
   }
+
 }
 
 case class StageSolution(compressorSolutions: Seq[CompressorSolution], consideration: Consideration, stageInfo: StageInfo) {

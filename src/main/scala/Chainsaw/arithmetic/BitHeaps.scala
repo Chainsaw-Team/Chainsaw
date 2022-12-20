@@ -1067,4 +1067,5 @@ object BitHeaps {
       BitHeapConfigInfo(bitHeap, weightLow, time)
     }: _*
   )
+
 }
