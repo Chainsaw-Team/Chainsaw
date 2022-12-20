@@ -7,13 +7,13 @@ import ilog.cplex._
 
 // TODO: resources should be double, rather than int
 case class VivadoUtil(
-                       lut: Int,
-                       ff: Int,
-                       dsp: Int,
-                       bram36: Int,
-                       uram288: Int,
-                       carry8: Int
-                     ) {
+    lut: Int,
+    ff: Int,
+    dsp: Int,
+    bram36: Int,
+    uram288: Int,
+    carry8: Int
+) {
 
   def getValues = Seq(lut, ff, dsp, bram36, uram288, carry8)
 
@@ -62,9 +62,9 @@ case class VivadoUtil(
     cplex.addMaximize(cplex.scalProd(variables, Array.fill(variables.length)(1)))
     cplex.solve()
 
-    val ret = variables.map(cplex.getValue).map(_.toInt)
-    val takes = ret.zip(schemes).map { case (i, solution) => s"take $i X $solution" }.mkString("\n")
-    val util = ret.zip(schemes).map { case (i, solution) => solution * i }.reduce(_ + _)
+    val ret       = variables.map(cplex.getValue).map(_.toInt)
+    val takes     = ret.zip(schemes).map { case (i, solution) => s"take $i X $solution" }.mkString("\n")
+    val util      = ret.zip(schemes).map { case (i, solution) => solution * i }.reduce(_ + _)
     val utilInAll = s"LUT: ${util.lut} / ${this.lut}, DSP: ${util.dsp} / ${this.dsp}"
 
     logger.info(
@@ -77,7 +77,16 @@ case class VivadoUtil(
     ret
   }
 
-  def toRequirement = VivadoUtil(getValues.map(value => if(value == -1) UNKNOWN else value))
+  def cost(considerFF: Boolean): Double = {
+    val lutCost       = if (lut != UNKNOWN) lut.toDouble else 0.0
+    val carry8Cost    = if (carry8 != UNKNOWN) carry8 * 8.0 else 0.0
+    val ffCost        = if (ff != UNKNOWN) ff.toDouble / 2 else 0.0
+    val considerTable = Seq(lutCost, carry8Cost, ffCost)
+    if (considerTable.forall(_ == 0.0)) throw new IllegalArgumentException("no estimation exist!")
+    if (considerFF) considerTable.max else considerTable.init.max
+  }
+
+  def toRequirement = VivadoUtil(getValues.map(value => if (value == -1) UNKNOWN else value))
 
   private def toIntString(value: Int) =
     if (value == UNKNOWN || value == -1) "???" else value.toString
@@ -104,24 +113,24 @@ object VivadoUtilRequirement {
   val limit = Int.MaxValue
 
   def apply(
-             lut: Int = VivadoUtil.UNKNOWN,
-             ff: Int = VivadoUtil.UNKNOWN,
-             dsp: Int = VivadoUtil.UNKNOWN,
-             bram36: Int = VivadoUtil.UNKNOWN,
-             uram288: Int = VivadoUtil.UNKNOWN,
-             carry8: Int = VivadoUtil.UNKNOWN
-           ) =
+      lut: Int     = VivadoUtil.UNKNOWN,
+      ff: Int      = VivadoUtil.UNKNOWN,
+      dsp: Int     = VivadoUtil.UNKNOWN,
+      bram36: Int  = VivadoUtil.UNKNOWN,
+      uram288: Int = VivadoUtil.UNKNOWN,
+      carry8: Int  = VivadoUtil.UNKNOWN
+  ) =
     VivadoUtil(lut, ff, dsp, bram36, uram288, carry8)
 }
 
 object VivadoUtilEstimation {
   def apply(
-             lut: Int = -1,
-             ff: Int = -1,
-             dsp: Int = -1,
-             bram36: Int = -1,
-             uram288: Int = -1,
-             carry8: Int = -1
-           ) =
+      lut: Int     = -1,
+      ff: Int      = -1,
+      dsp: Int     = -1,
+      bram36: Int  = -1,
+      uram288: Int = -1,
+      carry8: Int  = -1
+  ) =
     VivadoUtil(lut, ff, dsp, bram36, uram288, carry8)
 }
