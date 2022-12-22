@@ -64,13 +64,14 @@ trait ChainsawBaseGenerator {
         case None => throw new IllegalArgumentException("no naive implementation found")
       }
 
+
     if (useNaive) getNaive
     else {
-      if (implH == null) {
-        logger.warn(s"as no full implementation found for generator ${className(this)}, a ${if(atSimTime) "simplified" else "pass-through" } version is used")
+      val ret = implH
+      if (ret == null) {
+        logger.warn(s"use implNaiveH for $name as implH is null")
         getNaive
-      }
-      else implH
+      } else ret
     }
   }
 

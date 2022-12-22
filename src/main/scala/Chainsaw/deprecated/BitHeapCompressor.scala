@@ -33,6 +33,7 @@ case class BitHeapCompressor(operandInfos: Seq[ArithInfo], outputAsCsa: Boolean)
     (negatives :+ BigInt(0)).sum // in case of empty
   }
 
+
   val initBitHeap = BitHeaps.getHeapFromInfos[Int](Seq(operandInfos))
   val bitsCount = initBitHeap.bitsCount
   val (retBitHeap, solutions) = initBitHeap.compressAll(Gpcs(), name = "compressor tree for config")

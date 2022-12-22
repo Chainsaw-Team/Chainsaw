@@ -24,12 +24,10 @@ case class Cpa(adderType: AdderType, width: Int) extends UnsignedMerge {
     signs.map(ArithInfo(width, 0, _))
   }
 
+  override def outputTypes = Seq(NumericType.U(maxValue.bitLength))
+
   logger.error(s"maxValue ${maxValue.bitLength}")
   logger.error(s"output ${outputTypes.head}")
-
-  override def inputTimes = inputTypes.map(_ => 0)
-
-  override def outputTimes = outputTypes.map(_ => 0)
 
   override def implH: ChainsawOperatorModule = new ChainsawOperatorModule(this) {
     val sumWords = sliceWidths.map(w => UInt(w bits))
@@ -114,5 +112,4 @@ case class Cpa(adderType: AdderType, width: Int) extends UnsignedMerge {
     core.dataIn.zip(data).foreach { case (in, data) => in := data.toAFix }
     core.dataOut.head.asUInt()
   }
-
 }

@@ -16,6 +16,7 @@ object ChainsawSpinalConfig {
     if (gen.isInstanceOf[OverwriteLatency] && !gen.useNaive) base.addTransformationPhase(new phases.Retiming)
     if (gen.isInstanceOf[Unaligned]) base.addTransformationPhase(new IoAlign) // for unaligned generator, pad the input and output
     if (!atSimTime) base.addTransformationPhase(new phases.FfIo) // TODO: subtract the additional FFs from synth/impl result?
+    // FIXME: FfIo may lead to extra LUT consumption
     base
   }
 }
