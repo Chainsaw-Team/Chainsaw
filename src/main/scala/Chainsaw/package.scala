@@ -163,6 +163,8 @@ package object Chainsaw {
     }
 
     def ##(that: BitValue) = (this.value << that.width) + that.value
+
+    def asBools: Seq[BigInt] = value.toString(2).reverse.padTo(width, '0').map(char => BigInt(char.asDigit))
   }
 
   // TODO: make BigInt behaves just like Bits/UInt

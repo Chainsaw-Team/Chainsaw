@@ -19,9 +19,6 @@ abstract class ChainsawBaseModule(val gen: ChainsawBaseGenerator) extends Compon
   val validOut = flowOut.valid
   val lastOut = flowOut.last
 
-  dataIn.foreach(_.addTag(CHAINSAWIO))
-  dataOut.foreach(_.addTag(CHAINSAWIO))
-
   def dataIo = dataIn.map(_.raw) ++ dataOut.map(_.raw)
 
   // these pointers can be modified by elaboration phases

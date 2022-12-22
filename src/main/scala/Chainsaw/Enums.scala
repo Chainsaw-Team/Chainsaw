@@ -102,8 +102,6 @@ object SINE extends DdsSignalType
 
 object PULSE extends DdsSignalType
 
-object CHAINSAWIO extends spinal.core.SpinalTag
-
 sealed trait EdaFlowType extends ChainsawEnum
 
 object SYNTH extends EdaFlowType
@@ -111,3 +109,9 @@ object SYNTH extends EdaFlowType
 object IMPL extends EdaFlowType
 
 object BITGEN extends EdaFlowType // generate bitstream
+
+sealed trait CompressionStrategy extends ChainsawEnum
+
+object EfficiencyFirst extends CompressionStrategy
+
+object ReductionFirst extends CompressionStrategy

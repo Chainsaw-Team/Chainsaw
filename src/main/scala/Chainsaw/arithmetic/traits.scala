@@ -91,16 +91,26 @@ trait UnsignedMerge extends ChainsawOperatorGenerator with Unaligned {
 
   def arithInfos: Seq[ArithInfo]
 
+  val timeMin = arithInfos.map(_.time).min
+  override def inputTimes = arithInfos.map(_.time - timeMin)
+
+  override def outputTimes = Seq(0)
+
   override def inputTypes = arithInfos.map(_.width).map(NumericType.U)
 
-  def maxValue = arithInfos.map(_.maxValue).sum
+  def compensation = {
+    val negatives = arithInfos.filterNot(_.isPositive).map(info => ((BigInt(1) << info.width) - 1) << info.weight)
+    (negatives :+ BigInt(0)).sum // in case of empty
+  }
 
-  // the output is full-width, regardless of base
-  override def outputTypes = Seq(NumericType.U(maxValue.bitLength))
+  def maxValue = arithInfos.map(_.toPositive.maxValue).sum - compensation
+  require(maxValue == arithInfos.map(_.maxValue).sum)
+
+  def validLength = maxValue.bitLength
 
   override def impl(testCase: TestCase) = {
     val temp = testCase.data.map(_.toBigInt()).zip(arithInfos).map { case (data, info) => info.eval(data) }.sum
-    Seq(BigDecimal(temp))
+    Seq(BigDecimal(temp)).padTo(outputTypes.length, BigDecimal(0))
   }
 
   override def implNaiveH =
@@ -113,6 +123,7 @@ trait UnsignedMerge extends ChainsawOperatorGenerator with Unaligned {
         else U(0)
       val ret = (positive - negative).d(latency() - inputInterval)
       dataOut.head := ret.toAFix.truncated
+      dataOut.tail.foreach(port => port := port.getZero)
     })
 
   override def testCases = Seq.fill(100)(TestCase(randomDataVector))
@@ -122,6 +133,10 @@ trait UnsignedMerge extends ChainsawOperatorGenerator with Unaligned {
       logger.info("negative sum occur in your testcase")
       true
     } // skip
-    else yours.equals(golden)
+    else {
+      val yourSum = yours.map(_.toBigInt()).sum
+      val goldenSum = golden.map(_.toBigInt()).sum
+      yourSum.mod(Pow2(validLength)) == goldenSum.mod(Pow2(validLength))
+    }
   }
 }
