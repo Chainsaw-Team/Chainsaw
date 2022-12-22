@@ -3,6 +3,7 @@ package Chainsaw.arithmetic
 import Chainsaw._
 import Chainsaw.arithmetic.ArithInfoGenerator.RectangularInfos
 import Chainsaw.project.zprize.ZPrizeMSM
+import arithmetic.bitheap._
 
 import scala.util.Random
 
@@ -36,7 +37,7 @@ class ArithmeticIpTests extends ChainsawFlatSpec {
       val solution0 = BmSolution(BaseDspMult(16, 24), splits = Seq(2, 2, 2), multiplierType = multType, isKaras = Seq(true, true, true), constant = constant)
       val solution1 = BmSolution(BaseDspMult(16, 24), splits = Seq(2, 2, 2), multiplierType = multType, isKaras = Seq(false, true, false), constant = constant)
       val solution2 = BmSolution(BaseDspMult(16, 24), splits = Seq(2, 2, 2), multiplierType = multType, isKaras = Seq(false, false, false), constant = constant)
-      it should s"work for ${className(multType)} with constant = ${constant}" in {
+      it should s"work for ${className(multType)} with constant = $constant" in {
         BmAlgo(solution0).selfTest()
         BmAlgo(solution1).selfTest()
         BmAlgo(solution2).selfTest()
@@ -110,7 +111,7 @@ class ArithmeticIpTests extends ChainsawFlatSpec {
     }
   }
 
-  def testCompressors() = {
+  def testCompressors(): Unit = {
     // row adders
     testOperator(Compressor4to2(8), generatorConfigTable("Compressor"))
     testOperator(Compressor4to2(cpaWidthMax), generatorConfigTable("Compressor"))
@@ -149,7 +150,7 @@ class ArithmeticIpTests extends ChainsawFlatSpec {
   }
 
   def testCpa(): Unit = {
-    val widths = Seq(63, 127)
+    val widths = Seq(63, 127) // width smaller/larger than cpaWidthMax
     val adderTypes = Seq(BinaryAdder, BinarySubtractor, TernaryAdder, TernarySubtractor1, TernarySubtractor2)
     adderTypes.foreach(adderType =>
       widths.foreach(width =>
@@ -158,16 +159,21 @@ class ArithmeticIpTests extends ChainsawFlatSpec {
     )
   }
 
-  def testBitHeap(): Unit = {
-    val infoWithDiffTime = Seq.fill(10)(ArithInfo(width = 10, weight = 0, isPositive = true, time = 0))
-    testOperator(BitHeapCompressor(infoWithDiffTime, outputAsCsa = false), generatorConfigTable("BitHeap"))
-  }
+  //  def testBitHeap(): Unit = {
+  //    val infoWithDiffTime = Seq.fill(10)(ArithInfo(width = 10, weight = 0, isPositive = true, time = 0))
+  //    testOperator(BitHeapCompressor(infoWithDiffTime, outputAsCsa = false), generatorConfigTable("BitHeap"))
+  //  }
 
   def testCsa(): Unit = {
     // TODO: reimplement CSA and its tests
-    val infoWithDiffTime = Seq(ArithInfo(10, 0, true, 0), ArithInfo(10, 0, true, 1))
-    val gen = Csa(infoWithDiffTime)
+    val infoWithDiffTime = Seq(ArithInfo(width = 10, weight = 0, isPositive = true, time = 0), ArithInfo(width = 10, weight = 0, isPositive = true, time = 1))
+    val gen = Merge(infoWithDiffTime)
     testOperator(gen, generatorConfigTable("Csa"))
+  }
+
+  def testBitHeapCompressor(): Unit = {
+    val arithInfos = Seq.fill(9)(ArithInfo(200, 0)) ++ Seq.fill(9)(ArithInfo(200, 0, time = 1))
+    testOperator(BitHeapCompressor(arithInfos), generatorConfigTable("BitHeapCompressor"))
   }
 
   /** --------
@@ -178,6 +184,7 @@ class ArithmeticIpTests extends ChainsawFlatSpec {
   override val generatorConfigTable = Map(
     "Dsp" -> TestConfig(full = true, naive = true, synth = false, impl = false),
     "Compressor" -> TestConfig(full = true, naive = true, synth = false, impl = false),
+    "BitHeapCompressor" -> TestConfig(full = true, naive = true, synth = true, impl = false),
     "Cpa" -> TestConfig(full = true, naive = true, synth = false, impl = false),
     "BitHeap" -> TestConfig(full = true, naive = true, synth = false, impl = false),
     "Csa" -> TestConfig(full = true, naive = true, synth = false, impl = false),
@@ -186,8 +193,9 @@ class ArithmeticIpTests extends ChainsawFlatSpec {
   )
 
   //  testDspMults()
-  testCpa()
+  //  testCpa()
   //  testCompressors()
+  testBitHeapCompressor()
   //  testBitHeap()
   //  testCsa()
   //  testBmAlgo()

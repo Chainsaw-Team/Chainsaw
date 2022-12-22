@@ -15,11 +15,12 @@ import scala.util.Random
 case class ArithInfo(width: Int, weight: Int, isPositive: Boolean = true, time: Int = 0) {
 
   require(weight >= 0, "weight must be non-negative")
-  val low = weight
-  val high = low + width - 1
-  val range = high downto low
+  def low = weight
+  // TODO: high = low + width may be more reasonable
+  def high = low + width - 1
+  def range = high downto low
 
-  val maxValue = if (isPositive) (Pow2(width) - 1) << weight else BigInt(0)
+  def maxValue = if (isPositive) (Pow2(width) - 1) << weight else BigInt(0)
 
   def <<(shiftLeft: Int) = ArithInfo(width, weight + shiftLeft, isPositive)
 
@@ -35,6 +36,8 @@ case class ArithInfo(width: Int, weight: Int, isPositive: Boolean = true, time: 
   def withCarry(carry: Int) = ArithInfo(width + carry, weight, isPositive, time)
 
   def withTime(newTime: Int) = ArithInfo(width, weight, isPositive, newTime)
+
+  def toPositive = ArithInfo(width, weight, isPositive = true, time)
 
   /** --------
    * FIXME: following methods are for Bm only
@@ -70,20 +73,22 @@ case class ArithInfo(width: Int, weight: Int, isPositive: Boolean = true, time: 
     ArithInfo(widthOut, base, isPositive = true, all.map(_.time).max)
   }
 
+  override def toString = s"${if (isPositive) "positive" else "negative"} $width-bit<<$weight at $time"
 }
 
 /** BigInt with ArithInfo, used for simulating UInt arithmetic
  */
-case class WeightedValue(value: BigInt, arithInfo: ArithInfo) {
+case class WeightedBigInt(value: BigInt, arithInfo: ArithInfo) {
   require(value.bitLength <= arithInfo.width, s"the value width ${value.bitLength} is too large for the target width ${arithInfo.width}")
 
   def eval: BigInt = arithInfo.eval(value)
 
-  def <<(shiftLeft: Int) = WeightedValue(value, arithInfo << shiftLeft)
+  def <<(shiftLeft: Int) = WeightedBigInt(value, arithInfo << shiftLeft)
 
-  def unary_- = WeightedValue(value, -arithInfo)
+  def unary_- = WeightedBigInt(value, -arithInfo)
 
-  def withWeight(weight: Int) = WeightedValue(value, ArithInfo(arithInfo.width, weight, arithInfo.isPositive, arithInfo.time))
+  def withWeight(weight: Int) = WeightedBigInt(value, ArithInfo(arithInfo.width, weight, arithInfo.isPositive, arithInfo.time))
+
 }
 
 case class WeightedUInt(value: UInt, arithInfo: ArithInfo) {
@@ -186,6 +191,7 @@ object ArithInfoGenerator {
       ("upBound", upBound)
     )
   }
+
 
   case class Triangle(width: Int, stairShape: (Int, Int), sign: Boolean, mixSign: Boolean, withNoise: Boolean, truncate: Range, timeStrategy: Strategy, upBound: Int) extends InfosShape {
     override def toString = s"Triangle : width:$width stairShape:$stairShape sign:$sign mixSign:$mixSign withNoise:$withNoise " +

@@ -1,12 +1,14 @@
 package Chainsaw.arithmetic
 
 import Chainsaw._
+import Chainsaw.arithmetic.bitheap.CompressorScores
 import Chainsaw.xilinx._
 import spinal.core._
 import spinal.lib._
 
 import scala.collection.mutable.ArrayBuffer
 import scala.language.postfixOps
+import bitheap._
 
 trait Compressor {
   /** --------
@@ -18,6 +20,18 @@ trait Compressor {
   def outputFormat: Seq[Int]
 
   def compress(bitsIn: BitHeapHard): BitHeapHard
+
+  def compressHard(bitsIn: BitHeap[Bool]): BitHeap[Bool] = {
+    bitsIn.heap.zip(inputFormat).foreach { case (col, h) => col.padTo(h, False) } // TODO: padding
+    val retHeap = compress(bitsIn.heap) //
+    BitHeap(retHeap, bitsIn.weightLow, bitsIn.time)
+  }
+
+  def compress(bitsIn: BitHeap[BigInt]): BitHeap[BigInt] = {
+    val heapOut = BitHeap.fromHeights(outputFormat, bitsIn.weightLow, bitsIn.time)
+    heapOut.allocate(bitsIn.evalBigInt)
+    heapOut
+  }
 
   /** --------
    * attributes
@@ -34,6 +48,7 @@ trait Compressor {
 
   def redundant = !compact
 
+  // TODO: remove default value
   def clbCost(considerFF: Boolean = true) = vivadoUtilEstimation.cost(considerFF)
 
   def bitReduction: Int = inputBitsCount - outputBitsCount
@@ -42,7 +57,11 @@ trait Compressor {
 
   def reductionRatio: Double = inputBitsCount.toDouble / outputBitsCount
 
+  // TODO: remove default value
   def reductionEfficiency(considerFF: Boolean = true): Double = bitReduction / clbCost(considerFF)
+
+  def compressorScores(considerFF: Boolean) =
+    CompressorScores(bitReduction, heightReduction, reductionEfficiency(considerFF), reductionRatio)
 
   def vivadoUtilEstimation: VivadoUtil
 
@@ -50,11 +69,12 @@ trait Compressor {
 
   def latency = 0
 
-  // TODO: link to newly implemented bitheap
+
   override def toString = {
     val title = s"compressor (${inputFormat.mkString(" ")}) -> ${outputFormat.mkString(" ")}"
-    val dotsIn = BitHeaps.getHeapFromHeights(Seq(inputFormat), Seq(0), Seq(0)).toString
-    val dotsOut = BitHeaps.getHeapFromHeights(Seq(outputFormat), Seq(0), Seq(0)).toString
+    // TODO: implement by BitHeap toString
+    val dotsIn = ""
+    val dotsOut = ""
     val length = outputFormat.length
     val arrowLine = s"${" " * (length / 2) * 2}$downArrow"
     val shiftedDotsIn =
@@ -74,8 +94,8 @@ trait CompressorGenerator extends ChainsawOperatorGenerator with Compressor {
   }
 
   def operands2Columns(operands: Seq[AFix], operandsFormat: Seq[Int]): Seq[Seq[Bool]] = {
-    val infos   = columns2Infos(operandsFormat)
-    val width   = infos.map(info => info.high + 1).max
+    val infos = columns2Infos(operandsFormat)
+    val width = infos.map(info => info.high + 1).max
     val columns = ArrayBuffer.fill(width)(ArrayBuffer[Bool]())
     operands.map(_.asBits).zip(infos).foreach { case (bits, info) =>
       val bitWidth = bits.getBitsWidth
@@ -84,5 +104,4 @@ trait CompressorGenerator extends ChainsawOperatorGenerator with Compressor {
     }
     columns
   }
-
 }
