@@ -46,7 +46,7 @@ abstract class Gpc extends CompressorGenerator {
     val paddedBitsIn = bitsIn.zip(inputFormat).map { case (bits, h) => bits.padTo(h, False) }
     // in GPCs, different from row adders, we use columns as operands
     val operands = paddedBitsIn.map(_.asBits().asUInt.toAFix)
-    val core = getImplH
+    val core     = getImplH
     core.dataIn := operands
     operands2Columns(core.dataOut, outputFormat).asInstanceOf[BitHeapHard]
   }
@@ -68,8 +68,7 @@ abstract class Gpc extends CompressorGenerator {
 }
 
 /** -------- from flopoco, clbCost = 0.5 --------
- *
- */
+  */
 class HalfClbGpc(override val inputFormat: Seq[Int]) extends Gpc {
 
   override def outputFormat = Seq.fill(5)(1)
@@ -80,9 +79,7 @@ class HalfClbGpc(override val inputFormat: Seq[Int]) extends Gpc {
   override def implH: ChainsawOperatorModule = ???
 }
 
-class PrimitiveGpc(override val inputFormat: Seq[Int],
-                   override val outputFormat: Seq[Int],
-                   primitive: GpcPrimitive, utilEstimation: VivadoUtil) extends Gpc {
+class PrimitiveGpc(override val inputFormat: Seq[Int], override val outputFormat: Seq[Int], primitive: GpcPrimitive, utilEstimation: VivadoUtil) extends Gpc {
 
   override def implH: ChainsawOperatorModule = new ChainsawOperatorModule(this) {
     dataOut := primitive.primitiveCompress(dataIn)
@@ -118,17 +115,17 @@ object Compressor3to2 extends PrimitiveGpc(Seq(3), Seq(1, 1), Compressor3to2Prim
 
 object Gpcs {
 
-  def apply(): Seq[Seq[Gpc]] = Seq(
-    Seq(Compressor6to3),
-    Seq(Compressor3to2),
-    Seq(Compressor606),
-    Seq(Compressor607),
-    Seq(Compressor615),
-    Seq(Compressor623),
-    Seq(Compressor1325),
-    Seq(Compressor1415),
-    Seq(Compressor1406),
-    Seq(Compressor1407),
-    Seq(Compressor2117)
+  def apply(): Seq[Gpc] = Seq(
+    Compressor6to3,
+    Compressor3to2
+//    Compressor606,
+//    Compressor607,
+//    Compressor615,
+//    Compressor623,
+//    Compressor1325,
+//    Compressor1415,
+//    Compressor1406,
+//    Compressor1407,
+//    Compressor2117
   )
 }

@@ -24,9 +24,9 @@ trait ChainsawBaseGenerator {
 
   def outputTypes: Seq[NumericType]
 
-  /** --------
-   * model
-   * -------- */
+  /** -------- model
+    * --------
+    */
   def impl(testCase: TestCase): Seq[BigDecimal]
 
   def metric(yours: Seq[BigDecimal], golden: Seq[BigDecimal]): Boolean
@@ -35,9 +35,9 @@ trait ChainsawBaseGenerator {
 
   def resetCycle: Int
 
-  /** --------
-   * implementations
-   * -------- */
+  /** -------- implementations
+    * --------
+    */
   def simBackEnd: SpinalSimBackendSel = SpinalSimBackendSel.VERILATOR
 
   def implH: ChainsawBaseModule // core module, that is, the datapath
@@ -59,11 +59,11 @@ trait ChainsawBaseGenerator {
 
     def getNaive: ChainsawBaseModule =
       if (!atSimTime) implPass
-      else implNaiveH match {
-        case Some(impl) => impl
-        case None => throw new IllegalArgumentException("no naive implementation found")
-      }
-
+      else
+        implNaiveH match {
+          case Some(impl) => impl
+          case None       => throw new IllegalArgumentException("no naive implementation found")
+        }
 
     if (useNaive) getNaive
     else {
@@ -79,9 +79,9 @@ trait ChainsawBaseGenerator {
 
   def outPortWidth = outputTypes.length
 
-  /** --------
-   * utils for input/output generation
-   * -------- */
+  /** -------- utils for input/output generation
+    * --------
+    */
 
   def emptyTypes: Seq[NumericType] = Seq[NumericType]()
 
@@ -93,9 +93,9 @@ trait ChainsawBaseGenerator {
 
   def randomTestCase: TestCase
 
-  /** --------
-   * utils for test
-   * -------- */
+  /** -------- utils for test
+    * --------
+    */
 
   def doSelfTest() = ChainsawTest(s"test$name", this)
 
@@ -108,9 +108,9 @@ trait ChainsawBaseGenerator {
        |fmaxEstimated: ${fmaxEstimation / 1e6} MHz
        |""".stripMargin
 
-  /** --------
-   * utils for instantiation
-   * -------- */
+  /** -------- utils for instantiation
+    * --------
+    */
   def process(data: Seq[AFix]) = {
     val core = implH
     core.dataIn.zip(data).foreach { case (in, data) => in := data }
@@ -188,7 +188,7 @@ trait ChainsawDynamicOperatorGenerator extends ChainsawBaseGenerator with Operat
   override def randomTestCase = TestCase(randomDataVector, randomControlVector)
 }
 
-trait ChainsawFrameGenerator extends ChainsawBaseGenerator with FixedLatency with Frame {
+trait ChainsawFrameGenerator extends ChainsawBaseGenerator with Frame with FixedLatency {
 
   def inputFrameFormat: FrameFormat
 
@@ -239,7 +239,7 @@ trait ChainsawDynamicFrameGenerator extends ChainsawBaseGenerator with Frame wit
   }
 }
 
-trait ChainsawInfiniteGenerator extends ChainsawBaseGenerator with FixedLatency with SemiInfinite {
+trait ChainsawInfiniteGenerator extends ChainsawBaseGenerator with SemiInfinite with FixedLatency {
 
   override def implH: ChainsawInfiniteModule
 
@@ -252,7 +252,7 @@ trait ChainsawInfiniteGenerator extends ChainsawBaseGenerator with FixedLatency 
   override def randomTestCase = TestCase(Seq.fill(resetCycle)(randomDataVector).flatten)
 }
 
-trait ChainsawDynamicInfiniteGenerator extends ChainsawBaseGenerator with Dynamic with SemiInfinite {
+trait ChainsawDynamicInfiniteGenerator extends ChainsawBaseGenerator with SemiInfinite with Dynamic {
 
   override def implH: ChainsawDynamicInfiniteModule
 
@@ -264,7 +264,6 @@ trait ChainsawDynamicInfiniteGenerator extends ChainsawBaseGenerator with Dynami
 
   override def randomTestCase = TestCase(Seq.fill(resetCycle)(randomDataVector).flatten, randomControlVector)
 }
-
 
 trait Unaligned {
   def inputTimes: Seq[Int]
