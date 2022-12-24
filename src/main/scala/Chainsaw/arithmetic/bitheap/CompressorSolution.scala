@@ -1,14 +1,14 @@
 package Chainsaw.arithmetic.bitheap
 
 import Chainsaw._
-import Chainsaw.arithmetic._
+import Chainsaw.arithmetic.bitheap
 
 import java.io._
 
 case class CompressorScores(bitReduction: Int, heightReduction: Int, reductionEfficiency: Double, reductionRatio: Double) {
 
   /** compare two compressor according to current strategy
-   */
+    */
   def >(that: CompressorScores)(implicit strategy: CompressionStrategy): Boolean = {
 
     val br = this.bitReduction compare that.bitReduction
@@ -19,8 +19,8 @@ case class CompressorScores(bitReduction: Int, heightReduction: Int, reductionEf
     def det(compared: Seq[Int]) = compared.reverse.zipWithIndex.map { case (bit, weight) => bit << weight }.sum > 0
 
     val priority = strategy match {
-      case EfficiencyFirst => Seq(re, hr, br, rr)
-      case ReductionFirst => Seq(hr, re, br, rr)
+      case ReFirst => Seq(re, hr, br, rr)
+      case HrFirst => Seq(hr, re, br, rr)
     }
     det(priority)
   }
@@ -31,10 +31,11 @@ case class CompressorScores(bitReduction: Int, heightReduction: Int, reductionEf
 }
 
 @SerialVersionUID(42L)
-case class CompressorFullSolution(stageSolutions: Seq[CompressorStageSolution])
-  extends Serializable with HardAlgo {
+case class CompressorFullSolution(stageSolutions: Seq[CompressorStageSolution]) extends Serializable with HardAlgo {
 
   def latency() = stageSolutions.count(_.pipelined)
+
+  def outHeight = if (stageSolutions.last.stageHeight == -1) 3 else stageSolutions.last.stageHeight
 
   override def vivadoUtilEstimation = stageSolutions.map(_.vivadoUtilEstimation).reduce(_ + _)
 
@@ -54,7 +55,7 @@ object CompressorFullSolution {
   }
 }
 
-case class CompressorStageSolution(compressorSolutions: Seq[CompressorStepSolution], pipelined: Boolean) {
+case class CompressorStageSolution(compressorSolutions: Seq[CompressorStepSolution], stageHeight: Int, pipelined: Boolean) {
 
   def vivadoUtilEstimation = compressorSolutions.map(_.vivadoUtilEstimation).reduce(_ + _)
 

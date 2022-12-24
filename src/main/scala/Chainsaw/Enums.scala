@@ -112,6 +112,7 @@ object BITGEN extends EdaFlowType // generate bitstream
 
 sealed trait CompressionStrategy extends ChainsawEnum
 
-object EfficiencyFirst extends CompressionStrategy
-
-object ReductionFirst extends CompressionStrategy
+// ReductionEfficiency First
+object ReFirst extends CompressionStrategy
+// HeightReduction First
+object HrFirst extends CompressionStrategy

@@ -16,9 +16,9 @@ case class BitHeap[T](heap: ArrayBuffer[ArrayBuffer[T]], var weightLow: Int, var
 
   def asHard = this.asInstanceOf[BitHeap[Bool]]
 
-  /** --------
-   * attributes
-   * -------- */
+  /** -------- attributes
+    * --------
+    */
   def weightHigh = weightLow + heap.length - 1
 
   def width = heap.length
@@ -41,9 +41,9 @@ case class BitHeap[T](heap: ArrayBuffer[ArrayBuffer[T]], var weightLow: Int, var
 
   def mark = heap.head.head
 
-  /** --------
-   * modification methods
-   * -------- */
+  /** -------- modification methods
+    * --------
+    */
 
   private def representable(value: BigInt) = value.mod(precision) == 0
 
@@ -51,13 +51,15 @@ case class BitHeap[T](heap: ArrayBuffer[ArrayBuffer[T]], var weightLow: Int, var
     require(constant >= 0 && representable(constant), s"constant $constant is not representable")
     val bits = (constant >> weightLow).toString(2).reverse
     bits.zipWithIndex.foreach { case (char, i) =>
-      val col: ArrayBuffer[T] = if (heap.isDefinedAt(i)) heap(i) else {
-        heap += ArrayBuffer[T]()
-        heap.last
-      }
+      val col: ArrayBuffer[T] =
+        if (heap.isDefinedAt(i)) heap(i)
+        else {
+          heap += ArrayBuffer[T]()
+          heap.last
+        }
       mark match {
         case _: BigInt => col += BigInt(char.asDigit).asInstanceOf[T]
-        case _: Bool => col += Bool(char.asDigit == 1).asInstanceOf[T]
+        case _: Bool   => col += Bool(char.asDigit == 1).asInstanceOf[T]
       }
     }
   }
@@ -66,25 +68,27 @@ case class BitHeap[T](heap: ArrayBuffer[ArrayBuffer[T]], var weightLow: Int, var
     require(constant < 0 && representable(-constant))
     require(maxValue >= -constant, "meaningless to add a negative constant larger than the max value")
     val validLength = (maxValue + constant).bitLength
-    val complement = Pow2(maxValue.bitLength) + constant
+    val complement  = Pow2(maxValue.bitLength) + constant
     addPositiveConstant(complement)
     validLength
   }
 
   /** copy all bits from current heap to des, won't clear the current heap
-   */
+    */
   def copyHeapTo(des: Heap, start: Int): Unit = {
-    des.drop(start) // align
-      .zip(heap).foreach { case (a, b) => a ++= b } // copy bits
+    des
+      .drop(start) // align
+      .zip(heap)
+      .foreach { case (a, b) => a ++= b } // copy bits
   }
 
   /** return third heap which is the sum of this and that, won't clear the current heap
-   */
+    */
   def +(that: BitHeap[T]): BitHeap[T] = {
     require(time == that.time)
 
-    val newLow = weightLow min that.weightLow
-    val newHigh = weightHigh max that.weightHigh
+    val newLow   = weightLow min that.weightLow
+    val newHigh  = weightHigh max that.weightHigh
     val newWidth = newHigh + 1 - newLow
 
     // initialization
@@ -94,9 +98,8 @@ case class BitHeap[T](heap: ArrayBuffer[ArrayBuffer[T]], var weightLow: Int, var
     BitHeap(newTable, newLow, time)
   }
 
-
   /** move all bits from current heap to des, will clear the current heap
-   */
+    */
   def contributeHeapTo(des: BitHeap[T]): Unit = {
     val lowDiff = des.weightLow - weightLow
     if (lowDiff > 0) {
@@ -107,24 +110,29 @@ case class BitHeap[T](heap: ArrayBuffer[ArrayBuffer[T]], var weightLow: Int, var
     if (highDiff < 0) des.heap.append(Seq.fill(-highDiff)(ArrayBuffer[T]()): _*)
 
     val start = -lowDiff max 0
-    des.heap.drop(start).zip(heap) // align and zip
+    des.heap
+      .drop(start)
+      .zip(heap) // align and zip
       .foreach { case (a, b) =>
         a ++= b
         b.clear()
-      } // copy bits
+      }          // copy bits
     heap.clear() // clear bits
   }
 
   /** inverse operation of contributeHeapTo
-   */
+    */
   def absorbHeapFrom(src: BitHeap[T]): Unit = src.contributeHeapTo(this)
 
   /** take a sub-heap from current heap, according to the given format
-   *
-   * @param format    bitheap format described by a sequence of  heights
-   * @param columnIdx column index where the sub-heap starts
-   * @return the sub-heap
-   */
+    *
+    * @param format
+    *   bitheap format described by a sequence of heights
+    * @param columnIdx
+    *   column index where the sub-heap starts
+    * @return
+    *   the sub-heap
+    */
   // the result may not fill the whole heap, the compressor is in charge of padding
   def getSub(format: Seq[Int], columnIdx: Int) = {
     require(heap(columnIdx).nonEmpty)
@@ -136,7 +144,7 @@ case class BitHeap[T](heap: ArrayBuffer[ArrayBuffer[T]], var weightLow: Int, var
   }
 
   /** allocate a given value to the current heap, old values will be overwritten
-   */
+    */
   def allocate(value: BigInt): Unit = {
     require(value.mod(Pow2(weightLow)) == 0)
     var current = value >> weightLow
@@ -151,11 +159,12 @@ case class BitHeap[T](heap: ArrayBuffer[ArrayBuffer[T]], var weightLow: Int, var
   }
 
   /** all bits with weight >= upper will be dropped
-   *
-   * @example weightLow = 2, heights = (1,2,3) -> takeLow(3) -> weightLow = 2, heights = (1)
-   */
+    *
+    * @example
+    *   weightLow = 2, heights = (1,2,3) -> takeLow(3) -> weightLow = 2, heights = (1)
+    */
   def keepLow(upper: Int): Unit = { // TODO: slice
-    val remained = upper - weightLow
+    val remained  = upper - weightLow
     val lowerPart = heap.take(remained)
     heap.clear() // TODO: better modification method?
     lowerPart.copyToBuffer(heap)
@@ -163,31 +172,31 @@ case class BitHeap[T](heap: ArrayBuffer[ArrayBuffer[T]], var weightLow: Int, var
 
   def resize(width: Int): Unit = keepLow(width + weightLow)
 
-  /** --------
-   * info methods
-   * -------- */
-  def getExactScores(compressor: CompressorGenerator,
-                     columnIndex: Int,
-                     shouldPipeline: Boolean) = {
+  /** -------- info methods
+    * --------
+    */
+  def getExactScores(compressor: CompressorGenerator, columnIndex: Int, shouldPipeline: Boolean) = {
     val bitsCoveredShape = compressor.inputFormat // height of columns in input pattern
-      .zip(heights.drop(columnIndex)) // zip with height of columns in this heap
+      .zip(heights.drop(columnIndex))     // zip with height of columns in this heap
       .map { case (h0, h1) => h0 min h1 } // overlap
-    val bits = bitsCoveredShape.sum
-    val cost = compressor.clbCost(shouldPipeline)
+    val bits                = bitsCoveredShape.sum
+    val cost                = compressor.clbCost(shouldPipeline)
     val reductionEfficiency = (bits - compressor.outputBitsCount) / cost // (bitsIn - bitsOut) / cost
-    val reductionRatio = bits.toDouble / compressor.outputBitsCount
-    val bitReduction = bits - compressor.outputBitsCount
-    val heightReduction = bitsCoveredShape.max - compressor.outputFormat.max
+    val reductionRatio      = bits.toDouble / compressor.outputBitsCount
+    val bitReduction        = bits - compressor.outputBitsCount
+    val heightReduction     = bitsCoveredShape.max - compressor.outputFormat.max
     CompressorScores(bitReduction, heightReduction, reductionEfficiency, reductionRatio)
   }
 
-  /** --------
-   * impl soft methods
-   * -------- */
+  /** -------- impl soft methods
+    * --------
+    */
   // evaluation
   def eval(add: (T, T) => T, shift: (T, Int) => T, zero: T): T = {
-    val temp = heap.map(_.fold(zero)(add))
-      .zipWithIndex.map { case (num, index) => shift(num, index) }
+    val temp = heap
+      .map(_.fold(zero)(add))
+      .zipWithIndex
+      .map { case (num, index) => shift(num, index) }
       .fold(zero)(add)
     shift(temp, weightLow)
   }
@@ -206,7 +215,7 @@ case class BitHeap[T](heap: ArrayBuffer[ArrayBuffer[T]], var weightLow: Int, var
   }
 
   def implStepSoft(stepSolution: CompressorStepSolution) = {
-    val heapIn = asSoft.getSub(stepSolution.getCompressor.inputFormat, stepSolution.columnIndex)
+    val heapIn  = asSoft.getSub(stepSolution.getCompressor.inputFormat, stepSolution.columnIndex)
     val heapOut = stepSolution.getCompressor.compress(heapIn)
     heapOut
   }
@@ -226,25 +235,31 @@ case class BitHeap[T](heap: ArrayBuffer[ArrayBuffer[T]], var weightLow: Int, var
     this
   }
 
-  /** --------
-   * impl hard methods, all these methods are in-place
-   * -------- */
+  /** -------- impl hard methods, all these methods are in-place
+    * --------
+    */
 
   def dHard() = {
     asHard.heap.foreach { column => column.indices.foreach(i => column(i) = column(i).d()) }
     this
   }
 
+  def dHeap() = {
+    dHard()
+    dSoft()
+    this
+  }
+
   def implStageHard(stageSolution: CompressorStageSolution) = {
     val heapOuts: Seq[BitHeap[Bool]] = stageSolution.compressorSolutions
       .map { solution =>
-        val heapIn = asHard.getSub(solution.getCompressor.inputFormat, solution.columnIndex)
+        val heapIn  = asHard.getSub(solution.getCompressor.inputFormat, solution.columnIndex)
         val retHeap = solution.getCompressor.compress(heapIn.heap)
         BitHeap(retHeap, heapIn.weightLow, heapIn.time)
       }
     val heapNext: BitHeap[Bool] = heapOuts.reduce(_ + _) // combine all heaps generated
     asHard.absorbHeapFrom(heapNext) // merge the heap generated and the heap remained
-    if (stageSolution.pipelined) this.dHard() else this
+    if (stageSolution.pipelined) this.dHeap() else this
   }
 
   def implAllHard(solution: CompressorFullSolution) = {
@@ -262,12 +277,15 @@ case class BitHeap[T](heap: ArrayBuffer[ArrayBuffer[T]], var weightLow: Int, var
   }
 
   override def toString = {
-    heights.padTo(width, 0)
+    val heapInfoVisualize = s"time = $time\tweightLow = $weightLow\n"
+    val heapBitVisualize = heights
+      .padTo(width, 0)
       .map(columnHeight => Seq.fill(columnHeight)(s"$dot").padTo(heightMax, " "))
       .reverse
       .transpose
       .map(_.mkString(" "))
       .mkString("\n")
+    heapInfoVisualize + heapBitVisualize
   }
 }
 
@@ -279,9 +297,9 @@ object BitHeap {
     buffer
   }
 
-  /** --------
-   * for GPCs
-   -------- */
+  /** -------- for GPCs
+    * --------
+    */
 
   def fromTable(table: Seq[Seq[BigInt]], weightLow: Int, time: Int): BitHeap[BigInt] =
     BitHeap(seq2buffer(table), weightLow, time)
@@ -291,17 +309,17 @@ object BitHeap {
     fromTable(table, weightLow, time)
   }
 
-  /** --------
-   * for adders
-   -------- */
+  /** -------- for adders
+    * --------
+    */
 
   private def fromOperands[T, Operand](weightedOperands: Seq[(ArithInfo, Operand)], split: (ArithInfo, Operand) => Seq[T]): BitHeap[T] = {
     require(weightedOperands.forall(_._1.isPositive)) // bitheap can't deal with negative bits
     val time = weightedOperands.head._1.time
-    val low = weightedOperands.map(_._1.low).min
+    val low  = weightedOperands.map(_._1.low).min
     require(weightedOperands.forall(_._1.time == time), s"times = ${weightedOperands.map(_._1.time).mkString(" ")}")
     val width = weightedOperands.map(_._1.high).max + 1 - low
-    val heap = ArrayBuffer.fill(width)(ArrayBuffer[T]())
+    val heap  = ArrayBuffer.fill(width)(ArrayBuffer[T]())
     weightedOperands.foreach { case (arithInfo, operand) =>
       val bits = split(arithInfo, operand)
       heap
