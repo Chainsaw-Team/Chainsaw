@@ -117,3 +117,10 @@ class PrimitiveGpc(override val inputFormat: Seq[Int],
 object Compressor6to3 extends PrimitiveGpc(Seq(6), Seq(1, 1, 1), Compressor6to3Primitive, VivadoUtilEstimation(lut = 3, ff = 3))
 
 object Compressor3to2 extends PrimitiveGpc(Seq(3), Seq(1, 1), Compressor3to2Primitive, VivadoUtilEstimation(lut = 1, ff = 2))
+
+object Gpcs {
+  def apply(): Seq[Gpc] = Seq(
+    Compressor6to3,
+    Compressor3to2
+  )
+}

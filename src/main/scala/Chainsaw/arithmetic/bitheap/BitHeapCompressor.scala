@@ -11,10 +11,10 @@ import scala.language.postfixOps
 /** enhanced multi-operand adder implemented by compressors
  */
 case class BitHeapCompressor(arithInfos: Seq[ArithInfo],
-                             solver: BitHeapSolver = NaiveSolver)
+                             solver: BitHeapSolver = GreedSolver)
   extends UnsignedMerge {
 
-  override def name = s"BitHeapCompressor_${hashName(arithInfos)}"
+  override def name = s"BitHeapCompressor_${hashName(arithInfos)}_${className(solver)}"
 
   val bitHeapGroup = BitHeapGroup.fromInfos(arithInfos.map(_.toPositive))
   if (compensation > BigInt(0)) bitHeapGroup.addNegativeConstant(-compensation)
@@ -26,7 +26,9 @@ case class BitHeapCompressor(arithInfos: Seq[ArithInfo],
     solution.save(solutionFile)
     solution
   }
-  logger.info(s"solution cost = ${solution.vivadoUtilEstimation}")
+  logger.info(s"\nbitCount = ${arithInfos.map(_.width).sum}\nsolution cost = ${solution.vivadoUtilEstimation}\nlatency = ${solution.latency}\n${
+    solution.stageSolutions.map(_.toString).mkString("\n")
+  }")
 
   override def outputTypes = Seq.fill(3)(NumericType.U(maxValue.bitLength))
 
@@ -39,7 +41,10 @@ case class BitHeapCompressor(arithInfos: Seq[ArithInfo],
       val weightedUInts = operands.zip(arithInfos).map { case (int, info) => WeightedUInt(int, info.toPositive) }
       val bitHeapGroup = BitHeapGroup.fromUInts(weightedUInts)
       if (compensation > BigInt(0)) bitHeapGroup.addNegativeConstant(-compensation)
-      dataOut := bitHeapGroup.implAllHard(solution).toUInts.map(_.resize(validLength)).map(_.toAFix)
+      dataOut := bitHeapGroup.implAllHard(solution).toUInts
+        .map(_.resize(validLength))
+        .padTo(3, U(0, validLength bits))
+        .map(_.toAFix)
     }
 
   val inverseCost = arithInfos.filter(_.isNegative).map(_.width).sum
