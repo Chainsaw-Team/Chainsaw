@@ -12,11 +12,9 @@ import scala.language.postfixOps
  */
 case class Merge(arithInfos: Seq[ArithInfo]) extends UnsignedMerge {
 
-  // FIXME: carry-save output?
-  override def outputTypes = Seq(NumericType.U(maxValue.bitLength))
-
-  // TODO: make sure that same infos lead to same names
   override def name = s"Csa_${hashName(arithInfos)}"
+
+  override def outputTypes = Seq(NumericType.U(maxValue.bitLength))
 
   val compressorGen = BitHeapCompressor(arithInfos.map(_.toPositive))
 

@@ -126,7 +126,7 @@ object GreedSolver extends BitHeapSolver {
           if (searchWidthMax >= rowAdder.widthMin) {
             var searchWidth = searchWidthMax
             while (searchWidth >= rowAdder.widthMin) {
-              val searchedRowAdder = getCompressor(rowAdder.name.firstBeforeChar('_'), searchWidth)
+              val searchedRowAdder = getCompressor(rowAdder.name.split('_').head, searchWidth)
               val exactScores      = getExactScores(searchedRowAdder, columnIndex, shouldPipeline = true)
               if (exactScores.reductionEfficiency >= (bestReductionEfficiency max 1.0)) {
                 if (exactScores.reductionEfficiency == bestReductionEfficiency) {
@@ -151,7 +151,7 @@ object GreedSolver extends BitHeapSolver {
       }
       bestCompressor match {
         case gpc: Gpc           => CompressorStepSolution(gpc.name, -1, columnIndex, getExactScores(gpc, columnIndex, shouldPipeline = true))
-        case rowAdder: RowAdder => CompressorStepSolution(rowAdder.name.firstBeforeChar('_'), rowAdder.width, columnIndex, getExactScores(rowAdder, columnIndex, shouldPipeline = true))
+        case rowAdder: RowAdder => CompressorStepSolution(rowAdder.name.split('_').head, rowAdder.width, columnIndex, getExactScores(rowAdder, columnIndex, shouldPipeline = true))
       }
     }
 

@@ -109,7 +109,7 @@ case class Compressor1to1(width: Int) extends RowAdder {
 
   override def outputFormat = Seq.fill(width)(1)
 
-  override def vivadoUtilEstimation = VivadoUtilEstimation(ff = width)
+  override def vivadoUtilEstimation = VivadoUtilEstimation(lut = 0, ff = width)
 
   override def implH = new ChainsawOperatorModule(this) {
     dataOut := dataIn
@@ -121,8 +121,5 @@ case class Compressor1to1(width: Int) extends RowAdder {
 }
 
 object RowAdders {
-  def apply(): Seq[Seq[RowAdder]] = Seq(
-    Seq(Compressor1to1(1)),
-    (8 to cpaWidthMax).map { width => Compressor3to1(width) },
-    (8 to cpaWidthMax).map { width => Compressor4to2(width) })
+  def apply(): Seq[RowAdder] = Seq(Compressor1to1(1), Compressor3to1(cpaWidthMax), Compressor4to2(cpaWidthMax))
 }

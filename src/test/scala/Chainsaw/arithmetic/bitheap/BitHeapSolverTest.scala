@@ -18,12 +18,12 @@ class BitHeapSolverTest extends ChainsawFlatSpec {
   /** -------- 2. solver tester function
     * --------
     */
-  def testNaiveSolver(): Unit = {
-    testCases.foreach(testCase => {
-      val gen = BitHeapCompressor(testCase, NaiveSolver)
-      testOperator(gen, generatorConfigTable("BitHeapCompressor"))
-    })
-  }
+//  def testNaiveSolver(): Unit = {
+//    testCases.foreach(testCase => {
+//      val gen = BitHeapCompressor(testCase, NaiveSolver)
+//      testOperator(gen, generatorConfigTable("BitHeapCompressor"))
+//    })
+//  }
 
   def testSolver(solverUnderTest: BitHeapSolver): Unit = {
     testCases.foreach(testCase => {
@@ -32,13 +32,13 @@ class BitHeapSolverTest extends ChainsawFlatSpec {
     })
   }
 
-  def testGreedSolver() = testSolver(GreedSolver)
+  def testGreedSolver(): Unit = testSolver(GreedSolver)
 
   override def generatorConfigTable = Map(
-    "BitHeapCompressor" -> TestConfig(full = true, naive = false, synth = false, impl = false)
+    "BitHeapCompressor" -> TestConfig(full = true, naive = false, synth = true, impl = false)
   )
 
-  testNaiveSolver()
+//  testNaiveSolver()
   testGreedSolver()
 
 }

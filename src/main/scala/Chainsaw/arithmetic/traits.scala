@@ -136,6 +136,7 @@ trait UnsignedMerge extends ChainsawOperatorGenerator with Unaligned {
     else {
       val yourSum = yours.map(_.toBigInt()).sum
       val goldenSum = golden.map(_.toBigInt()).sum
+      logger.info(s"$yourSum == $goldenSum")
       yourSum.mod(Pow2(validLength)) == goldenSum.mod(Pow2(validLength))
     }
   }
