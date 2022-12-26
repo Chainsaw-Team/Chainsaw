@@ -1,9 +1,8 @@
 package Chainsaw.arithmetic
 
 import Chainsaw._
-import Chainsaw.arithmetic.ArithInfoGenerator.RectangularInfos
+import Chainsaw.arithmetic.bitheap._
 import Chainsaw.project.zprize.ZPrizeMSM
-import arithmetic.bitheap._
 
 import scala.util.Random
 
@@ -120,8 +119,8 @@ class ArithmeticIpTests extends ChainsawFlatSpec {
     // gpcs
     val gpcs = Seq(
       Compressor6to3, Compressor3to2,
-      Compressor606, Compressor607, Compressor615, Compressor623,
-      Compressor1325, Compressor1415, Compressor1406, Compressor1407, Compressor2117
+      //      Compressor606, Compressor607, Compressor615, Compressor623,
+      //      Compressor1325, Compressor1415, Compressor1406, Compressor1407, Compressor2117
     )
     gpcs.foreach(testOperator(_, generatorConfigTable("Compressor")))
   }
@@ -172,36 +171,55 @@ class ArithmeticIpTests extends ChainsawFlatSpec {
   }
 
   def testBitHeapCompressor(): Unit = {
-    val arithInfos = Seq.fill(9)(ArithInfo(200, 0)) ++ Seq.fill(9)(ArithInfo(200, 0, time = 1))
+    val arithInfos = Seq.fill(9)(ArithInfo(200, 0)) ++
+      Seq.fill(9)(ArithInfo(200, 0, isPositive = false, time = 1)) // diff time + mixed signedness
     testOperator(BitHeapCompressor(arithInfos), generatorConfigTable("BitHeapCompressor"))
+  }
+
+  def TestFastAdditionAlgos(): Unit = {
+    behavior of "fast addition algos"
+    it should "work" in {
+      AamAddition(123, 16).selfTest()
+      CaiAddition(123, 16).selfTest()
+      CcaAddition(123, 16).selfTest()
+    }
+  }
+
+  def TestCcaAdder(): Unit = {
+    //    val gen = CcaAdder(width = 384, blockWidth = 64)
+    val gen = CcaAdder(width = 1024, blockWidth = 32)
+    testOperator(gen, generatorConfigTable("CcaAdder"))
   }
 
   /** --------
    * tests
    * -------- */
-  override def algoNames = Seq("BmAlgo", "BcmAlgo", "MultSearch")
+  override def algoNames = Seq("BmAlgo", "BcmAlgo", "MultSearch", "FastAdditionAlgos")
 
   override val generatorConfigTable = Map(
     "Dsp" -> TestConfig(full = true, naive = true, synth = false, impl = false),
-    "Compressor" -> TestConfig(full = true, naive = true, synth = false, impl = false),
+    "Compressor" -> TestConfig(full = true, naive = true, synth = true, impl = false),
     "BitHeapCompressor" -> TestConfig(full = true, naive = true, synth = true, impl = false),
     "Cpa" -> TestConfig(full = true, naive = true, synth = false, impl = false),
     "BitHeap" -> TestConfig(full = true, naive = true, synth = false, impl = false),
     "Csa" -> TestConfig(full = true, naive = true, synth = false, impl = false),
     "Bcm" -> TestConfig(full = true, naive = true, synth = false, impl = false),
     "Bm" -> TestConfig(full = true, naive = true, synth = false, impl = false),
+    "CcaAdder" -> TestConfig(full = true, naive = true, synth = true, impl = false),
   )
+
+  Random.setSeed(42)
 
   //  testDspMults()
   //  testCpa()
   //  testCompressors()
-  testBitHeapCompressor()
-  //  testBitHeap()
+  //  testBitHeapCompressor()
   //  testCsa()
   //  testBmAlgo()
   //  testBm()
   //  testBcmAlgo()
   //  testBcm()
   //  testMultSearch()
-
+  //  TestFastAdditionAlgos()
+  TestCcaAdder()
 }
