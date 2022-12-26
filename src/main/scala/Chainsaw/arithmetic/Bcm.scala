@@ -16,7 +16,7 @@ case class Bcm(theConstant: BigInt,
   override def name = s"${className(multiplierType)}_Bcm_${widthIn}_${widthInvolved}_${widthOut}_${hashName(theConstant)}"
 
   val outputModulus = Pow2(widthOut)
-  val csaGen = Csa(infos)
+  val csaGen = Merge(infos)
 
   override def latency() = 1
 

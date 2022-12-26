@@ -46,7 +46,7 @@ abstract class Gpc extends CompressorGenerator {
     val paddedBitsIn = bitsIn.zip(inputFormat).map { case (bits, h) => bits.padTo(h, False) }
     // in GPCs, different from row adders, we use columns as operands
     val operands = paddedBitsIn.map(_.asBits().asUInt.toAFix)
-    val core     = getImplH
+    val core = getImplH
     core.dataIn := operands
     operands2Columns(core.dataOut, outputFormat).asInstanceOf[BitHeapHard]
   }
@@ -67,65 +67,53 @@ abstract class Gpc extends CompressorGenerator {
 
 }
 
-/** -------- from flopoco, clbCost = 0.5 --------
-  */
-class HalfClbGpc(override val inputFormat: Seq[Int]) extends Gpc {
+/** --------
+ * from flopoco, clbCost = 0.5,
+ * -------- */
+//class HalfClbGpc(override val inputFormat: Seq[Int]) extends Gpc {
+//
+//  override def outputFormat = Seq.fill(5)(1)
+//
+//  override def vivadoUtilEstimation = VivadoUtilEstimation(lut = 4, carry8 = 1, ff = 5) // clbCost = 0.5, carry8 is carry4, actually. can two of this share the same CARRY8?
+//
+//  override def implH: ChainsawOperatorModule = ???
+//
+//  override def getImplH = if (atSimTime) implNaiveH.get else implH
+//}
+//
+//object Compressor606 extends HalfClbGpc(Seq(6, 0, 6).reverse)
+//
+//object Compressor607 extends HalfClbGpc(Seq(6, 0, 7).reverse)
+//
+//object Compressor615 extends HalfClbGpc(Seq(6, 1, 5).reverse)
+//
+//object Compressor623 extends HalfClbGpc(Seq(6, 2, 3).reverse)
+//
+//object Compressor1325 extends HalfClbGpc(Seq(1, 3, 2, 5).reverse)
+//
+//object Compressor1415 extends HalfClbGpc(Seq(1, 4, 1, 5).reverse)
+//
+//object Compressor1406 extends HalfClbGpc(Seq(1, 4, 0, 6).reverse)
+//
+//object Compressor1407 extends HalfClbGpc(Seq(1, 4, 0, 7).reverse)
+//
+//object Compressor2117 extends HalfClbGpc(Seq(2, 1, 1, 7).reverse)
 
-  override def outputFormat = Seq.fill(5)(1)
+/** --------
+ * built by Xilinx primitives
+ * -------- */
 
-  override def vivadoUtilEstimation = VivadoUtilEstimation(lut = 4, carry8 = 1, ff = 5) // clbCost = 0.5, can two of this share the same CARRY8?
-
-  // TODO: implement blackbox
-  override def implH: ChainsawOperatorModule = ???
-}
-
-class PrimitiveGpc(override val inputFormat: Seq[Int], override val outputFormat: Seq[Int], primitive: GpcPrimitive, utilEstimation: VivadoUtil) extends Gpc {
+class PrimitiveGpc(override val inputFormat: Seq[Int],
+                   override val outputFormat: Seq[Int],
+                   primitive: GpcPrimitive, utilEstimation: VivadoUtil) extends Gpc {
 
   override def implH: ChainsawOperatorModule = new ChainsawOperatorModule(this) {
     dataOut := primitive.primitiveCompress(dataIn)
   }
 
   override def vivadoUtilEstimation: VivadoUtil = utilEstimation
-
 }
-
-object Compressor606 extends HalfClbGpc(Seq(6, 0, 6).reverse)
-
-object Compressor607 extends HalfClbGpc(Seq(6, 0, 7).reverse)
-
-object Compressor615 extends HalfClbGpc(Seq(6, 1, 5).reverse)
-
-object Compressor623 extends HalfClbGpc(Seq(6, 2, 3).reverse)
-
-object Compressor1325 extends HalfClbGpc(Seq(1, 3, 2, 5).reverse)
-
-object Compressor1415 extends HalfClbGpc(Seq(1, 4, 1, 5).reverse)
-
-object Compressor1406 extends HalfClbGpc(Seq(1, 4, 0, 6).reverse)
-
-object Compressor1407 extends HalfClbGpc(Seq(1, 4, 0, 7).reverse)
-
-object Compressor2117 extends HalfClbGpc(Seq(2, 1, 1, 7).reverse)
-
-// TODO: more GPC of other size
 
 object Compressor6to3 extends PrimitiveGpc(Seq(6), Seq(1, 1, 1), Compressor6to3Primitive, VivadoUtilEstimation(lut = 3, ff = 3))
 
 object Compressor3to2 extends PrimitiveGpc(Seq(3), Seq(1, 1), Compressor3to2Primitive, VivadoUtilEstimation(lut = 1, ff = 2))
-
-object Gpcs {
-
-  def apply(): Seq[Gpc] = Seq(
-    Compressor6to3,
-    Compressor3to2
-//    Compressor606,
-//    Compressor607,
-//    Compressor615,
-//    Compressor623,
-//    Compressor1325,
-//    Compressor1415,
-//    Compressor1406,
-//    Compressor1407,
-//    Compressor2117
-  )
-}

@@ -14,6 +14,8 @@ import scala.util.Random
  */
 case class ArithInfo(width: Int, weight: Int, isPositive: Boolean = true, time: Int = 0) {
 
+  def isNegative = !isPositive
+
   require(weight >= 0, "weight must be non-negative")
   def low = weight
   // TODO: high = low + width may be more reasonable
