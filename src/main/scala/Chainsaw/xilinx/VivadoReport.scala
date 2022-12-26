@@ -8,6 +8,7 @@ import scala.util.Try
 import Chainsaw._
 import java.io.File
 
+// TODO: for more robust extraction, .rpt files, rather than .log files should be used
 /** this class is designed to extract information from Vivado log file(synth or impl)
  */
 class VivadoReport(
@@ -99,15 +100,21 @@ class VivadoReport(
   override def toString: String =
     s"LUT $LUT, FF $FF, DSP $DSP, BRAM $BRAM, URAM $URAM, CARRY8 $CARRY8, Freq = ${Frequency / 1e6} MHz\n"
 
-  def requireFmax(fmaxRequirement: HertzNumber): Unit = assert(
-    this.Frequency >= fmaxRequirement.toDouble,
-    s"\ncritical path failed: \n\tyours:  ${Frequency / 1e6} MHz, \n\ttarget: $fmaxRequirement"
-  )
+  def requireFmax(fmaxRequirement: HertzNumber): Unit = {
+    assert(
+      this.Frequency >= fmaxRequirement.toDouble,
+      s"\ncritical path failed: \n\tyours:  ${Frequency / 1e6} MHz, \n\ttarget: ${fmaxRequirement.toDouble / 1e6} MHz"
+    )
+    logger.info(s"\ncritical path met: \n\tyours:  ${Frequency / 1e6} MHz, \n\ttarget: ${fmaxRequirement.toDouble / 1e6} MHz")
+  }
 
-  def requireUtil(utilRequirement: VivadoUtil): Unit = assert(
-    this.util <= utilRequirement,
-    s"\nutil failed: \n\tyours:  $util, target: \n\t$utilRequirement"
-  )
+  def requireUtil(utilRequirement: VivadoUtil): Unit = {
+    assert(
+      this.util <= utilRequirement,
+      s"\nutil failed: \n\tyours:  $util, \n\ttarget: $utilRequirement"
+    )
+    logger.info(s"\nutil met: \n\tyours:  $util, \n\ttarget: $utilRequirement")
+  }
 
   def require(utilRequirement: VivadoUtil, fmaxRequirement: HertzNumber): Unit = {
     requireUtil(utilRequirement)

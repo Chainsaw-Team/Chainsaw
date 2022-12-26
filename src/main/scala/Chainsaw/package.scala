@@ -162,9 +162,11 @@ package object Chainsaw {
       segments
     }
 
-    def ##(that: BitValue) = (this.value << that.width) + that.value
+    def ##(that: BitValue): BigInt = (this.value << that.width) + that.value
 
     def asBools: Seq[BigInt] = value.toString(2).reverse.padTo(width, '0').map(char => BigInt(char.asDigit))
+
+    def unary_~ : BigInt = (BigInt(1) << width) - 1 - value
   }
 
   // TODO: make BigInt behaves just like Bits/UInt
@@ -275,14 +277,14 @@ package object Chainsaw {
     // TODO: with requirement, + ffs before and after the component, - ffs before comparison
     atSimTime = false
     val report = VivadoSynth(gen.implH, gen.name, ChainsawSpinalConfig(gen))
-    if (withRequirement) report.require(gen.vivadoUtilEstimation.toRequirement, gen.fmaxEstimation)
+    if (withRequirement) report.require(gen.vivadoUtilEstimation.toRequirement + gen.ffioUtil, gen.fmaxEstimation)
     report
   }
 
   def ChainsawImpl(gen: ChainsawBaseGenerator, withRequirement: Boolean = false) = {
     atSimTime = false
     val report = VivadoImpl(gen.implH, gen.name, ChainsawSpinalConfig(gen))
-    if (withRequirement) report.require(gen.vivadoUtilEstimation.toRequirement, gen.fmaxEstimation)
+    if (withRequirement) report.require(gen.vivadoUtilEstimation.toRequirement + gen.ffioUtil, gen.fmaxEstimation)
     report
   }
 
@@ -365,3 +367,5 @@ package object Chainsaw {
    * -------- */
   lazy val matlabEngine = MatlabEngine.startMatlab()
 }
+
+

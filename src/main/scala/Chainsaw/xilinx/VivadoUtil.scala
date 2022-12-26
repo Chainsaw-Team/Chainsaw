@@ -21,6 +21,10 @@ case class VivadoUtil(
     this.getValues.zip(that.getValues).map { case (a, b) => if (a == -1 || b == -1) 0 else a + b }
   )
 
+  def -(that: VivadoUtil) = VivadoUtil(
+    this.getValues.zip(that.getValues).map { case (a, b) => if (a == -1 || b == -1) 0 else a - b }
+  )
+
   def *(k: Int) = VivadoUtil(this.getValues.map(_ * k))
 
   // to get percentage

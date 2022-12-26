@@ -156,8 +156,8 @@ class VivadoFlow[T <: Component](
       case BITGEN => ???
     }
     // util & timing can't be reported after synth/impl
-    script += s"report_utilization -hierarchical -hierarchical_depth 10\n"
-    //    script += s"report_utilization\n"
+    //    script += s"report_utilization -hierarchical -hierarchical_depth 10\n"
+    script += s"report_utilization\n"
     script
   }
 }

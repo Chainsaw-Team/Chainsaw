@@ -16,10 +16,16 @@ object TestCase {
 trait ChainsawBaseGenerator {
   def name: String
 
+  /** --------
+   * performance
+   * -------- */
   def vivadoUtilEstimation: VivadoUtil
 
   def fmaxEstimation: HertzNumber
 
+  /** --------
+   * interfaces
+   * -------- */
   def inputTypes: Seq[NumericType]
 
   def outputTypes: Seq[NumericType]
@@ -120,6 +126,9 @@ trait ChainsawBaseGenerator {
   def cloneInput = Vec(inputTypes.map(_.apply()))
 
   def cloneOutput = Vec(outputTypes.map(_.apply()))
+
+  def ffioUtil = VivadoUtilEstimation(ff = inputTypes.map(_.bitWidth).sum + outputTypes.map(_.bitWidth).sum,
+    lut = 0, bram36 = 0, dsp = 0, uram288 = 0, carry8 = 0)
 }
 
 trait SemiInfinite

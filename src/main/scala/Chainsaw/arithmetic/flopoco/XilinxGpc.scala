@@ -61,5 +61,5 @@ case class XilinxGpc(columnHeights: Seq[Int], outputWidth: Int) extends FlopocoO
 object XilinxGpc extends App {
   val gpc = XilinxGpc(Seq(6, 0, 6), 5)
   gpc.latency()
-  VivadoSynth(gpc.rtlPath, gpc.moduleName)
+  VivadoSynth(gpc.rtlPath.getParentFile, gpc.moduleName)
 }
