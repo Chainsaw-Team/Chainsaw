@@ -31,20 +31,6 @@ object MultSearch {
     logger.info(s"LUT: ${util.lut} / ${budget.lut}, DSP: ${util.dsp} / ${budget.dsp}")
   }
 
-  val void96 = new MultAttribute {
-    override def constant = None
-
-    override def widthX = 96
-
-    override def widthY = 96
-
-    override def multiplierType = FullMultiplier
-
-    override def widthOut = 192
-
-    override def vivadoUtilEstimation = VivadoUtilEstimation(lut = 600, dsp = 18)
-  }
-
   // available starting points
   // FIXME: 17 X 17 leads to problem, why?
   val baseMultipliers: Seq[MultAttribute] = Seq(
