@@ -93,14 +93,14 @@ trait CompressorGenerator extends ChainsawOperatorGenerator with Compressor {
     (0 until intColumns.max).map { i => (columns.filter(_.length > i).map(col => col(i)).asBits().asUInt << intColumns.indexWhere(_ > i)).toAFix }
   }
 
-  def operands2Columns(operands: Seq[AFix], operandsFormat: Seq[Int]): Seq[Seq[Bool]] = {
+  def operands2Columns(operands: Seq[AFix], operandsFormat: Seq[Int]): BitHeapHard = {
     val infos = columns2Infos(operandsFormat)
     val width = infos.map(info => info.high + 1).max
-    val columns = ArrayBuffer.fill(width)(ArrayBuffer[Bool]())
+    val columns = ArrayBuffer.fill(width)(ArrayBuffer[Bit[Bool]]())
     operands.map(_.asBits).zip(infos).foreach { case (bits, info) =>
       val bitWidth = bits.getBitsWidth
       require(bitWidth == info.width, s"operand width mismatch, operand: $bitWidth, format: ${info.width}")
-      (0 until bitWidth).foreach { bw => columns(bw + info.weight) += bits(bw) }
+      (0 until bitWidth).foreach { bw => columns(bw + info.weight) += Bit(bits(bw)) }
     }
     columns
   }

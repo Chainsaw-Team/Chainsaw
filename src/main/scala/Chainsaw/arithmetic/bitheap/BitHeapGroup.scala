@@ -88,6 +88,6 @@ object BitHeapGroup {
     BitHeapGroup(bitHeaps)
   }
 
-  def apply[T](bitHeap: ArrayBuffer[ArrayBuffer[T]], weightLow: Int, time: Int): BitHeapGroup[T] =
+  def apply[T](bitHeap: ArrayBuffer[ArrayBuffer[Bit[T]]], weightLow: Int, time: Int): BitHeapGroup[T] =
     BitHeapGroup(ArrayBuffer(BitHeap(bitHeap, weightLow, time)))
 }
