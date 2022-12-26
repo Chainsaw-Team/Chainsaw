@@ -1,6 +1,7 @@
 package Chainsaw.arithmetic
 
 import Chainsaw._
+import Chainsaw.arithmetic.bitheap.Bit
 import Chainsaw.arithmetic.flopoco.{FlopocoBlackBox, XilinxGpc}
 import Chainsaw.xilinx._
 import spinal.core._
@@ -43,12 +44,12 @@ abstract class Gpc extends CompressorGenerator {
   override def testCases = Seq.fill(100)(randomTestCase)
 
   override def compress(bitsIn: BitHeapHard): BitHeapHard = {
-    val paddedBitsIn = bitsIn.zip(inputFormat).map { case (bits, h) => bits.padTo(h, False) }
+    val paddedBitsIn = bitsIn.zip(inputFormat).map { case (bits, h) => bits.map(_.value).padTo(h, False) }
     // in GPCs, different from row adders, we use columns as operands
     val operands = paddedBitsIn.map(_.asBits().asUInt.toAFix)
     val core = getImplH
     core.dataIn := operands
-    operands2Columns(core.dataOut, outputFormat).asInstanceOf[BitHeapHard]
+    operands2Columns(core.dataOut, outputFormat)
   }
 
   override def implNaiveH = Some(new ChainsawOperatorModule(this) {

@@ -39,11 +39,11 @@ abstract class RowAdder extends CompressorGenerator {
 
   // TODO: heap -> UInt and UInt -> heap should be implemented by the bit heap
   override def compress(bitsIn: BitHeapHard): BitHeapHard = {
-    val paddedBitsIn = bitsIn.zip(inputFormat).map { case (bits, h) => bits.padTo(h, False) }
+    val paddedBitsIn = bitsIn.zip(inputFormat).map { case (bits, h) => bits.map(_.value).padTo(h, False) }
     val operands = columns2Operands(paddedBitsIn)
     val core = getImplH
     core.dataIn := operands
-    operands2Columns(core.dataOut, outputFormat).asInstanceOf[BitHeapHard]
+    operands2Columns(core.dataOut, outputFormat)
   }
 }
 

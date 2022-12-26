@@ -8,9 +8,15 @@ import spinal.lib._
 import scala.collection.mutable.ArrayBuffer
 import scala.util.Random
 
-case class BitHeap[T](heap: ArrayBuffer[ArrayBuffer[T]], var weightLow: Int, var time: Int) {
+case class Bit[T](value: T, positive: Boolean = true) {
 
-  type Heap = ArrayBuffer[ArrayBuffer[T]]
+  def d(): Bit[Bool] = Bit(value.asInstanceOf[Bool].d(), positive)
+
+}
+
+case class BitHeap[T](heap: ArrayBuffer[ArrayBuffer[Bit[T]]], var weightLow: Int, var time: Int) {
+
+  type Heap = ArrayBuffer[ArrayBuffer[Bit[T]]]
 
   def asSoft = this.asInstanceOf[BitHeap[BigInt]]
 
@@ -51,13 +57,13 @@ case class BitHeap[T](heap: ArrayBuffer[ArrayBuffer[T]], var weightLow: Int, var
     require(constant >= 0 && representable(constant), s"constant $constant is not representable")
     val bits = (constant >> weightLow).toString(2).reverse
     bits.zipWithIndex.foreach { case (char, i) =>
-      val col: ArrayBuffer[T] = if (heap.isDefinedAt(i)) heap(i) else {
-        heap += ArrayBuffer[T]()
+      val col: ArrayBuffer[Bit[T]] = if (heap.isDefinedAt(i)) heap(i) else {
+        heap += ArrayBuffer[Bit[T]]()
         heap.last
       }
-      mark match {
-        case _: BigInt => col += BigInt(char.asDigit).asInstanceOf[T]
-        case _: Bool => col += Bool(char.asDigit == 1).asInstanceOf[T]
+      mark.value match {
+        case _: BigInt => col += Bit(BigInt(char.asDigit)).asInstanceOf[Bit[T]]
+        case _: Bool => col += Bit(Bool(char.asDigit == 1)).asInstanceOf[Bit[T]]
       }
     }
   }
@@ -88,7 +94,7 @@ case class BitHeap[T](heap: ArrayBuffer[ArrayBuffer[T]], var weightLow: Int, var
     val newWidth = newHigh + 1 - newLow
 
     // initialization
-    val newTable = ArrayBuffer.fill(newWidth)(ArrayBuffer[T]())
+    val newTable = ArrayBuffer.fill(newWidth)(ArrayBuffer[Bit[T]]())
     this.copyHeapTo(newTable, this.weightLow - newLow)
     that.copyHeapTo(newTable, that.weightLow - newLow)
     BitHeap(newTable, newLow, time)
@@ -100,11 +106,11 @@ case class BitHeap[T](heap: ArrayBuffer[ArrayBuffer[T]], var weightLow: Int, var
   def contributeHeapTo(des: BitHeap[T]): Unit = {
     val lowDiff = des.weightLow - weightLow
     if (lowDiff > 0) {
-      des.heap.prepend(Seq.fill(lowDiff)(ArrayBuffer[T]()): _*)
+      des.heap.prepend(Seq.fill(lowDiff)(ArrayBuffer[Bit[T]]()): _*)
       des.weightLow -= lowDiff
     }
     val highDiff = des.weightHigh - weightHigh
-    if (highDiff < 0) des.heap.append(Seq.fill(-highDiff)(ArrayBuffer[T]()): _*)
+    if (highDiff < 0) des.heap.append(Seq.fill(-highDiff)(ArrayBuffer[Bit[T]]()): _*)
 
     val start = -lowDiff max 0
     des.heap.drop(start).zip(heap) // align and zip
@@ -128,7 +134,7 @@ case class BitHeap[T](heap: ArrayBuffer[ArrayBuffer[T]], var weightLow: Int, var
   // the result may not fill the whole heap, the compressor is in charge of padding
   def getSub(format: Seq[Int], columnIdx: Int) = {
     require(heap(columnIdx).nonEmpty)
-    val newHeap = ArrayBuffer.fill(format.length)(ArrayBuffer[T]())
+    val newHeap = ArrayBuffer.fill(format.length)(ArrayBuffer[Bit[T]]())
     heap.drop(columnIdx).zip(newHeap).zip(format).foreach { case ((column, newColumn), height) =>
       (0 until height).foreach { _ => if (column.nonEmpty) newColumn += column.remove(0) }
     }
@@ -143,9 +149,9 @@ case class BitHeap[T](heap: ArrayBuffer[ArrayBuffer[T]], var weightLow: Int, var
     asSoft.heap.zipWithIndex.reverse.foreach { case (column, weight) =>
       column.indices.foreach { i =>
         if (current >= Pow2(weight)) {
-          column(i) = BigInt(1)
+          column(i) = Bit(BigInt(1))
           current -= Pow2(weight)
-        } else column(i) = BigInt(0)
+        } else column(i) = Bit(BigInt(0))
       }
     }
   }
@@ -186,20 +192,11 @@ case class BitHeap[T](heap: ArrayBuffer[ArrayBuffer[T]], var weightLow: Int, var
    * impl soft methods
    * -------- */
   // evaluation
-  def eval(add: (T, T) => T, shift: (T, Int) => T, zero: T): T = {
-    val temp = heap.map(_.fold(zero)(add))
-      .zipWithIndex.map { case (num, index) => shift(num, index) }
-      .fold(zero)(add)
-    shift(temp, weightLow)
-  }
 
-  def evalBigInt: BigInt = {
-    def add(a: BigInt, b: BigInt) = a + b
 
-    def shift(a: BigInt, shift: Int) = a << shift
-
-    asSoft.eval(add, shift, BigInt(0))
-  }
+  def evalBigInt: BigInt = asSoft.heap.map(col => col.map(_.value).sum)
+    .zipWithIndex.map { case (sum, weight) => sum << weight }
+    .sum
 
   def dSoft(): BitHeap[T] = {
     time += 1
@@ -257,7 +254,7 @@ case class BitHeap[T](heap: ArrayBuffer[ArrayBuffer[T]], var weightLow: Int, var
   def toUInts: Seq[UInt] = {
     val ret = ArrayBuffer[UInt]()
     while (heap.exists(_.nonEmpty)) {
-      ret += asHard.heap.map(col => if (col.nonEmpty) col.remove(0) else False).asBits().asUInt
+      ret += asHard.heap.map(col => if (col.nonEmpty) col.remove(0).value else False).asBits().asUInt
     }
     ret
   }
@@ -282,19 +279,19 @@ object BitHeap {
 
   /** --------
    * for GPCs
-   -------- */
+   * -------- */
 
-  def fromTable(table: Seq[Seq[BigInt]], weightLow: Int, time: Int): BitHeap[BigInt] =
+  def fromTable(table: Seq[Seq[Bit[BigInt]]], weightLow: Int, time: Int): BitHeap[BigInt] =
     BitHeap(seq2buffer(table), weightLow, time)
 
   def fromHeights(heights: Seq[Int], weightLow: Int, time: Int) = {
-    val table = heights.map(height => Seq.fill(height)(BigInt(1, Random)))
+    val table = heights.map(height => Seq.fill(height)(Bit(BigInt(1, Random))))
     fromTable(table, weightLow, time)
   }
 
   /** --------
    * for adders
-   -------- */
+   * -------- */
 
   private def fromOperands[T, Operand](weightedOperands: Seq[(ArithInfo, Operand)], split: (ArithInfo, Operand) => Seq[T]): BitHeap[T] = {
     require(weightedOperands.forall(_._1.isPositive)) // bitheap can't deal with negative bits
@@ -302,14 +299,16 @@ object BitHeap {
     val low = weightedOperands.map(_._1.low).min
     require(weightedOperands.forall(_._1.time == time), s"times = ${weightedOperands.map(_._1.time).mkString(" ")}")
     val width = weightedOperands.map(_._1.high).max + 1 - low
-    val heap = ArrayBuffer.fill(width)(ArrayBuffer[T]())
+    val heap = ArrayBuffer.fill(width)(ArrayBuffer[Bit[T]]())
+
     weightedOperands.foreach { case (arithInfo, operand) =>
       val bits = split(arithInfo, operand)
       heap
         .drop(arithInfo.low - low)
         .zip(bits)
-        .foreach { case (a, b) => a += b }
+        .foreach { case (col, value) => col += Bit(value) }
     }
+    logger.info(s"class = ${className(heap.head.head)}")
     BitHeap(heap, low, time)
   }
 
