@@ -57,7 +57,7 @@ case class Bm(override val bmSolution: BmSolution)
     // TODO: using unaligned version in rewriting phase
     def merge(weightedUInts: Seq[WeightedUInt], widthOut: Int): WeightedUInt = {
       val base = weightedUInts.map(_.arithInfo.weight).min
-      val csa = Csa(weightedUInts.map(_.arithInfo.withTime(0)))
+      val csa = Merge(weightedUInts.map(_.arithInfo.withTime(0)))
       val ret = csa.sum(weightedUInts.map(_.value)) >> base
       WeightedUInt(value = ret.resize(widthOut), arithInfo = weightedUInts.head.arithInfo.mergeWith(weightedUInts.tail.map(_.arithInfo), widthOut))
     }

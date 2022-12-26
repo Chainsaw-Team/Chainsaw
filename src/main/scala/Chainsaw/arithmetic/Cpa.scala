@@ -26,9 +26,6 @@ case class Cpa(adderType: AdderType, width: Int) extends UnsignedMerge {
 
   override def outputTypes = Seq(NumericType.U(maxValue.bitLength))
 
-  logger.error(s"maxValue ${maxValue.bitLength}")
-  logger.error(s"output ${outputTypes.head}")
-
   override def implH: ChainsawOperatorModule = new ChainsawOperatorModule(this) {
     val sumWords = sliceWidths.map(w => UInt(w bits))
     val carriesStart = adderType match {

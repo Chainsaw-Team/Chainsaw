@@ -285,7 +285,8 @@ case class Compressor6to3() extends Component {
     core.O6 // O6 is XOR output
   }
 
-  val lutOuts = Seq(BigInt("6996966996696996", 16), BigInt("8117177e177e7ee8", 16), BigInt("fee8e880e8808000", 16)).map(lut(dataIn(0), dataIn(1), dataIn(2), dataIn(3), dataIn(4), dataIn(5), _))
+  val lutOuts = Seq(BigInt("6996966996696996", 16), BigInt("8117177e177e7ee8", 16), BigInt("fee8e880e8808000", 16)).
+    map(lut(dataIn(0), dataIn(1), dataIn(2), dataIn(3), dataIn(4), dataIn(5), _))
   dataOut := lutOuts.asBits().asUInt
 }
 
@@ -444,7 +445,8 @@ object Compressor606To5 extends Compressor {
     BitHeaps(bitHeap, bitsIn.currentWeightLow, bitsIn.currentTime)
   }
 
-  override def vivadoUtilEstimation(width: Int): VivadoUtil = VivadoUtilRequirement(lut = 4, carry8 = 1, ff = 5)
+  override def vivadoUtilEstimation(width: Int): VivadoUtil =
+    VivadoUtilRequirement(lut = 4, carry8 = 1, ff = 5)
 
   override def fmaxEstimation: HertzNumber = 600 MHz
 }
