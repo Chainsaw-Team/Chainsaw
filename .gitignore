@@ -44,3 +44,4 @@ src/main/scala/draft.sc
 # private project
 src/main/scala/Chainsaw/project/das
 /leetcode/
+/src/test/scala/Chainsaw/project/das/
