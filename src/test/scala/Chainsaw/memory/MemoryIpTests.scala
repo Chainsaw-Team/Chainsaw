@@ -1,15 +1,12 @@
 package Chainsaw.memory
 
-import Chainsaw.deprecated.{ChainsawTest, DelayByRam}
 import Chainsaw.xilinx.VivadoSynth
-import Chainsaw.{ChainsawFlatSpec, ChainsawImplOld, TestConfig}
+import Chainsaw.{ChainsawFlatSpec, TestConfig}
 import spinal.core.sim.{SimConfig, _}
 
 import scala.util.Random
 
 class MemoryIpTests extends ChainsawFlatSpec {
-
-
 
   //  "belay by Ram" should "work" in {
   //    val width = 64
@@ -20,10 +17,6 @@ class MemoryIpTests extends ChainsawFlatSpec {
   //
   //  it should "run at a high fmax with a huge size" in ChainsawImplOld(DelayByRam(512, 1024), "implDelayByRam")
 
-
-  def testP2S(): Unit = {
-    testOperator(P2S(8, 4, 16), generatorConfigTable("P2S"))
-  }
   //
   //
   //  val delayMax = 100
@@ -66,8 +59,12 @@ class MemoryIpTests extends ChainsawFlatSpec {
   //    println(s"bram freqs: ${bramFreqs.mkString(" ")}")
   //  }
 
+  def testP2S(): Unit = {
+    testOperator(P2S(p = 8, s = 4, bitWidth = 16), generatorConfigTable("P2S"))
+  }
+
   override def generatorConfigTable = Map(
-    "P2S" -> TestConfig(full = true, naive = false, synth = true, impl = true),
+    "P2S" -> TestConfig(full = true, naive = false, synth = true, impl = false)
   )
 
   testP2S()

@@ -57,9 +57,9 @@ case class Bm(override val bmSolution: BmSolution)
     // TODO: using unaligned version in rewriting phase
     def merge(weightedUInts: Seq[WeightedUInt], widthOut: Int): WeightedUInt = {
       val base = weightedUInts.map(_.arithInfo.weight).min
-      val csa = Merge(weightedUInts.map(_.arithInfo.withTime(0)))
-      val ret = csa.sum(weightedUInts.map(_.value)) >> base
-      WeightedUInt(value = ret.resize(widthOut), arithInfo = weightedUInts.head.arithInfo.mergeWith(weightedUInts.tail.map(_.arithInfo), widthOut))
+      val merge = Merge(weightedUInts.map(_.arithInfo.withTime(0)))
+      val ret = merge.sum(weightedUInts.map(_.value))
+      WeightedUInt(value = ret.resize(widthOut), arithInfo = ArithInfo(widthOut, base))
     }
 
     // TODO: clarify naming space
@@ -72,6 +72,7 @@ case class Bm(override val bmSolution: BmSolution)
         import current.{multiplierType => _, widthOut => _, _}
         val aWords = splitN(x, aSplit) // width = baseHeight
         val bWords = splitN(y, bSplit) // width = baseWidth
+
         def doNSplit(aWords: Seq[WeightedUInt], bWords: Seq[WeightedUInt]): Seq[WeightedUInt] = {
           bmSolution.multiplierType match {
             case FullMultiplier =>

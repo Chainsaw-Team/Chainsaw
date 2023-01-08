@@ -1,6 +1,7 @@
 package Chainsaw.examples
 
 //import StarX.intf._
+
 import spinal.core.{B, _}
 import spinal.lib.bus.regif.RegDescr
 
@@ -102,6 +103,7 @@ class IP() extends Component {
   def xdcCreateGeneratedClock(name: String, divideBy: Int, node: Data): Unit = {
     xdcCreateGeneratedClock(name, (1, divideBy * 1 + 1, divideBy * 2 + 1), node)
   }
+
   def xdcCreateGeneratedClock(name: String, divideBy: Int, master: String, node: Data): Unit = {
     xdcCreateGeneratedClock(name, (1, divideBy * 1 + 1, divideBy * 2 + 1), master, node)
   }
@@ -113,6 +115,7 @@ class IP() extends Component {
   def xdcCreateGeneratedClock(name: String, edges: (Int, Int, Int), node: Data): Unit = {
     XDC.constriants += s"create_generated_clock -name ${name} -source [${xdcGetNode(node, "C")}] -edges {${edges._1} ${edges._2} ${edges._3}} [${xdcGetNode(node)}]\n"
   }
+
   def xdcCreateGeneratedClock(name: String, edges: (Int, Int, Int), master: String, node: Data): Unit = {
     val mst = XDC.findMaster(master)
     if (mst == null) {
@@ -154,7 +157,7 @@ class IP() extends Component {
       for (constriant <- XDC.constriants) {
         xdc.write(constriant)
       }
-      if(XDC.clocks.length > 0) {
+      if (XDC.clocks.length > 0) {
         xdc.write(s"set_clock_groups -asynchronous")
         for (clock <- XDC.clocks) {
           xdc.write(s" -group [get_clocks -include_generated_clocks ${clock.name}]")
@@ -182,15 +185,15 @@ class IP() extends Component {
         }
       }
     }
-//    if (this.isInstanceOf[BusIP]) {
-//      uml.write(s"  .. regs ..\n")
-//      for (method <- this.getClass().getDeclaredMethods()) {
-//        val methodString = method.toString
-//        if (methodString.matches(".*RegInst .*")) {
-//          uml.write(s"  # {field} RegInst ${method.getName()}\n")
-//        }
-//      }
-//    }
+    //    if (this.isInstanceOf[BusIP]) {
+    //      uml.write(s"  .. regs ..\n")
+    //      for (method <- this.getClass().getDeclaredMethods()) {
+    //        val methodString = method.toString
+    //        if (methodString.matches(".*RegInst .*")) {
+    //          uml.write(s"  # {field} RegInst ${method.getName()}\n")
+    //        }
+    //      }
+    //    }
     uml.write(s"  .. method ..\n")
     val methods = new HashMap[String, Method]
     for (method <- this.getClass().getDeclaredMethods()) {
@@ -257,10 +260,10 @@ class IP() extends Component {
     this
   }
 
-  def copyAssignment(src:BaseType, tar:BaseType) = {
-    if(!src.hasAssignement && tar.hasAssignement) {
+  def copyAssignment(src: BaseType, tar: BaseType) = {
+    if (!src.hasAssignement && tar.hasAssignement) {
       src := tar.getSingleDriver.get
-    } else if(!tar.hasAssignement && src.hasAssignement) {
+    } else if (!tar.hasAssignement && src.hasAssignement) {
       tar := src.getSingleDriver.get
     }
   }
@@ -291,13 +294,13 @@ class IP() extends Component {
   addPrePopTask(() => buildIP())
 }
 
-object IpTest extends App{
+object IpTest extends App {
 
   case class IpExample() extends IP {
     val io = new Bundle {
-      val a = in UInt(8 bits)
-      val b = in UInt(8 bits)
-      val c = out UInt(8 bits)
+      val a = in UInt (8 bits)
+      val b = in UInt (8 bits)
+      val c = out UInt (8 bits)
     }
     io.c := io.a + io.b
 

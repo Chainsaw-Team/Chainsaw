@@ -26,13 +26,13 @@ abstract class ModularMult {
 
 case class BarrettAlgo(override val M: BigInt) extends ModularMult {
 
-  val k = M.bitLength
+  val k      = M.bitLength
   val MPrime = (BigInt(1) << (2 * k)) / M
 
   override def impl(x: BigInt, y: BigInt): BigInt = {
     require(x.bitLength <= k, y.bitLength <= k)
     // pre-computation
-    val N = (x * y).toBitValue(2 * k) // mult0
+    val N = (x * y).toBitValue(2 * k)                          // mult0
     val u = (MPrime * N.takeHigh(k + 1)).toBitValue(2 * k + 2) // mult1
     val E = u.takeHigh(k + 1)
 
@@ -45,36 +45,46 @@ case class BarrettAlgo(override val M: BigInt) extends ModularMult {
   }
 }
 
-/** fine-tuned Barrett algorithm taking advantage of MSB/LSB truncated multiplication
- * @param M modulus
- * @see ''Langhammer, Martin and Bogdan Mihai Pasca. “Efficient FPGA Modular Multiplication Implementation.” The 2021 ACM/SIGDA International Symposium on Field-Programmable Gate Arrays (2021): n. pag.''
- */
-case class BarrettFineAlgo(override val M: BigInt)
-  extends ModularMult {
+/** fine-tuned Barrett algorithm taking advantage of MSB/LSB truncated
+  * multiplication
+  *
+  * @param M
+  *   modulus
+  * @see
+  *   ''Langhammer, Martin and Bogdan Mihai Pasca. “Efficient FPGA Modular
+  *   Multiplication Implementation.” The 2021 ACM/SIGDA International Symposium
+  *   on Field-Programmable Gate Arrays (2021): n. pag.''
+  */
+case class BarrettFineAlgo(override val M: BigInt) extends ModularMult {
 
-  /** --------
-   * preparation
-   * -------- */
-  val k = M.bitLength
+  /** -------- preparation
+    * --------
+    */
+  val k      = M.bitLength
   val MPrime = (BigInt(1) << (2 * k)) / M
 
   val accuracy = 10
-  val multMsb = (k + 1 until k + 10).map(width => BcmAlgo(MPrime, MsbMultiplier, k + 1, width, k + 1, useCsd = true))
+  val multMsb = (k + 1 until k + 10)
+    .map(width =>
+      BcmAlgo(MPrime, MsbMultiplier, k + 1, width, k + 1, useCsd = true)
+    )
     .dropWhile(mult => (mult.upperBound - mult.lowerBound) > accuracy)
     .head
   logger.info(s"width involved in msbMult: ${multMsb.widthInvolved}")
   val errorMax = multMsb.upperBound
   val errorMin = multMsb.lowerBound
-  val reductionMax = 3 + errorMax - errorMin // 3 from the original implementation
+  val reductionMax =
+    3 + errorMax - errorMin // 3 from the original implementation
   val widthComp = k + log2Up(reductionMax)
-  val C = Zp(Pow2(widthComp))((-errorMin) * M).toBigInt
-  val multLsb = BcmAlgo(M, LsbMultiplier, k + 1, widthComp, widthComp, useCsd = true)
+  val C         = Zp(pow2(widthComp))((-errorMin) * M).toBigInt
+  val multLsb =
+    BcmAlgo(M, LsbMultiplier, k + 1, widthComp, widthComp, useCsd = true)
   logger.info(s"width involved in lsbMult: ${multLsb.widthInvolved}")
 
   override def impl(x: BigInt, y: BigInt) = {
 
     require(x.bitLength <= k, y.bitLength <= k)
-    val N = (x * y).toBitValue(2 * k) // mult0
+    val N    = (x * y).toBitValue(2 * k) // mult0
     val NLow = N.takeLow(widthComp)
 
     // truncated msb mult, which introduce extra error on E
@@ -85,7 +95,7 @@ case class BarrettFineAlgo(override val M: BigInt)
 
     // TODO: analysis
     // fine reduction, inputs of fine reduction are NLow, F and C
-    val T = Zp(Pow2(widthComp))(NLow - F + C).toBigInt // no cost on hardware
+    val T = Zp(pow2(widthComp))(NLow - F + C).toBigInt // no cost on hardware
 
     // bound verification
     assert(T < reductionMax * M && T >= 0, s"\nT = $T \nT/M = ${T / M}")

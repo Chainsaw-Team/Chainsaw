@@ -108,11 +108,13 @@ object SYNTH extends EdaFlowType
 
 object IMPL extends EdaFlowType
 
-object BITGEN extends EdaFlowType // generate bitstream
-
 sealed trait CompressionStrategy extends ChainsawEnum
+object ReFirst extends CompressionStrategy // ReductionEfficiency First
+object HrFirst extends CompressionStrategy // HeightReduction First
 
-// ReductionEfficiency First
-object ReFirst extends CompressionStrategy
-// HeightReduction First
-object HrFirst extends CompressionStrategy
+sealed trait UtilRequirementStrategy extends ChainsawEnum
+object DefaultRequirement
+    extends UtilRequirementStrategy // warning when ff < lut*2, don't care about carry8, 5% for tolerant
+object PreciseRequirement
+    extends UtilRequirementStrategy // ff and carry8 are considered
+object NoRequirement extends UtilRequirementStrategy

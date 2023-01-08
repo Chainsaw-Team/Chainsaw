@@ -3,7 +3,6 @@ package Chainsaw.phases
 // utils for Customized Spinal Elaboration
 
 import Chainsaw._
-import Chainsaw.deprecated.dagFigDir
 import com.mxgraph.layout._
 import com.mxgraph.util.mxCellRenderer
 import org.jgrapht._

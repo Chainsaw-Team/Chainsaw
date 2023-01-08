@@ -2,56 +2,50 @@ package Chainsaw.arithmetic
 
 import Chainsaw._
 import Chainsaw.device._
-import Chainsaw.xilinx.{VivadoUtilEstimation, _}
+import Chainsaw.xilinx.{VivadoUtil, _}
 import spinal.core._
 
 import scala.language.postfixOps
 
-/** efficient short multipliers, which are the building blocks of long multipliers
- *
- */
+/** efficient short multipliers, which are the building blocks of long
+  * multipliers
+  */
 case class Sm(multiplierType: MultiplierType) extends UnsignedMultiplier {
-  // currently, 32 X 32 multipliers only
-  // TODO: implementation of 32 X 32 full multiplier with 4 DSP and no LUT consumption(as Vivado is able to do so)
-
-  // TODO: implementation of 32 X 48 full multiplier with 4 DSP and as less LUTs as possible
-  //    (at least <72, as flopoco is able to do so without taking advantage of pre-adder & post adder)
-  //     if LUT consumption < 40, it will be a competitive building block for 377 X 377 long multiplier
 
   override def name = s"${className(multiplierType)}_32"
 
-  override val widthX = 32
-  override val widthY = 32
+  override val widthX   = 32
+  override val widthY   = 32
   override val widthOut = if (multiplierType == FullMultiplier) 64 else 32
   override val constant = None
 
   override def implH = new ChainsawOperatorModule(this) {
 
     val Seq(x, y) = dataIn
-    val (xH, xL) = x.asUInt().splitAt(16)
-    val (yH, yL) = y.asUInt().splitAt(16)
+    val (xH, xL)  = x.asUInt().splitAt(16)
+    val (yH, yL)  = y.asUInt().splitAt(16)
 
     multiplierType match {
       case FullMultiplier =>
         val core = new DSPMultFull(16)
-        core.io.a := xH.asUInt
-        core.io.b := xL.asUInt
-        core.io.c := yH.asUInt
-        core.io.d := yL.asUInt
+        core.io.a    := xH.asUInt
+        core.io.b    := xL.asUInt
+        core.io.c    := yH.asUInt
+        core.io.d    := yL.asUInt
         dataOut.head := core.io.ret.toAFix
       case MsbMultiplier =>
         val core = new DSPMultHigh(16)
-        core.io.AH := xH.asUInt
-        core.io.AL := xL.asUInt
-        core.io.BH := yH.asUInt
-        core.io.BL := yL.asUInt
+        core.io.AH   := xH.asUInt
+        core.io.AL   := xL.asUInt
+        core.io.BH   := yH.asUInt
+        core.io.BL   := yL.asUInt
         dataOut.head := core.io.ret.toAFix
       case LsbMultiplier =>
         val core = new DSPMultLow(16)
-        core.io.AH := xH.asUInt
-        core.io.AL := xL.asUInt
-        core.io.BH := yH.asUInt
-        core.io.BL := yL.asUInt
+        core.io.AH   := xH.asUInt
+        core.io.AL   := xL.asUInt
+        core.io.BH   := yH.asUInt
+        core.io.BL   := yL.asUInt
         dataOut.head := core.io.ret.toAFix
       // TODO: optimization for square multiplier
       case SquareMultiplier =>
@@ -59,29 +53,29 @@ case class Sm(multiplierType: MultiplierType) extends UnsignedMultiplier {
   }
 
   override def latency() = multiplierType match {
-    case FullMultiplier => 6
-    case MsbMultiplier => 7
-    case LsbMultiplier => 7
+    case FullMultiplier   => 6
+    case MsbMultiplier    => 7
+    case LsbMultiplier    => 7
     case SquareMultiplier => ???
   }
 
   override def vivadoUtilEstimation = multiplierType match {
-    case FullMultiplier => VivadoUtilEstimation(dsp = 3, lut = 112)
-    case MsbMultiplier => VivadoUtilEstimation(dsp = 3, lut = 0)
-    case LsbMultiplier => VivadoUtilEstimation(dsp = 3, lut = 0)
+    case FullMultiplier   => VivadoUtil(dsp = 3, lut = 112)
+    case MsbMultiplier    => VivadoUtil(dsp = 3)
+    case LsbMultiplier    => VivadoUtil(dsp = 3)
     case SquareMultiplier => ???
   }
 
   override def fmaxEstimation = 800 MHz
 }
 
-
-/** efficients size implemented by Vivado + retiming, which consume no LUT at all
- */
+/** efficients size implemented by Vivado + retiming, which consume no LUT at
+  * all
+  */
 case class BaseDspMult(widthX: Int, widthY: Int) extends UnsignedMultiplier {
 
-  override val constant = None
-  override val widthOut = widthX + widthY
+  override val constant       = None
+  override val widthOut       = widthX + widthY
   override val multiplierType = FullMultiplier
 
   val level =
@@ -92,26 +86,33 @@ case class BaseDspMult(widthX: Int, widthY: Int) extends UnsignedMultiplier {
     else throw new IllegalArgumentException("unsupported size")
 
   override def implH = level match {
-    case 6 => new ChainsawOperatorModule(this) {
-      // TODO: padding for width between 34 and 48
-      val Seq(x, y) = dataIn.map(_.asUInt())
+    case 6 =>
+      new ChainsawOperatorModule(this) {
+        // TODO: padding for width between 34 and 48
+        val Seq(x, y) = dataIn.map(_.asUInt())
 
-      val xWords = x.subdivideIn(16 bits)
-      val yWords = y.subdivideIn(24 bits)
+        val xWords = x.subdivideIn(16 bits)
+        val yWords = y.subdivideIn(24 bits)
 
-      val partials = xWords.zipWithIndex.map { case (xWord, i) =>
-        val Seq(yLow, yHigh) = yWords
-        val prodLow = (xWord * yLow).d(2)
-        val prodHigh = (xWord.d() * yHigh.d()).d()
-        val sum = (prodLow.takeHigh(16).asUInt +^ prodHigh).d()
-        val whole = sum @@ prodLow.takeLow(24).asUInt.d() // latency = 3
-        whole << (i * 16)
-      }.map(_.resize(96 bits))
+        val partials = xWords.zipWithIndex
+          .map { case (xWord, i) =>
+            val Seq(yLow, yHigh) = yWords
+            val prodLow          = (xWord * yLow).d(2)
+            val prodHigh         = (xWord.d() * yHigh.d()).d()
+            val sum              = (prodLow.takeHigh(16).asUInt +^ prodHigh).d()
+            val whole = sum @@ prodLow.takeLow(24).asUInt.d() // latency = 3
+            whole << (i * 16)
+          }
+          .map(_.resize(96 bits))
 
-      val ternaryGen = Compressor3to1(96)
-      // TODO: replace ternary adder with merge operator
-      dataOut.head := ternaryGen.process((partials ++ Seq.fill(2)(U(0, 1 bits))).map(_.toAFix)).head.d().truncated
-    }
+        val ternaryGen = Compressor3to1(96)
+        // TODO: replace ternary adder with merge operator
+        dataOut.head := ternaryGen
+          .process((partials ++ Seq.fill(2)(U(0, 1 bits))).map(_.toAFix))
+          .head
+          .d()
+          .truncated
+      }
     case _ => implNaiveH.get
   }
 
@@ -125,10 +126,10 @@ case class BaseDspMult(widthX: Int, widthY: Int) extends UnsignedMultiplier {
   override def name = s"BaseDspMult_${widthX}_$widthY"
 
   override def vivadoUtilEstimation = level match {
-    case 1 => VivadoUtilEstimation(dsp = 1, lut = 0)
-    case 2 => VivadoUtilEstimation(dsp = 2, lut = 0)
-    case 4 => VivadoUtilEstimation(dsp = 4, lut = 0)
-    case 6 => VivadoUtilEstimation(dsp = 6, lut = 96)
+    case 1 => VivadoUtil(dsp = 1, lut = 0)
+    case 2 => VivadoUtil(dsp = 2, lut = 0)
+    case 4 => VivadoUtil(dsp = 4, lut = 0)
+    case 6 => VivadoUtil(dsp = 6, lut = 96)
   }
 
   override def fmaxEstimation = level match {

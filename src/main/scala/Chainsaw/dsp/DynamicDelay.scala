@@ -11,18 +11,23 @@ import scala.util.Random
 
 // TODO: parallel version
 case class DynamicDelay(delay: Int, dataType: NumericType, parallel: Int)
-  extends ChainsawDynamicInfiniteGenerator {
+    extends ChainsawDynamicInfiniteGenerator {
 
   override def name = s"DynamicDelay_$delay"
 
   override def impl(testCase: TestCase) = testCase.data
 
-  override def metric(yours: Seq[BigDecimal], golden: Seq[BigDecimal]) = yours.equals(golden)
+  override def metric(yours: Seq[BigDecimal], golden: Seq[BigDecimal]) =
+    yours.equals(golden)
 
   override def testCases = {
     // test for 20 segments
-    val controls = Seq.fill(20)((Random.nextInt(delay) + 4) min delay).map(ctrl => Seq(BigDecimal(ctrl)))
-    controls.map(ctrl => TestCase(Seq.fill(100)(randomDataVector).flatten, ctrl))
+    val controls = Seq
+      .fill(20)((Random.nextInt(delay) + 4) min delay)
+      .map(ctrl => Seq(BigDecimal(ctrl)))
+    controls.map(ctrl =>
+      TestCase(Seq.fill(100)(randomDataVector).flatten, ctrl)
+    )
   }
 
   override def latency(control: Seq[BigDecimal]) = control.head.toInt
@@ -33,7 +38,7 @@ case class DynamicDelay(delay: Int, dataType: NumericType, parallel: Int)
 
   override def outputTypes = Seq.fill(parallel)(dataType)
 
-  override def vivadoUtilEstimation = VivadoUtilEstimation()
+  override def vivadoUtilEstimation = VivadoUtil()
 
   override def fmaxEstimation = 600 MHz
 
@@ -41,16 +46,16 @@ case class DynamicDelay(delay: Int, dataType: NumericType, parallel: Int)
     // TODO: for parallel > 1, using multiple following structures with different delays
     require(parallel == 1)
     // TODO: assertion for delay >= 4
-    val control = controlIn.head.asUInt()
+    val control        = controlIn.head.asUInt()
     val currentLatency = RegNextWhen(control, validIn.rise())
-    val counterWidth = log2Up(delay + 1)
-    val paddedLength = Pow2(counterWidth)
-    val indexCounter = CounterFreeRun(paddedLength)
+    val counterWidth   = log2Up(delay + 1)
+    val paddedLength   = pow2(counterWidth)
+    val indexCounter   = CounterFreeRun(paddedLength)
 
     val flowWrite = cloneOf(flowOut)
     flowWrite.fragment := dataIn
-    flowWrite.valid := validIn
-    flowWrite.last := lastIn
+    flowWrite.valid    := validIn
+    flowWrite.last     := lastIn
 
     val ram = Mem(HardType(flowOut), paddedLength)
     ram.write(indexCounter.value, flowWrite)
@@ -60,9 +65,9 @@ case class DynamicDelay(delay: Int, dataType: NumericType, parallel: Int)
     val timeOut = DynamicTimeOut(control)
     when(validIn.rise())(timeOut.clear())
 
-    dataOut := readData.fragment
+    dataOut  := readData.fragment
     validOut := Mux(timeOut.state, readData.valid, False)
-    lastOut := Mux(timeOut, readData.last, False)
+    lastOut  := Mux(timeOut, readData.last, False)
   }
 
   override def implNaiveH = None

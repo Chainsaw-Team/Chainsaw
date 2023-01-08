@@ -1,7 +1,6 @@
 package Chainsaw
 
 import Chainsaw.arithmetic.flopoco.FlopocoOperator
-import Chainsaw.deprecated.ChainsawGenerator
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest._
 
@@ -11,7 +10,14 @@ import spinal.core.{EnumEtoEnumE2, SpinalConfig}
 
 import java.util.Calendar
 
-case class TestConfig(full: Boolean, naive: Boolean, synth: Boolean, impl: Boolean)
+case class TestConfig(
+    full: Boolean,
+    naive: Boolean,
+    synth: Boolean,
+    impl: Boolean,
+    naiveList: Seq[String]                           = Seq[String](),
+    utilRequirementStrategy: UtilRequirementStrategy = DefaultRequirement
+)
 
 abstract class ChainsawFlatSpec extends AnyFlatSpec {
 
@@ -20,49 +26,35 @@ abstract class ChainsawFlatSpec extends AnyFlatSpec {
   def algoNames: Seq[String] = Seq[String]()
 
   def showTable(map: Map[String, TestConfig]) = {
-    val header = s"| GeneratorName       | Full  | Naive | Synth | Impl  |"
+    val header    = s"| GeneratorName       | Full  | Naive | Synth | Impl  |"
     val separator = s"| ------------------- | ----- | ----- | ----- | ----- |"
 
     def getSymbol(boolean: Boolean) = s"   ${if (boolean) "●" else "○"}   "
 
-    val body = map.map { case (name, config) =>
-      val contents = Seq(config.full, config.naive, config.synth, config.impl).map(getSymbol).mkString("|")
-      s"| ${name.padTo(20, " ").mkString("")}|$contents|"
-    }.mkString("\n")
+    val body = map
+      .map { case (name, config) =>
+        val contents = Seq(config.full, config.naive, config.synth, config.impl)
+          .map(getSymbol)
+          .mkString("|")
+        s"| ${name.padTo(20, " ").mkString("")}|$contents|"
+      }
+      .mkString("\n")
     s"$header\n$separator\n$body"
   }
 
   it should "show the test summary" in {
-    logger.info("------------Chainsaw test summary------------" +
-      s"\nalgorithms: \n\t${algoNames.mkString("\n\t")}" +
-      s"\ngenerators: " +
-      s"\n${showTable(generatorConfigTable)}")
+    logger.info(
+      "------------Chainsaw test summary------------" +
+        s"\nalgorithms: \n\t${algoNames.mkString("\n\t")}" +
+        s"\ngenerators: " +
+        s"\n${showTable(generatorConfigTable)}"
+    )
   }
 
-  def testGenerator(gen: => ChainsawGenerator, synth: Boolean = false, impl: Boolean = false): Unit = {
-
-    behavior of gen.name
-
-    it should "have a correct naive implementation" in {
-      gen.setAsNaive()
-      gen.doSelfTest()
-    }
-
-    it should "have a correct implementation" in {
-      naiveSet.clear()
-      gen.doSelfTest()
-    }
-
-    if (synth)
-      it should "meet the util requirement after synth" in
-        ChainsawSynthOld(gen, s"synth_${gen.name}", withRequirement = true)
-
-    if (impl)
-      it should "meet the util requirement after impl" in
-        ChainsawImplOld(gen, s"impl_${gen.name}", withRequirement = true)
-  }
-
-  def testOperator(gen: => ChainsawBaseGenerator, testConfig: TestConfig): Unit = {
+  def testOperator(
+      gen: => ChainsawBaseGenerator,
+      testConfig: TestConfig
+  ): Unit = {
 
     import testConfig._
 
@@ -70,7 +62,9 @@ abstract class ChainsawFlatSpec extends AnyFlatSpec {
 
     if (full) {
       it should "work correctly" in {
-        gen.doSelfTest()
+        ChainsawSimBox(testConfig.naiveList) {
+          gen.doSelfTest()
+        }
       }
     }
 
@@ -85,16 +79,20 @@ abstract class ChainsawFlatSpec extends AnyFlatSpec {
 
     if (synth && allowSynthAndImpl) { // when impl is set, synth is not necessary
       it should "meet the util & fmax requirement after synth" in
-        ChainsawSynth(gen, withRequirement = true)
+        ChainsawSynth(gen, testConfig.utilRequirementStrategy)
     }
 
     if (impl && allowSynthAndImpl) {
       it should "meet the util & fmax requirement after impl" in
-        ChainsawImpl(gen, withRequirement = true)
+        ChainsawImpl(gen, testConfig.utilRequirementStrategy)
     }
   }
 
-  def testFlopocoOperator(gen: => FlopocoOperator, synth: Boolean, impl: Boolean): Unit = {
+  def testFlopocoOperator(
+      gen: => FlopocoOperator,
+      synth: Boolean,
+      impl: Boolean
+  ): Unit = {
 
     behavior of gen.name
 
@@ -118,13 +116,13 @@ abstract class ChainsawFlatSpec extends AnyFlatSpec {
     if (synth) {
       //      atSimTime = false
       it should "meet the util & fmax requirement after synth" in
-        ChainsawSynth(gen, withRequirement = true)
+        ChainsawSynth(gen, PreciseRequirement)
     }
 
     if (impl) {
       //      atSimTime = false
       it should "meet the util & fmax requirement after impl" in
-        ChainsawImpl(gen, withRequirement = true)
+        ChainsawImpl(gen, PreciseRequirement)
     }
   }
 }

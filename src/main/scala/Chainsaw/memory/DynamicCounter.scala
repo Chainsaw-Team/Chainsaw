@@ -40,7 +40,6 @@ case class DynamicCounter(end: UInt) extends ImplicitArea[UInt] {
 }
 
 
-
 object DynamicCounter {
   def apply(end: UInt, inc: Bool): DynamicCounter = {
     val ret = DynamicCounter(end)

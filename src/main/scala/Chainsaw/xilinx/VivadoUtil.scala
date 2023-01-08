@@ -1,75 +1,133 @@
 package Chainsaw.xilinx
 
 import Chainsaw._
-import Chainsaw.xilinx.VivadoUtil.UNKNOWN
-import ilog.concert._
-import ilog.cplex._
 
-// TODO: resources should be double, rather than int
+/** a class to record the utilization of a module, for all value
+  */
 case class VivadoUtil(
-    lut: Int,
-    ff: Int,
-    dsp: Int,
-    bram36: Int,
-    uram288: Int,
-    carry8: Int
+    lut: Double,
+    ff: Double,
+    dsp: Double,
+    bram36: Double,
+    uram288: Double,
+    carry8: Double
 ) {
 
+  def withLut(lut: Double) = VivadoUtil(lut, ff, dsp, bram36, uram288, carry8)
+  def withFf(ff: Double)   = VivadoUtil(lut, ff, dsp, bram36, uram288, carry8)
+  def withDsp(dsp: Double) = VivadoUtil(lut, ff, dsp, bram36, uram288, carry8)
+  def withBram(bram36: Double) =
+    VivadoUtil(lut, ff, dsp, bram36, uram288, carry8)
+  def withUram(uram288: Double) =
+    VivadoUtil(lut, ff, dsp, bram36, uram288, carry8)
+  def withCarry(carry8: Double) =
+    VivadoUtil(lut, ff, dsp, bram36, uram288, carry8)
+
+  /** -------- util arithmetic
+    * --------
+    */
   def getValues = Seq(lut, ff, dsp, bram36, uram288, carry8)
 
+  // +,-,*,/
   def +(that: VivadoUtil) = VivadoUtil(
-    this.getValues.zip(that.getValues).map { case (a, b) => if (a == -1 || b == -1) 0 else a + b }
+    this.getValues.zip(that.getValues).map { case (a, b) => a + b }
   )
 
   def -(that: VivadoUtil) = VivadoUtil(
-    this.getValues.zip(that.getValues).map { case (a, b) => if (a == -1 || b == -1) 0 else a - b }
+    this.getValues.zip(that.getValues).map { case (a, b) => a - b }
   )
 
-  def *(k: Int) = VivadoUtil(this.getValues.map(_ * k))
+  def *(k: Int)    = VivadoUtil(this.getValues.map(_ * k))
+  def *(k: Double) = VivadoUtil(this.getValues.map(_ * k))
 
   // to get percentage
   def /(that: VivadoUtil): Seq[Double] =
-    this.getValues.zip(that.getValues).map { case (a, b) => a.toDouble / b }
+    this.getValues.zip(that.getValues).map { case (a, b) => a / b }
 
+  // comparison
+  // carry8 is not considered as it won't be specified in many cases
   def <(that: VivadoUtil): Boolean =
-    this.getValues.zip(that.getValues).forall { case (a, b) => a.toDouble < b }
+    this.getValues.zip(that.getValues).forall { case (a, b) => a < b }
 
   def >(that: VivadoUtil): Boolean = that < this
 
   def <=(that: VivadoUtil): Boolean =
-    this.getValues.zip(that.getValues).forall { case (a, b) => a.toDouble <= b }
+    this.getValues.zip(that.getValues).forall { case (a, b) => a <= b }
 
   def >=(that: VivadoUtil): Boolean = that <= this
 
-  def normalizedCost(clbPerDsp: Double): Double = dsp.toDouble max (lut / clbPerDsp)
+  // regard resources in CLB as one
+  def clbCost(considerFF: Boolean): Double = {
+    val considerTable = Seq(lut, carry8 * 8, ff / 2)
+    if (considerTable.forall(_ == 0.0))
+      throw new IllegalArgumentException("no estimation exist!")
+    // TODO: /8 for clb?
+    if (considerFF) considerTable.max else considerTable.init.max
+  }
 
-  def solveBestScheme(schemes: Seq[VivadoUtil], solveVars: Seq[Int]): Array[Int] = {
+  override def toString = {
+    Seq("lut", "ff", "dsp", "bram36", "uram288", "carry8")
+      .map(_.toUpperCase)
+      .zip(getValues.map(_.toString))
+      .map { case (name, value) => s"$name = $value" }
+      .mkString(" ")
+  }
+
+  /** -------- DSE methods
+    * --------
+    */
+  // TODO: reimplement this by open-source libraries
+  import ilog.concert._
+  import ilog.cplex._
+  def solveBestScheme(
+      schemes: Seq[VivadoUtil],
+      solveVars: Seq[Int]
+  ): Array[Int] = {
     val cplex = new IloCplex()
 
     val upBounds = schemes
       .map(scheme => solveVars.map(v => scheme.getValues(v)))
       .map { consumes =>
-        consumes.zip(solveVars.map(v => this.getValues(v))).map { case (consume, budget) => budget / consume }.min
+        consumes
+          .zip(solveVars.map(v => this.getValues(v)))
+          .map { case (consume, budget) => budget / consume }
+          .min
       }
 
-    val weights = solveVars.map(i => schemes.map(scheme => scheme.getValues(i)).toArray)
+    val weights =
+      solveVars.map(i =>
+        schemes.map(scheme => scheme.getValues(i).toInt).toArray
+      )
     val budgets = solveVars.map(i => this.getValues(i))
 
-    val variables: Array[IloIntVar] = upBounds.flatMap(upBound => cplex.intVarArray(1, 0, upBound)).toArray
+    val variables: Array[IloIntVar] =
+      upBounds
+        .flatMap(upBound => cplex.intVarArray(1, 0, upBound.toInt))
+        .toArray
 
     var equation = ""
     weights.zip(budgets).foreach { case (weight, budget) =>
-      equation += weight.zip(Seq.tabulate(weights.length)(i => s"x$i")).map { case (i, str) => s"$i * $str" }.mkString(" + ") + s" <= $budget\n"
+      equation += weight
+        .zip(Seq.tabulate(weights.length)(i => s"x$i"))
+        .map { case (i, str) => s"$i * $str" }
+        .mkString(" + ") + s" <= $budget\n"
       cplex.addLe(cplex.scalProd(variables, weight), budget)
     }
 
-    cplex.addMaximize(cplex.scalProd(variables, Array.fill(variables.length)(1)))
+    cplex.addMaximize(
+      cplex.scalProd(variables, Array.fill(variables.length)(1))
+    )
     cplex.solve()
 
-    val ret       = variables.map(cplex.getValue).map(_.toInt)
-    val takes     = ret.zip(schemes).map { case (i, solution) => s"take $i X $solution" }.mkString("\n")
-    val util      = ret.zip(schemes).map { case (i, solution) => solution * i }.reduce(_ + _)
-    val utilInAll = s"LUT: ${util.lut} / ${this.lut}, DSP: ${util.dsp} / ${this.dsp}"
+    val ret = variables.map(cplex.getValue).map(_.toInt)
+    val takes = ret
+      .zip(schemes)
+      .map { case (i, solution) => s"take $i X $solution" }
+      .mkString("\n")
+    val util =
+      ret.zip(schemes).map { case (i, solution) => solution * i }.reduce(_ + _)
+    val utilInAll =
+      s"LUT: ${util.lut} / ${this.lut}, DSP: ${util.dsp} / ${this.dsp}"
 
     logger.info(
       s"\n----schemes search report----" +
@@ -80,61 +138,26 @@ case class VivadoUtil(
     )
     ret
   }
-
-  def cost(considerFF: Boolean): Double = {
-    val lutCost       = if (lut != UNKNOWN) lut.toDouble else 0.0
-    val carry8Cost    = if (carry8 != UNKNOWN) carry8 * 8.0 else 0.0
-    val ffCost        = if (ff != UNKNOWN) ff.toDouble / 2 else 0.0
-    val considerTable = Seq(lutCost, carry8Cost, ffCost)
-    if (considerTable.forall(_ == 0.0)) throw new IllegalArgumentException("no estimation exist!")
-    if (considerFF) considerTable.max else considerTable.init.max
-  }
-
-  def toRequirement = VivadoUtil(getValues.map(value => if (value == -1) UNKNOWN else value))
-
-  private def toIntString(value: Int) =
-    if (value == UNKNOWN || value == -1) "???" else value.toString
-
-  override def toString = {
-    Seq("lut", "ff", "dsp", "bram36", "uram288", "carry8")
-      .map(_.toUpperCase)
-      .zip(getValues.map(toIntString))
-      .map { case (name, value) => s"$name = $value" }
-      .mkString(" ")
-  }
-
-  object VivadoUtil {
-    def apply(values: Seq[Int]): VivadoUtil =
-      new VivadoUtil(values(0), values(1), values(2), values(3), values(4), values(5))
-  }
 }
 
 object VivadoUtil {
-  val UNKNOWN = Int.MaxValue
-}
-
-object VivadoUtilRequirement {
-  val limit = Int.MaxValue
-
+  def apply(values: Seq[Double]): VivadoUtil = {
+    require(values.forall(_ >= 0))
+    new VivadoUtil(
+      values(0),
+      values(1),
+      values(2),
+      values(3),
+      values(4),
+      values(5)
+    )
+  }
   def apply(
-      lut: Int     = VivadoUtil.UNKNOWN,
-      ff: Int      = VivadoUtil.UNKNOWN,
-      dsp: Int     = VivadoUtil.UNKNOWN,
-      bram36: Int  = VivadoUtil.UNKNOWN,
-      uram288: Int = VivadoUtil.UNKNOWN,
-      carry8: Int  = VivadoUtil.UNKNOWN
-  ) =
-    VivadoUtil(lut, ff, dsp, bram36, uram288, carry8)
-}
-
-object VivadoUtilEstimation {
-  def apply(
-      lut: Int     = -1,
-      ff: Int      = -1,
-      dsp: Int     = -1,
-      bram36: Int  = -1,
-      uram288: Int = -1,
-      carry8: Int  = -1
-  ) =
-    VivadoUtil(lut, ff, dsp, bram36, uram288, carry8)
+      lut: Double     = 0,
+      ff: Double      = 0,
+      dsp: Double     = 0,
+      bram36: Double  = 0,
+      uram288: Double = 0,
+      carry8: Double  = 0
+  ) = new VivadoUtil(lut, ff, dsp, bram36, uram288, carry8)
 }

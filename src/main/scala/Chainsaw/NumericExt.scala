@@ -1,14 +1,12 @@
 package Chainsaw
 
-import Chainsaw.deprecated.NumericType
 import breeze.math.Complex
 import spinal.core._
-import spinal.core.sim._
 import spinal.lib._
-import spinal.lib.fsm._
 
 import scala.language.postfixOps
 
+// TODO: test
 object NumericExt {
 
   // extension for signed fix
@@ -32,7 +30,10 @@ object NumericExt {
 
     private def doAddSub(that: SFix, add: Boolean): SFix = {
       val (rawLeft, rawRight) = sf.alignLsb(that)
-      val ret = SFix(Math.max(sf.maxExp, that.maxExp) + 1 exp, Math.max(rawLeft.getBitsWidth, rawRight.getBitsWidth) + 1 bits)
+      val ret = SFix(
+        Math.max(sf.maxExp, that.maxExp) + 1 exp,
+        Math.max(rawLeft.getBitsWidth, rawRight.getBitsWidth) + 1 bits
+      )
       ret.raw := (if (add) rawLeft +^ rawRight else rawLeft -^ rawRight)
       ret
     }
@@ -62,13 +63,14 @@ object NumericExt {
       //      val ret = new AFix(-afix.minRaw max afix.maxRaw, -afix.maxRaw min afix.minRaw, afix.exp)
       val ret = new AFix(afix.maxRaw, afix.minRaw, afix.exp)
       if (afix.signed) ret.raw := (-afix.raw.asSInt).asBits
-      else ret.raw := U(afix.raw).twoComplement(True, null).asBits
+      else ret.raw             := U(afix.raw).twoComplement(True, null).asBits
       ret
     }
 
     /** scaling the range to [-1,1)
-     */
-    def normalized = afix >> (if (afix.signed) afix.intWidth - 1 else afix.intWidth)
+      */
+    def normalized =
+      afix >> (if (afix.signed) afix.intWidth - 1 else afix.intWidth)
 
     // FIXME: precise range will be lost
     //    def fixTo(that: NumericType) = afix.fixTo(that.qFormat)
@@ -76,7 +78,8 @@ object NumericExt {
 
   implicit class hardVecUtil(vec: Seq[AFix]) {
 
-    def toComplexFix = vec.grouped(2).toSeq.map { case Seq(a, b) => ComplexFix(a, b) }
+    def toComplexFix =
+      vec.grouped(2).toSeq.map { case Seq(a, b) => ComplexFix(a, b) }
 
     def pipelinedBalancedTree(op: (AFix, AFix) => AFix, latency: Int) = {
       def pipeline(op: AFix, i: Int) = op.d(latency)
@@ -84,14 +87,15 @@ object NumericExt {
       vec.reduceBalancedTree(op, pipeline)
     }
 
-    def fixTo(af:AFix) = vec.map(_.fixTo(af))
+    def fixTo(af: AFix) = vec.map(_.fixTo(af))
 
     def normalized = vec.map(_.normalized)
   }
 
-
   implicit class softVecUtil(vec: Seq[BigDecimal]) {
-    def toComplex = vec.map(_.toDouble).grouped(2).toSeq.map { case Seq(a, b) => Complex(a, b) }
+    def toComplex = vec.map(_.toDouble).grouped(2).toSeq.map { case Seq(a, b) =>
+      Complex(a, b)
+    }
   }
 
 }

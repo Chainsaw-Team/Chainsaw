@@ -33,9 +33,6 @@ case class CARRY8() extends Unisim {
 }
 
 
-
-
-
 /** For DSP48E2 */
 
 object MULTMODE extends Enumeration {

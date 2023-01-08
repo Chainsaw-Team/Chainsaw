@@ -7,5 +7,4 @@ import scala.io.Source
 package object crypto {
 
 
-
 }

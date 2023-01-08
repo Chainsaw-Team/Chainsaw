@@ -124,6 +124,7 @@ class RetimingGraph extends ExpressionGraph {
    * @param top design under retiming
    */
   def doRetiming(top: ChainsawBaseModule): Unit = {
+    // FIXME: this will ruined the reg descriptor and lead to synthesis error
     /** --------
      * add registers to datapath
      * -------- */
@@ -135,10 +136,10 @@ class RetimingGraph extends ExpressionGraph {
         val drivers = incomingEdgesOf(v)
         val paddings = drivers.asScala.map { e =>
           val src = getEdgeSource(e).asInstanceOf[BaseType]
-//          if (src.component == v.component) throw new IllegalArgumentException(s"path inside leaf component appears: $src -> $v")
-//          else {
-//
-//          }
+          //          if (src.component == v.component) throw new IllegalArgumentException(s"path inside leaf component appears: $src -> $v")
+          //          else {
+          //
+          //          }
           val srcValue = retimingInfo(if (top.getAllIo.contains(src)) src else src.component)
           val desValue = retimingInfo(if (top.getAllIo.contains(v)) v else v.component)
           val componentLatency =

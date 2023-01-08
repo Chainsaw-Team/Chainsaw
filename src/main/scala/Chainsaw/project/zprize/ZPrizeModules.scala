@@ -1,9 +1,9 @@
 package Chainsaw.project.zprize
 
 import Chainsaw.crypto.BarrettFineAlgo
-import Chainsaw.deprecated.Bcm
 import Chainsaw.project.zprize.ZPrizeMSM.{MPrime, baseModulus}
 import Chainsaw.{LsbMultiplier, MsbMultiplier}
+import Chainsaw.arithmetic._
 
 object ZPrizeModules {
 
@@ -12,10 +12,7 @@ object ZPrizeModules {
   val msbWidthInvolved = algo.multMsb.widthInvolved
   val lsbWidthInvolved = algo.multLsb.widthInvolved
 
-  def msbMultGen = Bcm(MPrime, MsbMultiplier, widthIn = dataWidth + 1, widthInvolved = msbWidthInvolved, widthOut = dataWidth + 1, useCsd = true)
+  def msbMultGen = Bcm(MPrime, MsbMultiplier, widthIn = dataWidth + 1, widthInvolved = msbWidthInvolved, widthOut = dataWidth + 1)
 
-  def lsbMultGen = Bcm(baseModulus, LsbMultiplier, widthIn = dataWidth, widthInvolved = lsbWidthInvolved, widthOut = lsbWidthInvolved, useCsd = true)
-
-
-
+  def lsbMultGen = Bcm(baseModulus, LsbMultiplier, widthIn = dataWidth, widthInvolved = lsbWidthInvolved, widthOut = lsbWidthInvolved)
 }
