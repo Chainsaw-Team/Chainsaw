@@ -1,14 +1,14 @@
 package Chainsaw.arithmetic.bitheap
 
 import Chainsaw._
-import Chainsaw.arithmetic.bitheap
+import Chainsaw.arithmetic.{CompressorGenerator, bitheap}
 
 import java.io._
 
 case class CompressorScores(bitReduction: Int, heightReduction: Int, reductionEfficiency: Double, reductionRatio: Double) {
 
   /** compare two compressor according to current strategy
-    */
+   */
   def >(that: CompressorScores)(implicit strategy: CompressionStrategy): Boolean = {
 
     val br = this.bitReduction compare that.bitReduction
@@ -33,16 +33,40 @@ case class CompressorScores(bitReduction: Int, heightReduction: Int, reductionEf
 @SerialVersionUID(42L)
 case class CompressorFullSolution(stageSolutions: Seq[CompressorStageSolution]) extends Serializable with HardAlgo {
 
-  def latency() = stageSolutions.count(_.pipelined)
+  def latency = stageSolutions.count(_.pipelined)
 
   def outHeight = if (stageSolutions.last.stageHeight == -1) 3 else stageSolutions.last.stageHeight
 
   override def vivadoUtilEstimation = stageSolutions.map(_.vivadoUtilEstimation).reduce(_ + _)
 
+  def bitReduction = stageSolutions.map(_.bitReduction).sum
+
   def save(file: File): Unit = {
+    file.getParentFile.mkdir()
     val oos = new ObjectOutputStream(new FileOutputStream(file))
     oos.writeObject(this)
     oos.close()
+  }
+
+  def report = {
+    val classReport = stageSolutions.flatMap(_.compressorSolutions)
+      .groupBy(_.compressorName)
+      .map { case (k, v) => k -> v.size }.mkString("\n")
+
+    val subReport = stageSolutions.flatMap(_.compressorSolutions)
+      .groupBy(_.compressorName)
+      .map { case (k, v) => k -> v.map(_.getCompressor().vivadoUtilEstimation).reduce(_ + _) }.mkString("\n")
+
+    val briefReport = s"latency = $latency, reduction = $bitReduction, efficiency = ${bitReduction.toDouble / vivadoUtilEstimation.lut}"
+
+    s"\n----bitheap compressor solution report:----" +
+      s"\n--------performance--------" +
+      s"\n$briefReport" +
+      //      s"\n$classReport" +
+      //      s"\n$subReport" +
+      s"\n$vivadoUtilEstimation" +
+      s"\n--------output status--------" +
+      s"\nheight = $outHeight, width = ???"
   }
 }
 
@@ -59,10 +83,13 @@ case class CompressorStageSolution(compressorSolutions: Seq[CompressorStepSoluti
 
   def vivadoUtilEstimation = compressorSolutions.map(_.vivadoUtilEstimation).reduce(_ + _)
 
+  def bitReduction = compressorSolutions.map(_.compressorScores.bitReduction).sum
+
 }
 
-case class CompressorStepSolution(compressorName: String, width: Int, columnIndex: Int, compressorScores: CompressorScores) {
-  def getCompressor = bitheap.getCompressor(compressorName, width)
+case class CompressorStepSolution(compressorName: String, width: Int, columnIndex: Int, compressorScores: CompressorScores = CompressorScores(0, 0, 0, 0)) {
+  def getCompressor(complementHeap: Seq[Seq[Boolean]] = null): CompressorGenerator =
+    bitheap.getCompressor(compressorName, width, complementHeap)
 
-  def vivadoUtilEstimation = getCompressor.vivadoUtilEstimation
+  def vivadoUtilEstimation = getCompressor().vivadoUtilEstimation
 }

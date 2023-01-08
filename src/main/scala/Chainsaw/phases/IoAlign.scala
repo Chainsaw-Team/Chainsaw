@@ -39,6 +39,7 @@ class IoAlign extends Phase {
         input := buf(newInput, time)
       }
       module.flowInPointer = newFlowIn
+      module.flowIn.simPublic()
     }
 
     logger.info(s"[Progress] Chainsaw IoAlign phase done")

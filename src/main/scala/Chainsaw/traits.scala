@@ -1,6 +1,6 @@
 package Chainsaw
 
-import Chainsaw.xilinx.{VivadoUtil, VivadoUtilEstimation}
+import Chainsaw.xilinx.VivadoUtil
 
 trait HardAlgo {
   def vivadoUtilEstimation: VivadoUtil

@@ -106,6 +106,7 @@ package object phases {
     def getAllPathsFrom(source: Expression): mutable.Seq[Seq[Expression]] = {
       val visited = mutable.HashSet[Expression]()
       val paths = mutable.ArrayBuffer[Seq[Expression]]()
+
       def dfs(expression: Expression, path: Seq[Expression]): Unit = {
         if (!visited.contains(expression)) {
           visited += expression
@@ -123,12 +124,11 @@ package object phases {
 
   implicit class BaseTypeUtil(base: BaseType) {
 
+    // FIXME: this modified the netlist correctly, but destroy the validity of neighboring relationship stored in DoubleLinkedContainer
     def insertDelayBefore(cycle: Int, top: Component): Unit = {
       top.rework {
-        val driver = cloneOf(base)
-        // FIXME: make sure that base has only one driver
-        // FIXME: this modified the netlist correctly, but destroy the validity of neighboring relationship stored in DoubleLinkedContainer
-        base.foreachStatements(s => s.target = driver)
+        val driver = base.getSingleDriver.get
+        base.removeAssignments()
         base := driver.d(cycle)
         base
       }

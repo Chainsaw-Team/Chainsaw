@@ -11,13 +11,13 @@ import scala.collection.mutable.ArrayBuffer
 import scala.util.Random
 
 case class ChainsawTest(
-                         testName: String = "testTemp",
-                         gen: ChainsawBaseGenerator,
-                         stimulus: Option[Seq[TestCase]] = None,
-                         golden: Option[Seq[Seq[BigDecimal]]] = None,
-                         terminateAfter: Int = 10000,
-                         errorSegmentsShown: Int = 10
-                       ) {
+    testName: String = "testTemp",
+    gen: ChainsawBaseGenerator,
+    stimulus: Option[Seq[TestCase]]      = None,
+    golden: Option[Seq[Seq[BigDecimal]]] = None,
+    terminateAfter: Int                  = 10000,
+    errorSegmentsShown: Int              = 10
+) {
 
   import gen._
 
@@ -31,16 +31,17 @@ case class ChainsawTest(
     ret
   }
 
-  /** --------
-   * get input segments
-   * -------- */
+  /** -------- get input segments
+    * --------
+    */
   val inputSegments: Seq[TestCase] = {
     val raw = stimulus.getOrElse(testCases)
     gen match {
-      case frame: Frame => raw.map { case TestCase(seg, control) =>
-        val padded = frame.inputFrameFormat(control).fromRawToFrame(seg)
-        TestCase(padded, control)
-      }
+      case frame: Frame =>
+        raw.map { case TestCase(seg, control) =>
+          val padded = frame.inputFrameFormat(control).fromRawToFrame(seg)
+          TestCase(padded, control)
+        }
       case _ => raw
     }
   }.sortBy(_.control.headOption.getOrElse(BigDecimal(0)))
@@ -50,32 +51,34 @@ case class ChainsawTest(
 
   if (inPortWidth != 0) {
     val pass = gen match { // check data length
-      case frame: Frame => inputSegments.forall { case TestCase(data, control) =>
-        data.length == frame.inputFrameFormat(control).allDataCount
-      }
+      case frame: Frame =>
+        inputSegments.forall { case TestCase(data, control) =>
+          data.length == frame.inputFrameFormat(control).allDataCount
+        }
       case _: Operator => inputSegments.map(_.data).forall(_.length == inPortWidth)
-      case _ => true
+      case _           => true
     }
     require(pass, "input data length is not correct")
   }
 
   val targetSegmentCount = inputSegments.length
-  val targetVectorCount = inputSegments.map(_.data.length).sum / (if (inPortWidth == 0) 1 else inPortWidth)
-  /** --------
-   * interrupts insertion
-   * -------- */
+  val targetVectorCount  = inputSegments.map(_.data.length).sum / (if (inPortWidth == 0) 1 else inPortWidth)
+
+  /** -------- interrupts insertion
+    * --------
+    */
   val valids = inputSegments.map(testCase => (testCase, true))
 
   def getRandomControl: Seq[BigDecimal] = gen match {
     case dynamic: Dynamic => dynamic.randomControlVector
-    case _ => Seq[BigDecimal]()
+    case _                => Seq[BigDecimal]()
   }
 
   def getRandomInterrupt = TestCase(Seq.fill(Random.nextInt(10) + 1)(randomDataVector).flatten, getRandomControl)
 
   def getResetInterrupt = TestCase(Seq.fill(resetCycle max 1)(randomDataVector).flatten, getRandomControl)
 
-  val randomRatio = 10
+  val randomRatio              = 10
   val inputSegmentsWithInvalid = ArrayBuffer[(TestCase, Boolean)](valids.head)
   valids.tail.foreach { case (testCase, valid) =>
     if (!testCase.control.equals(inputSegmentsWithInvalid.last._1.control) || gen.isInstanceOf[SemiInfinite]) {
@@ -90,23 +93,24 @@ case class ChainsawTest(
 
   val sortedValids = inputSegmentsWithInvalid.filter(_._2).map(_._1)
 
-  /** --------
-   * get golden segments
-   * -------- */
+  /** -------- get golden segments
+    * --------
+    */
   val goldenSegments: Seq[Seq[BigDecimal]] = {
     val raw = golden.getOrElse(sortedValids.map(impl))
     gen match {
-      case frame: Frame => raw.zip(sortedValids).map { case (seg, TestCase(_, control)) =>
-        frame.outputFrameFormat(control).fromRawToFrame(seg)
-      }
+      case frame: Frame =>
+        raw.zip(sortedValids).map { case (seg, TestCase(_, control)) =>
+          frame.outputFrameFormat(control).fromRawToFrame(seg)
+        }
       case _ => raw
     }
   }
 
   val latencies = gen match {
     case overwriteLatency: OverwriteLatency => sortedValids.map(_ => -1)
-    case fixedLatency: FixedLatency => sortedValids.map(_ => fixedLatency.latency())
-    case dynamicLatency: DynamicLatency => sortedValids.map(testCase => dynamicLatency.latency(testCase.control))
+    case fixedLatency: FixedLatency         => sortedValids.map(_ => fixedLatency.latency())
+    case dynamicLatency: DynamicLatency     => sortedValids.map(testCase => dynamicLatency.latency(testCase.control))
   }
 
   val pass = gen match { // check golden length
@@ -128,26 +132,27 @@ case class ChainsawTest(
       val dataVectors = segment.grouped(inputVectorSize).toSeq
       gen match {
         case frame: Frame => dataVectors.init.map((_, control, valid, false)) :+ (dataVectors.last, control, valid, true)
-        case _ => dataVectors.map((_, control, valid, true))
+        case _            => dataVectors.map((_, control, valid, true))
       }
     }
 
   // data containers
   val outputVectors = ArrayBuffer[Seq[BigDecimal]]()
-  val inputTimes = ArrayBuffer[Long]()
-  val outputTimes = ArrayBuffer[Long]()
+  val inputTimes    = ArrayBuffer[Long]()
+  val outputTimes   = ArrayBuffer[Long]()
 
-  /** --------
-   * simulation
-   * -------- */
+  /** -------- simulation
+    * --------
+    */
 
+  logger.info(s"current naive list: ${naiveSet.mkString(" ")}")
   simConfig.compile(gen.getImplH).doSim { dut =>
     import dut.{clockDomain, flowInPointer, flowOutPointer}
 
     // init
     def init(): Unit = {
       flowInPointer.valid #= false
-      flowInPointer.last #= false
+      flowInPointer.last  #= false
       clockDomain.forkStimulus(2)
       clockDomain.waitSampling()
     }
@@ -160,14 +165,14 @@ case class ChainsawTest(
           flowInPointer.payload.zip(data).foreach { case (fix, decimal) => fix #= decimal }
           dut match {
             case dynamicModule: DynamicModule => dynamicModule.controlIn.zip(control).foreach { case (fix, decimal) => fix #= decimal }
-            case _ => // no control
+            case _                            => // no control
           }
           flowInPointer.valid #= valid
-          flowInPointer.last #= last
+          flowInPointer.last  #= last
           if (valid) inputTimes += simTime()
         } else {
           flowInPointer.valid #= false
-          flowInPointer.last #= false
+          flowInPointer.last  #= false
         }
         i += 1
         clockDomain.waitSampling()
@@ -185,7 +190,7 @@ case class ChainsawTest(
     }
 
     var currentVectors = 0
-    var noValid = 0
+    var noValid        = 0
 
     // working in the main thread, pushing the simulation forward
     def waitSimDone(): Unit =
@@ -203,41 +208,47 @@ case class ChainsawTest(
     if (noValid >= terminateAfter) logger.error(s"Simulation terminated after $terminateAfter cycles of no valid output")
   }
 
-  /** --------
-   * check & show
-   * -------- */
+  /** -------- check & show
+    * --------
+    */
   // vectors -> segments
 
-  var outputSegments = Seq[Seq[BigDecimal]]()
-  var inputSegmentTimes = Seq[Long]()
+  var outputSegments     = Seq[Seq[BigDecimal]]()
+  var inputSegmentTimes  = Seq[Long]()
   var outputSegmentTimes = Seq[Long]()
 
   gen match {
     case frame: Frame =>
       val outputCycleCounts = sortedValids.map(testCase => frame.outputFrameFormat(testCase.control).period)
-      val slices = outputCycleCounts.scan(0)(_ + _).prevAndNext { case (start, end) => start until end }
-      outputSegments = slices.map(slice => outputVectors.slice(slice.start, slice.end)).map(_.flatten)
-      inputSegmentTimes = slices.map(slice => inputTimes.slice(slice.start, slice.end)).map(_.head)
+      val slices            = outputCycleCounts.scan(0)(_ + _).prevAndNext { case (start, end) => start until end }
+      outputSegments     = slices.map(slice => outputVectors.slice(slice.start, slice.end)).map(_.flatten)
+      inputSegmentTimes  = slices.map(slice => inputTimes.slice(slice.start, slice.end)).map(_.head)
       outputSegmentTimes = slices.map(slice => outputTimes.slice(slice.start, slice.end)).map(_.head)
     case _: SemiInfinite =>
-      val discontinuities = outputTimes.sliding(2)
+      val discontinuities = outputTimes
+        .sliding(2)
         .map { case Seq(prev, next) => if (next - prev == 2) 0 else next }
         .filterNot(_ == 0)
-        .map(outputTimes.indexOf).toSeq
+        .map(outputTimes.indexOf)
+        .toSeq
       val splitPoints = 0 +: discontinuities :+ outputVectors.length
-      outputSegments = splitPoints.sliding(2)
-        .map { case Seq(start, end) => outputVectors.slice(start, end) }.toSeq
+      outputSegments = splitPoints
+        .sliding(2)
+        .map { case Seq(start, end) => outputVectors.slice(start, end) }
+        .toSeq
         .map(_.flatten)
-      inputSegmentTimes = splitPoints.init.map(inputTimes)
+      inputSegmentTimes  = splitPoints.init.map(inputTimes)
       outputSegmentTimes = splitPoints.init.map(outputTimes)
     case _: Operator =>
-      outputSegments = outputVectors
-      inputSegmentTimes = inputTimes
+      outputSegments     = outputVectors
+      inputSegmentTimes  = inputTimes
       outputSegmentTimes = outputTimes
   }
 
-  require(outputSegments.length == goldenSegments.length,
-    s"output segment count ${outputSegments.length} is not equal to golden segment count ${goldenSegments.length}")
+  require(
+    outputSegments.length == goldenSegments.length,
+    s"output segment count ${outputSegments.length} is not equal to golden segment count ${goldenSegments.length}"
+  )
 
   val actualLatencies = outputSegmentTimes.zip(inputSegmentTimes).map { case (outputTime, inputTime) => (outputTime - 2 - inputTime) / 2 }
 
@@ -258,7 +269,7 @@ case class ChainsawTest(
   }
 
   val logIndices = if (success) Seq(outputSegments.length - 1) else passRecord.zipWithIndex.filter(!_._1).map(_._2)
-  val allLog = logIndices.take(errorSegmentsShown).map(log).mkString("\n")
+  val allLog     = logIndices.take(errorSegmentsShown).map(log).mkString("\n")
 
   if (!success) logger.error(s"failures:\n$allLog")
   else logger.info(s"test $testName passed\n$allLog")

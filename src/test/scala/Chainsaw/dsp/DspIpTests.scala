@@ -1,7 +1,6 @@
 package Chainsaw.dsp
 
 import Chainsaw._
-import Chainsaw.deprecated.testConfigurations.{cordicImpl, cordicSynth, ddsImpl, ddsSynth, delayImpl, delaySynth, filterImpl, filterSynth, movingAverageImpl, movingAverageSynth}
 import spinal.core.{False, IntToBuilder}
 
 import scala.language.postfixOps

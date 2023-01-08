@@ -2,54 +2,75 @@ package Chainsaw.arithmetic.bitheap
 
 import Chainsaw._
 import Chainsaw.arithmetic._
-import Chainsaw.xilinx.VivadoUtilEstimation
+import Chainsaw.xilinx.VivadoUtil
 import spinal.core._
-
 import java.io.File
 import scala.language.postfixOps
 
 /** enhanced multi-operand adder implemented by compressors
- */
-case class BitHeapCompressor(arithInfos: Seq[ArithInfo],
-                             solver: BitHeapSolver = GreedSolver)
-  extends UnsignedMerge {
+  */
+case class BitHeapCompressor(
+    arithInfos: Seq[ArithInfo],
+    solver: BitHeapSolver = GreedSolver
+) extends UnsignedMerge {
 
-  override def name = s"BitHeapCompressor_${hashName(arithInfos)}_${className(solver)}"
+  override def name =
+    s"BitHeapCompressor_${hashName(arithInfos)}_${className(solver)}"
 
-  val bitHeapGroup = BitHeapGroup.fromInfos(arithInfos.map(_.toPositive))
-  if (compensation > BigInt(0)) bitHeapGroup.addNegativeConstant(-compensation)
+  val bitHeapGroup            = BitHeapGroup.fromInfos(arithInfos)
+  override val positiveLength = bitHeapGroup.positiveLength
 
   val solutionFile = new File(compressorSolutionDir, s"$name")
-  val solution = if (solutionFile.exists()) CompressorFullSolution.load(solutionFile)
-  else {
+  val solution = if (solutionFile.exists()) {
+    logger.info(s"take existing solution from $solutionFile")
+    CompressorFullSolution.load(solutionFile)
+  } else {
     val solution = solver.solveAll(bitHeapGroup)
     solution.save(solutionFile)
     solution
   }
-  logger.info(s"\nbitCount = ${arithInfos.map(_.width).sum}\nsolution cost = ${solution.vivadoUtilEstimation}\nlatency = ${solution.latency}\n${
-    solution.stageSolutions.map(_.toString).mkString("\n")
-  }")
 
-  override def outputTypes = Seq.fill(3)(NumericType.U(maxValue.bitLength))
+  // when the output is too wide for a single 3:1 compressor, we do 3:2 compression first
+  val doFinal3to2 =
+    solution.outHeight == 3 && bitHeapGroup.positiveLength > cpaWidthMax
+  if (doFinal3to2)
+    logger.info(
+      s"add a final 3:2 compression stage as the output width ${bitHeapGroup.positiveLength} > $cpaWidthMax"
+    )
+  val finalHeight = if (doFinal3to2) 2 else solution.outHeight
 
-  override def latency() = solution.latency()
+  override def outputTypes: Seq[NumericType] =
+    Seq.fill(finalHeight)(NumericType.U(positiveLength))
 
-  override def implH =
-    new ChainsawOperatorModule(this) {
-      // TODO: reduce the cost of ~ by supporting inverse bit in BitHeap
-      val operands = dataIn.zip(arithInfos).map { case (fix, info) => if (info.isPositive) fix.asUInt() else ~fix.asUInt() }
-      val weightedUInts = operands.zip(arithInfos).map { case (int, info) => WeightedUInt(int, info.toPositive) }
-      val bitHeapGroup = BitHeapGroup.fromUInts(weightedUInts)
-      if (compensation > BigInt(0)) bitHeapGroup.addNegativeConstant(-compensation)
-      dataOut := bitHeapGroup.implAllHard(solution).toUInts
-        .map(_.resize(validLength))
-        .padTo(3, U(0, validLength bits))
-        .map(_.toAFix)
-    }
+  override def outputArithInfos =
+    Seq.fill(finalHeight)(ArithInfo(positiveLength, weightLow))
 
-  val inverseCost = arithInfos.filter(_.isNegative).map(_.width).sum
-
-  override def vivadoUtilEstimation = solution.vivadoUtilEstimation + VivadoUtilEstimation(lut = inverseCost)
+  override def vivadoUtilEstimation = solution.vivadoUtilEstimation +
+    VivadoUtil(lut = doFinal3to2.toInt * positiveLength)
 
   override def fmaxEstimation = 600 MHz
+
+  override def latency() = solution.latency
+
+  override def implH = new ChainsawOperatorModule(this) {
+    val operands = dataIn.map(_.asUInt())
+    val weightedUInts = operands.zip(arithInfos).map { case (int, info) =>
+      WeightedUInt(int, info)
+    }
+    val bitHeapGroup = BitHeapGroup.fromUInts(weightedUInts)
+    val heapOut      = bitHeapGroup.implAllHard(solution)
+    if (doFinal3to2) { // TODO: skip 3:2 compressor for columns with height = 2 / 1
+      val finalStage = CompressorStageSolution(
+        (0 until heapOut.width).map(i =>
+          CompressorStepSolution("Compressor3to2", 1, i)
+        ),
+        stageHeight = 2,
+        pipelined   = false
+      )
+      heapOut.implStageHard(finalStage)
+    }
+    dataOut := heapOut.toUInts
+      .map(_.resize(positiveLength))
+      .map(_.toAFix)
+  }
 }

@@ -31,7 +31,7 @@
 //
 //  override def outputTypes = Seq.fill(parallel)(dataType)
 //
-//  override def vivadoUtilEstimation = VivadoUtilEstimation()
+//  override def vivadoUtilEstimation = VivadoUtil()
 //
 //  override def fmaxEstimation = 600e6
 //

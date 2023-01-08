@@ -11,46 +11,58 @@ import Chainsaw.xilinx._
 import scala.util.Random
 
 /** an extension of AFix
- *
- */
+  */
 class NumericType(val maxRaw: BigInt, val minRaw: BigInt, val exp: Int) {
 
   val afixType = HardType(new AFix(maxRaw, minRaw, exp))
 
-  /** --------
-   * get core attributes from AFix in virtual global data, to assure the consistency with SpinalHDL
-   * -------- */
+  /** -------- get core attributes from AFix in virtual global data, to assure
+    * the consistency with SpinalHDL
+    * --------
+    */
 
   val (bitWidth, fractional, tempIntegral, signed, maxValue, minValue, step) =
     inVirtualGlob {
       val realInstance = afixType()
-      (realInstance.bitWidth,
+      (
+        realInstance.bitWidth,
         realInstance.fracWidth,
         realInstance.intWidth, // including sign bit
         realInstance.signed,
         realInstance.maxValue,
         realInstance.minValue,
-        realInstance.step)
+        realInstance.step
+      )
     }
 
-  val integral = tempIntegral - (if(signed) 1 else 0) // exclude sign bit
+  val integral = tempIntegral - (if (signed) 1 else 0) // exclude sign bit
 
-  def qFormat = QFormat(if (signed) bitWidth - 1 else bitWidth, fractional, signed)
+  def qFormat =
+    QFormat(if (signed) bitWidth - 1 else bitWidth, fractional, signed)
 
-  /** --------
-   * methods using global data
-   * -------- */
+  /** -------- methods using global data
+    * --------
+    */
   def apply() = afixType()
 
   def asComplex =
-    HardType(ComplexFix(new AFix(maxRaw, minRaw, exp), new AFix(maxRaw, minRaw, exp)))
+    HardType(
+      ComplexFix(new AFix(maxRaw, minRaw, exp), new AFix(maxRaw, minRaw, exp))
+    )
 
   def fromConstant(constant: BigDecimal): AFix = {
     val ret = apply()
-    assert(constant <= ret.maxValue, s"Literal $constant is too big to be assigned in $this")
-    assert(constant >= ret.minValue, s"Literal $constant is too negative to be assigned in this $this")
-    val intValue = if (constant >= 0.0) (constant / step).toBigInt()
-    else (constant / step).toBigInt().toBitValue(bitWidth).toBinaryBigInt
+    assert(
+      constant <= ret.maxValue,
+      s"Literal $constant is too big to be assigned in $this"
+    )
+    assert(
+      constant >= ret.minValue,
+      s"Literal $constant is too negative to be assigned in this $this"
+    )
+    val intValue =
+      if (constant >= 0.0) (constant / step).toBigInt()
+      else (constant / step).toBigInt().toBitValue(bitWidth).to2sComplement
     ret.raw := intValue
     ret
   }
@@ -66,7 +78,10 @@ class NumericType(val maxRaw: BigInt, val minRaw: BigInt, val exp: Int) {
 
   def random = {
     val range = maxRaw - minRaw
-    val validRaw = Iterator.continually(BigInt(bitWidth, Random)).dropWhile(_ > range).next() + minRaw
+    val validRaw = Iterator
+      .continually(BigInt(bitWidth, Random))
+      .dropWhile(_ > range)
+      .next() + minRaw
     BigDecimal(validRaw) * BigDecimal(2).pow(exp)
   }
 
@@ -82,21 +97,44 @@ class NumericType(val maxRaw: BigInt, val minRaw: BigInt, val exp: Int) {
 
   // TODO: accurate type arithmetic
   //  def +(that: NumericTypeNew) = typeArith(that, _ + _)
-  def +(that: NumericType) = NumericType((integral max that.integral) + 1, fractional max that.fractional, signed)
+  def +(that: NumericType) = NumericType(
+    (integral max that.integral) + 1,
+    fractional max that.fractional,
+    signed
+  )
 
   //  def -(that: NumericTypeNew) = typeArith(that, _ - _)
-  def -(that: NumericType) = NumericType((integral max that.integral) + 1, fractional max that.fractional, signed)
+  def -(that: NumericType) = NumericType(
+    (integral max that.integral) + 1,
+    fractional max that.fractional,
+    signed
+  )
 
   //  def *(that: NumericTypeNew) = typeArith(that, _ * _)
-  def *(that: NumericType) = NumericType(integral + that.integral + 1, fractional + that.fractional, signed || signed)
+  def *(that: NumericType) = NumericType(
+    integral + that.integral + 1,
+    fractional + that.fractional,
+    signed || signed
+  )
 
-  def withCarry(bitWidth: Int) = NumericType(integral + bitWidth, fractional, signed)
+  def withCarry(bitWidth: Int) =
+    NumericType(integral + bitWidth, fractional, signed)
 
-  override def toString = s"${if (signed) "S" else "U"}Q${integral}_$fractional".replace("-", "N")
+  override def toString =
+    s"${if (signed) "S" else "U"}Q${integral}_$fractional".replace("-", "N")
 
-  def same(your: BigDecimal, golden: BigDecimal, absTolerance: Double, relativeTolerance: Double) = {
-    val ret = (your - golden).abs <= step || (your - golden).abs <= absTolerance || (your - golden).abs / (golden.abs + step) <= relativeTolerance
-    if (!ret) logger.error(s"your: $your, golden: $golden, step: $step, absTolerance: $absTolerance, relativeTolerance: $relativeTolerance")
+  def same(
+      your: BigDecimal,
+      golden: BigDecimal,
+      absTolerance: Double,
+      relativeTolerance: Double
+  ) = {
+    val ret =
+      (your - golden).abs <= step || (your - golden).abs <= absTolerance || (your - golden).abs / (golden.abs + step) <= relativeTolerance
+    if (!ret)
+      logger.error(
+        s"your: $your, golden: $golden, step: $step, absTolerance: $absTolerance, relativeTolerance: $relativeTolerance"
+      )
     ret
   }
 }
@@ -104,14 +142,19 @@ class NumericType(val maxRaw: BigInt, val minRaw: BigInt, val exp: Int) {
 object NumericType {
   def apply(integral: Int, fractional: Int, signed: Boolean): NumericType = {
     val maxRaw = BigInt(2).pow(integral + fractional) - 1
-    val minRaw = if (signed) -BigInt(2).pow(integral + fractional) else BigInt(0)
+    val minRaw =
+      if (signed) -BigInt(2).pow(integral + fractional) else BigInt(0)
     new NumericType(maxRaw, minRaw, -fractional)
   }
 
   def apply(maxRaw: BigInt, minRaw: BigInt, exp: Int): NumericType =
     new NumericType(maxRaw, minRaw, exp)
 
-  def apply(maxValue: BigDecimal, minValue: BigDecimal, exp: Int): NumericType = {
+  def apply(
+      maxValue: BigDecimal,
+      minValue: BigDecimal,
+      exp: Int
+  ): NumericType = {
     val step = BigDecimal(2).pow(exp)
     // TODO: ceil & floor for BigDecimal
     val maxRaw = (maxValue / step).toBigInt()
@@ -119,13 +162,16 @@ object NumericType {
     NumericType(maxRaw, minRaw, exp)
   }
 
+  // initiation utils
   def U(integral: Int) = NumericType(integral, 0, signed = false)
 
   def S(integral: Int) = NumericType(integral, 0, signed = true)
 
-  def UFix(integral: Int, fractional: Int) = NumericType(integral, fractional, signed = false)
+  def UFix(integral: Int, fractional: Int) =
+    NumericType(integral, fractional, signed = false)
 
-  def SFix(integral: Int, fractional: Int) = NumericType(integral, fractional, signed = true)
+  def SFix(integral: Int, fractional: Int) =
+    NumericType(integral, fractional, signed = true)
 
   def Bool() = NumericType(1, 0, signed = false)
 

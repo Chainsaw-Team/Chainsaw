@@ -19,9 +19,15 @@ class BitHeapTests extends ChainsawFlatSpec {
   //     1. mixed signedness
   //     2. diff time
   //     3. different weightLows and weightHighs
-  def getRandomInfos = ArithInfoGenerator.genRectangularInfos(width = 10, height = 10, withNoise = true, timeStrategy = RandomTimeDiff)
+  def getRandomInfos = ArithInfoGenerator.genRectangularInfos(
+    width        = 10,
+    height       = 10,
+    withNoise    = true,
+    timeStrategy = RandomTimeDiff
+  )
 
-  def getRandomOperands = getRandomInfos.map(info => WeightedBigInt(BigInt(info.width, Random), info))
+  def getRandomOperands =
+    getRandomInfos.map(info => WeightedBigInt(BigInt(info.width, Random), info))
 
   def getRandomBitHeap = BitHeap.fromBigInts(getRandomOperands)
 
@@ -51,8 +57,11 @@ class BitHeapTests extends ChainsawFlatSpec {
       val sumsBefore = bitHeap0.evalBigInt + bitHeap1.evalBigInt
       bitHeap0.contributeHeapTo(bitHeap1)
       val sumsAfter = bitHeap0.evalBigInt + bitHeap1.evalBigInt
-      assert(bitHeap0.evalBigInt == 0)                                           // bitHeap0 should be empty after move
-      assert(sumsBefore == sumsAfter, s"before: $sumsBefore, after: $sumsAfter") // sums should be the same, before and after
+      assert(bitHeap0.evalBigInt == 0) // bitHeap0 should be empty after move
+      assert(
+        sumsBefore == sumsAfter,
+        s"before: $sumsBefore, after: $sumsAfter"
+      ) // sums should be the same, before and after
     }
   }
 
@@ -70,11 +79,18 @@ class BitHeapTests extends ChainsawFlatSpec {
 
   it should "getSubHeap" in {
     (0 until 1000).foreach { _ =>
+      val stepSolution = CompressorStepSolution(
+        "Compressor4to2",
+        8,
+        0,
+        CompressorScores(0, 0, 0, 0)
+      )
       val bitHeap = getRandomBitHeap
-      val small   = BitHeap.fromHeights(Seq(2,1,1,7), bitHeap.weightLow, bitHeap.time)
+      val small =
+        BitHeap.fromHeights(Seq(2, 1, 1, 7), bitHeap.weightLow, bitHeap.time)
       bitHeap.absorbHeapFrom(small)
       val valueBefore = bitHeap.evalBigInt
-      val sub         = bitHeap.getSub(Seq(2,1,1,7), 0)
+      val sub         = bitHeap.getSub(Seq(2, 1, 1, 7), 0)
       val valueAfter  = sub.evalBigInt + bitHeap.evalBigInt
       assert(valueBefore == valueAfter)
     }
@@ -82,8 +98,10 @@ class BitHeapTests extends ChainsawFlatSpec {
 
   it should "allocate" in {
     (0 until 1000).foreach { _ =>
-      val bitHeap     = getRandomBitHeap
-      val randomValue = Random.nextInt((bitHeap.maxValue >> bitHeap.weightLow).toInt) << bitHeap.weightLow
+      val bitHeap = getRandomBitHeap
+      val randomValue = Random.nextInt(
+        (bitHeap.maxValue >> bitHeap.weightLow).toInt
+      ) << bitHeap.weightLow
       bitHeap.allocate(randomValue)
       assert(bitHeap.evalBigInt == randomValue)
     }
@@ -95,45 +113,55 @@ class BitHeapTests extends ChainsawFlatSpec {
       val bitHeap     = BitHeap.fromHeights(Seq.fill(10)(10), 0, 0)
       val valueBefore = bitHeap.evalBigInt
       val constant0   = BigInt(20, Random)
-      bitHeap.addPositiveConstant(constant0)
+      bitHeap.addConstant(constant0)
+      bitHeap.absorbConstant()
       val valueAfterAdd = bitHeap.evalBigInt
       //      println(s"valueBefore = $valueBefore, valueAfter = $valueAfterAdd, constant = $constant0")
       assert(valueAfterAdd == valueBefore + constant0)
-      val constant1     = Random.nextInt(bitHeap.maxValue.toInt)
-      val validLength   = bitHeap.addNegativeConstant(-constant1)
+      val constant1 = Random.nextInt(bitHeap.maxValue.toInt)
+      bitHeap.addConstant(-constant1)
+      bitHeap.absorbConstant()
+      val validLength   = bitHeap.positiveLength
       val valueAfterSub = bitHeap.evalBigInt
       val golden        = valueAfterAdd - constant1
       //      println(s"valueAfterAdd = $valueAfterAdd, valueAfterSub = $valueAfterSub, golden = $golden, constant = $constant1")
-      if (golden >= 0) assert(valueAfterSub.mod(Pow2(validLength)) == golden.mod(Pow2(validLength)))
+      if (golden >= 0)
+        assert(
+          valueAfterSub.mod(pow2(validLength)) == golden.mod(pow2(validLength))
+        )
     }
   }
 
   val solution200_6 = CompressorFullSolution(
     Seq(
       CompressorStageSolution(
-        (0 until 200).map(i => CompressorStepSolution(compressorName = "Compressor6to3", width = 1, columnIndex = i, compressorScores = CompressorScores(0, 0, 0, 0))),
+        (0 until 200).map(i =>
+          CompressorStepSolution(
+            compressorName   = "Compressor6to3",
+            width            = 1,
+            columnIndex      = i,
+            compressorScores = CompressorScores(0, 0, 0, 0)
+          )
+        ),
         -1,
         pipelined = true
       ),
-      CompressorStageSolution((0 until 2).map(i => CompressorStepSolution("Compressor3to1", 96, 96 * i, CompressorScores(0, 0, 0, 0))), -1, pipelined = true)
+      CompressorStageSolution(
+        (0 until 2).map(i =>
+          CompressorStepSolution(
+            "Compressor3to1",
+            96,
+            96 * i,
+            CompressorScores(0, 0, 0, 0)
+          )
+        ),
+        -1,
+        pipelined = true
+      )
     )
   )
 
   behavior of "implSoft"
-
-  it should "work on a stage" in {
-    (0 until 1000).foreach { _ =>
-      // TODO: more bitheap and compressors of different shapes
-      val bitHeap     = BitHeap.fromHeights(Seq.fill(10)(10), 0, 0)
-      val steps       = Seq(0, 2, 4, 6).map(CompressorStepSolution("Compressor2117", 1, _, CompressorScores(0, 0, 0, 0)))
-      val solution    = CompressorStageSolution(steps, -1, pipelined = true)
-      val valueBefore = bitHeap.evalBigInt
-      bitHeap.implStageSoft(solution)
-      val valueAfter = bitHeap.evalBigInt
-      assert(valueBefore == valueAfter)
-      assert(bitHeap.bitsCount == 76) // 2117 -> 5, reduction = 6, 100 - 4 * 6 = 76
-    }
-  }
 
   it should "work on the whole heap" in {
     (0 until 1000).foreach { _ =>
@@ -151,8 +179,9 @@ class BitHeapTests extends ChainsawFlatSpec {
   // TODO: more bitheap and solutions of different shapes
   it should "work on the whole heap" in {
     case class Add200_6() extends Component {
-      val dataIn  = in Vec (UInt(200 bits), 6)
-      val bitHeap = BitHeap.fromUInts(dataIn.map(WeightedUInt(_, ArithInfo(200, 0))))
+      val dataIn = in Vec (UInt(200 bits), 6)
+      val bitHeap =
+        BitHeap.fromUInts(dataIn.map(WeightedUInt(_, ArithInfo(200, 0))))
       val dataOut = bitHeap.implAllHard(solution200_6).toUInts
       dataOut.foreach(out(_))
     }
@@ -176,6 +205,32 @@ class BitHeapTests extends ChainsawFlatSpec {
 
   behavior of "BitHeaps"
 
+  it should "init from mixed operands correctly" in {
+    val infos = Seq(
+      ArithInfo(64, 128),
+      ArithInfo(64, 192),
+      ArithInfo(64, 160),
+      ArithInfo(64, 160, isPositive = false),
+      ArithInfo(64, 160, isPositive = false),
+      ArithInfo(32, 192),
+      ArithInfo(32, 192),
+      ArithInfo(1, 224)
+    )
+    (0 until 100).foreach { _ =>
+      val bitHeaps    = BitHeapGroup.fromInfos(infos)
+      val valueBefore = bitHeaps.evalBigInt
+      bitHeaps.absorbConstant()
+      val valueAfter = bitHeaps.evalBigInt
+      assert(valueBefore == valueAfter)
+      val solution  = GreedSolver.solveAll(bitHeaps)
+      val valueEval = bitHeaps.bitHeaps.head.implAllSoft(solution).evalBigInt
+      assert(
+        valueBefore == valueEval,
+        s"values: before = $valueBefore, after = $valueAfter, eval = $valueEval"
+      )
+    }
+  }
+
   behavior of "CompressorFullSolution"
 
   it should "(de)serialization" in {
@@ -183,20 +238,60 @@ class BitHeapTests extends ChainsawFlatSpec {
       Seq(
         CompressorStageSolution(
           Seq(
-            CompressorStepSolution("Compressor2117", 1, 0, CompressorScores(0, 0, 0, 0)),
-            CompressorStepSolution("Compressor2117", 1, 2, CompressorScores(0, 0, 0, 0)),
-            CompressorStepSolution("Compressor2117", 1, 4, CompressorScores(0, 0, 0, 0)),
-            CompressorStepSolution("Compressor2117", 1, 6, CompressorScores(0, 0, 0, 0))
+            CompressorStepSolution(
+              "Compressor2117",
+              1,
+              0,
+              CompressorScores(0, 0, 0, 0)
+            ),
+            CompressorStepSolution(
+              "Compressor2117",
+              1,
+              2,
+              CompressorScores(0, 0, 0, 0)
+            ),
+            CompressorStepSolution(
+              "Compressor2117",
+              1,
+              4,
+              CompressorScores(0, 0, 0, 0)
+            ),
+            CompressorStepSolution(
+              "Compressor2117",
+              1,
+              6,
+              CompressorScores(0, 0, 0, 0)
+            )
           ),
           -1,
           pipelined = true
         ),
         CompressorStageSolution(
           Seq(
-            CompressorStepSolution("Compressor2117", 1, 0, CompressorScores(0, 0, 0, 0)),
-            CompressorStepSolution("Compressor2117", 1, 2, CompressorScores(0, 0, 0, 0)),
-            CompressorStepSolution("Compressor2117", 1, 4, CompressorScores(0, 0, 0, 0)),
-            CompressorStepSolution("Compressor2117", 1, 6, CompressorScores(0, 0, 0, 0))
+            CompressorStepSolution(
+              "Compressor2117",
+              1,
+              0,
+              CompressorScores(0, 0, 0, 0)
+            ),
+            CompressorStepSolution(
+              "Compressor2117",
+              1,
+              2,
+              CompressorScores(0, 0, 0, 0)
+            ),
+            CompressorStepSolution(
+              "Compressor2117",
+              1,
+              4,
+              CompressorScores(0, 0, 0, 0)
+            ),
+            CompressorStepSolution(
+              "Compressor2117",
+              1,
+              6,
+              CompressorScores(0, 0, 0, 0)
+            )
           ),
           -1,
           pipelined = true

@@ -15,12 +15,15 @@ abstract class BitHeapSolver {
     */
   def solveAll(bitHeapGroup: BitHeapGroup[BigInt]): CompressorFullSolution = {
 
+    bitHeapGroup.absorbConstant()
+
     val timeAndHeaps: Map[Int, BitHeap[BigInt]] = bitHeapGroup.bitHeaps.groupBy(_.time).map(pair => pair._1 -> pair._2.head)
     val stages                                  = ArrayBuffer[CompressorStageSolution]()
 
     var currentTime = timeAndHeaps.keys.min
     var currentHeap = timeAndHeaps(currentTime)
 
+    // TODO: allow unpipelined stage
     while (currentTime < timeAndHeaps.keys.max) {
       stages += solveStage(currentHeap)
       if (stages.last.pipelined) {
@@ -35,11 +38,13 @@ abstract class BitHeapSolver {
       }
     }
 
-    val restSolution = solveAll(currentHeap)
-    CompressorFullSolution(stages ++ restSolution.stageSolutions)
+    while (currentHeap.heightMax > 3) stages += solveStage(currentHeap)
+    CompressorFullSolution(stages)
   }
 
+  // TODO: remove this and leave the interface in BitHeapGroup only
   def solveAll(bitHeap: BitHeap[BigInt]): CompressorFullSolution = {
+    bitHeap.absorbConstant()
     val stages = ArrayBuffer[CompressorStageSolution]()
     while (bitHeap.heightMax > 3) stages += solveStage(bitHeap)
     CompressorFullSolution(stages)
@@ -71,7 +76,7 @@ object NaiveSolver extends BitHeapSolver {
         CompressorStepSolution(compressorName = "Compressor3to1", width, columnIdx, getExactScores(Compressor3to1(width), columnIdx, shouldPipeline = true))
       } else {
         val columnIdx = heap.indexWhere(_.nonEmpty)
-        CompressorStepSolution(compressorName = "Compressor6to3", width, columnIdx, getExactScores(Compressor6to3, columnIdx, shouldPipeline = true))
+        CompressorStepSolution(compressorName = "Compressor6to3", width, columnIdx, getExactScores(Compressor6to3(), columnIdx, shouldPipeline = true))
       }
     }
 
@@ -90,9 +95,6 @@ object NaiveSolver extends BitHeapSolver {
 }
 
 object GreedSolver extends BitHeapSolver {
-  def apply(bitHeapGroup: BitHeapGroup[BigInt]): CompressorFullSolution = solveAll(bitHeapGroup)
-
-  def apply(bitHeap: BitHeap[BigInt]): CompressorFullSolution = solveAll(bitHeap)
 
   override def solveStage(bitHeap: BitHeap[BigInt]): CompressorStageSolution = {
 
@@ -150,7 +152,7 @@ object GreedSolver extends BitHeapSolver {
           }
       }
       bestCompressor match {
-        case gpc: Gpc           => CompressorStepSolution(gpc.name, -1, columnIndex, getExactScores(gpc, columnIndex, shouldPipeline = true))
+        case gpc: Gpc           => CompressorStepSolution(gpc.name.split('_').head, -1, columnIndex, getExactScores(gpc, columnIndex, shouldPipeline = true))
         case rowAdder: RowAdder => CompressorStepSolution(rowAdder.name.split('_').head, rowAdder.width, columnIndex, getExactScores(rowAdder, columnIndex, shouldPipeline = true))
       }
     }
@@ -164,7 +166,6 @@ object GreedSolver extends BitHeapSolver {
     }
     val heapNext: BitHeap[BigInt] = heapOuts.reduce(_ + _)
     asSoft.absorbHeapFrom(heapNext)
-    if (verbose >= 1) logger.info(s"----------------\n$this----------------\n")
     CompressorStageSolution(steps, heightMax, pipelined = true)
   }
 }

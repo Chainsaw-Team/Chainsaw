@@ -26,8 +26,9 @@ case class Xillybus(devices: Seq[XillybusDevice]) extends BlackBox {
 
 /** --------
  * interfaces of different kinds of devices supported by xillybus
+ *
  * @see [[http://xillybus.com/custom-ip-factory]]
- * -------- */
+ *      -------- */
 
 case class StreamRead(device: XillybusDevice)
   extends Bundle {
