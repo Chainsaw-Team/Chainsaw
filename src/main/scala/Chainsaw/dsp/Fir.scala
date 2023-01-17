@@ -18,7 +18,8 @@ case class Fir(
     coeffType: NumericType,
     dataType: NumericType,
     symmetric: Boolean = false
-) extends ChainsawInfiniteGenerator {
+) extends ChainsawInfiniteGenerator
+    with FixedLatency {
 
   if (symmetric)
     require(
@@ -86,5 +87,6 @@ case class Fir(
 
     // SInt datapath end
     dataOut.head.assignFromBits(ret.d().asBits)
+    lastOut := lastIn.validAfter(latency())
   }
 }

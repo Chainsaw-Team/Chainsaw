@@ -4,8 +4,16 @@ l = min(length(yours), length(golden));
 golden = golden(1:l);
 yours = yours(1:l);
 
-%golden = golden - mean(golden);
-%yours = yours - mean(yours);
+%yours = (yours - mean(yours));
+%golden = (golden - mean(golden));
+
+figure()
+
+plot(yours, 'y')
+hold on
+plot(golden, 'g')
+legend('yours', 'golden')
+saveas(gcf, '/home/ltr/Chainsaw/src/main/resources/matlabGenerated/raw.png')
 
 % lag value shold be within 1000 elements
 %[value, lags] = xcorr(golden(1:1000), yours(1:1000));
@@ -32,7 +40,6 @@ plot(y, 'y')
 hold on
 plot(g, 'g')
 legend('yours', 'golden')
-
 saveas(gcf, '/home/ltr/Chainsaw/src/main/resources/matlabGenerated/corr.png')
 
 figure()

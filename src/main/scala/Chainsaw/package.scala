@@ -114,6 +114,7 @@ package object Chainsaw {
   }
 
   implicit class seqUtil[T: ClassTag](seq: Seq[T]) {
+    // TODO: use sliding(2) instead
     def prevAndNext[TOut](f: ((T, T)) => TOut): Seq[TOut] =
       seq.init.zip(seq.tail).map(f)
 
@@ -189,6 +190,17 @@ package object Chainsaw {
   // for easy connection between ChainsawModules
   type ChainsawFlow = Flow[Fragment[Vec[AFix]]]
 
+  object ChainsawFlow {
+    def apply(payload: Seq[AFix], valid: Bool, last: Bool): ChainsawFlow = {
+      val fragment = Vec(payload)
+      val ret      = new Flow(new Fragment(fragment))
+      ret.fragment := fragment
+      ret.valid    := valid
+      ret.last     := last
+      ret
+    }
+  }
+
   implicit class ChainsawFlowUtil(flow: ChainsawFlow) {
     def mapFragment(
         func: Seq[AFix] => Seq[AFix],
@@ -210,6 +222,14 @@ package object Chainsaw {
       func(flow.valid)
       func(flow.last)
     }
+
+    def withLast(last: Bool) = {
+      val ret = new Flow(new Fragment(flow.fragment))
+      ret.fragment := flow.fragment
+      ret.valid    := flow.valid
+      ret.last     := last
+      ret
+    }
   }
 
   /** -------- Flows
@@ -226,7 +246,7 @@ package object Chainsaw {
     naiveSet.clear() // clear naiveSet after test
   }
 
-  def ChainsawFlow(
+  def ChainsawEdaFlow(
       gen: ChainsawBaseGenerator,
       edaFlowType: EdaFlowType,
       requirementStrategy: UtilRequirementStrategy
@@ -248,12 +268,12 @@ package object Chainsaw {
   def ChainsawSynth(
       gen: ChainsawBaseGenerator,
       requirementStrategy: UtilRequirementStrategy = DefaultRequirement
-  ) = ChainsawFlow(gen, SYNTH, requirementStrategy)
+  ) = ChainsawEdaFlow(gen, SYNTH, requirementStrategy)
 
   def ChainsawImpl(
       gen: ChainsawBaseGenerator,
       requirementStrategy: UtilRequirementStrategy = DefaultRequirement
-  ) = ChainsawFlow(gen, IMPL, requirementStrategy)
+  ) = ChainsawEdaFlow(gen, IMPL, requirementStrategy)
 
   /** -------- util functions
     * --------

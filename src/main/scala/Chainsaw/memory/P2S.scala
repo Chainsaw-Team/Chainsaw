@@ -8,7 +8,9 @@ import Chainsaw.xilinx._
 
 import scala.language.postfixOps
 
-case class P2S(p: Int, s: Int, bitWidth: Int) extends ChainsawFrameGenerator {
+case class P2S(p: Int, s: Int, bitWidth: Int)
+    extends ChainsawFrameGenerator
+    with FixedLatency {
   require(p % s == 0)
 
   override def name = s"P2S_s${s}_p${p}_w$bitWidth"
@@ -33,7 +35,6 @@ case class P2S(p: Int, s: Int, bitWidth: Int) extends ChainsawFrameGenerator {
 
   val regCount = lcm(p, s).toInt
   // reg & MUX-based implementation
-  val regs = Seq.fill(regCount)(Reg(Bits(bitWidth bits)))
 
   override def implH = new ChainsawFrameModule(this) {
     val counter = CounterFreeRun(p / s)

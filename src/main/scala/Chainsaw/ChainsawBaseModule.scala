@@ -25,6 +25,7 @@ abstract class ChainsawBaseModule(val gen: ChainsawBaseGenerator)
   var flowInPointer  = flowIn
   var flowOutPointer = flowOut
 
+  // auto-control
   gen match {
     case fixedLatency: FixedLatency =>
       validOut := validIn.validAfter(fixedLatency.latency())
@@ -49,6 +50,7 @@ abstract class ChainsawBaseModule(val gen: ChainsawBaseGenerator)
     flowOut.mapFragment(func, latency)
 
   def fixTo(af: AFix) = map(_.map(_.fixTo(af)))
+
 }
 
 trait DynamicModule {
@@ -57,7 +59,11 @@ trait DynamicModule {
 
 class ChainsawOperatorModule(override val gen: ChainsawOperatorGenerator)
     extends ChainsawBaseModule(gen) {
-  lastOut := validOut
+  gen match {
+    case fixedLatency: FixedLatency =>
+      lastOut := lastIn.validAfter(fixedLatency.latency())
+    case _ =>
+  }
 }
 
 class ChainsawDynamicOperatorModule(
@@ -68,7 +74,11 @@ class ChainsawDynamicOperatorModule(
   import gen._
 
   override val controlIn = in Vec controlTypes.map(_.apply())
-  lastOut := validOut
+  gen match {
+    case fixedLatency: FixedLatency =>
+      lastOut := lastIn.validAfter(fixedLatency.latency())
+    case _ =>
+  }
 }
 
 class ChainsawFrameModule(override val gen: ChainsawFrameGenerator)
@@ -93,9 +103,7 @@ class ChainsawDynamicFrameModule(
 }
 
 class ChainsawInfiniteModule(override val gen: ChainsawInfiniteGenerator)
-    extends ChainsawBaseModule(gen) {
-  lastOut.assignDontCare()
-}
+    extends ChainsawBaseModule(gen) {}
 
 class ChainsawDynamicInfiniteModule(
     override val gen: ChainsawDynamicInfiniteGenerator
@@ -105,7 +113,6 @@ class ChainsawDynamicInfiniteModule(
   import gen._
 
   override val controlIn = in Vec controlTypes.map(_.apply())
-  lastOut.assignDontCare()
 }
 
 abstract class ChainsawCustomModule extends Component {

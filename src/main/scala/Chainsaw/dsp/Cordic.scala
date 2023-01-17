@@ -17,7 +17,8 @@ case class Cordic(
     fractional: Int,
     initValues: Seq[Option[Double]] = Seq(None, None, None),
     speedLevel: Int                 = 2
-) extends ChainsawOperatorGenerator {
+) extends ChainsawOperatorGenerator
+    with FixedLatency {
 
   override def name = s"Cordic_" +
     s"${className(algebraicMode)}_${className(rotationMode)}_" +

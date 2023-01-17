@@ -11,7 +11,8 @@ import scala.util.Random
 
 // TODO: parallel version
 case class DynamicDelay(delay: Int, dataType: NumericType, parallel: Int)
-    extends ChainsawDynamicInfiniteGenerator {
+    extends ChainsawDynamicInfiniteGenerator
+    with DynamicLatency {
 
   override def name = s"DynamicDelay_$delay"
 

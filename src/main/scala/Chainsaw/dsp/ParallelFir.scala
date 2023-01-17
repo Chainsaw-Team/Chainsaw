@@ -16,7 +16,8 @@ case class ParallelFir(
     coeffType: NumericType,
     dataType: NumericType,
     parallel: Int
-) extends ChainsawInfiniteGenerator {
+) extends ChainsawInfiniteGenerator
+    with FixedLatency {
 
   override def name =
     s"Parallel_${parallel}_Fir_${dataType}_${coeffType}_coeff${hashName(coeffs)}"
@@ -111,6 +112,7 @@ case class ParallelFir(
         subFilterRets.reduceBalancedTree(add, pipeline)
       }
       dataOut := rets
+      lastOut := lastIn.validAfter(latency())
     }
 
   override def impl(testCase: TestCase) = {

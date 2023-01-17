@@ -9,7 +9,7 @@ case class TestCase(
     control: Seq[BigDecimal] = Seq[BigDecimal]()
 ) {
   override def toString =
-    s"data   : ${data.mkString(",")}\ncontrol: ${control.mkString(",")}"
+    s"data   : ${data.take(100).mkString(",")}...\ncontrol: ${control.mkString(",")}"
 }
 
 object TestCase {
@@ -148,27 +148,15 @@ trait ChainsawBaseGenerator {
   )
 }
 
-trait SemiInfinite
-
-trait Operator
-
-trait FixedLatency {
-  def latency(): Int
-}
-
-trait DynamicLatency {
-  def latency(control: Seq[BigDecimal]): Int
-}
-
-trait OverwriteLatency
-
-trait Dynamic extends DynamicLatency {
+trait Dynamic {
   def controlTypes: Seq[NumericType]
 
   def controlPortWidth = controlTypes.length
 
   def randomControlVector = controlTypes.map(_.random)
 }
+
+trait Operator
 
 trait Frame {
 
@@ -187,10 +175,33 @@ trait Frame {
   def randomInputFrame(control: Seq[BigDecimal]): Seq[BigDecimal]
 }
 
-trait ChainsawOperatorGenerator
-    extends ChainsawBaseGenerator
-    with Operator
-    with FixedLatency {
+trait SemiInfinite
+
+trait FixedLatency {
+  def latency(): Int
+}
+
+trait DynamicLatency {
+  def latency(control: Seq[BigDecimal]): Int
+}
+
+trait OverwriteLatency
+
+trait Unaligned {
+  def inputTimes: Seq[Int]
+
+  def inputInterval = inputTimes.max - inputTimes.min
+
+  def outputTimes: Seq[Int]
+
+  def outputInterval = outputTimes.max - outputTimes.min
+}
+
+trait Duty {
+  def dutyRation: Double
+}
+
+trait ChainsawOperatorGenerator extends ChainsawBaseGenerator with Operator {
 
   override def resetCycle = 0
 
@@ -225,10 +236,7 @@ trait ChainsawDynamicOperatorGenerator
   override def randomTestCase = TestCase(randomDataVector, randomControlVector)
 }
 
-trait ChainsawFrameGenerator
-    extends ChainsawBaseGenerator
-    with Frame
-    with FixedLatency {
+trait ChainsawFrameGenerator extends ChainsawBaseGenerator with Frame {
 
   def inputFrameFormat: FrameFormat
 
@@ -290,8 +298,7 @@ trait ChainsawDynamicFrameGenerator
 
 trait ChainsawInfiniteGenerator
     extends ChainsawBaseGenerator
-    with SemiInfinite
-    with FixedLatency {
+    with SemiInfinite {
 
   override def implH: ChainsawInfiniteModule
 
@@ -302,7 +309,7 @@ trait ChainsawInfiniteGenerator
   override def getImplH = super.getImplH.asInstanceOf[ChainsawInfiniteModule]
 
   override def randomTestCase = TestCase(
-    Seq.fill(resetCycle)(randomDataVector).flatten
+    Seq.fill(resetCycle + 1)(randomDataVector).flatten
   )
 
   def randomTestCase(cycle: Int) = TestCase(
@@ -326,19 +333,12 @@ trait ChainsawDynamicInfiniteGenerator
     super.getImplH.asInstanceOf[ChainsawDynamicInfiniteModule]
 
   override def randomTestCase = TestCase(
-    data    = Seq.fill(resetCycle)(randomDataVector).flatten,
+    data    = Seq.fill(resetCycle + 1)(randomDataVector).flatten,
+    control = randomControlVector
+  )
+
+  def randomTestCase(cycle: Int) = TestCase(
+    data    = Seq.fill(cycle)(randomDataVector).flatten,
     control = randomControlVector
   )
 }
-
-trait Unaligned {
-  def inputTimes: Seq[Int]
-
-  def inputInterval = inputTimes.max - inputTimes.min
-
-  def outputTimes: Seq[Int]
-
-  def outputInterval = outputTimes.max - outputTimes.min
-}
-
-// TODO: latency shouldn't be a must-be for generators
