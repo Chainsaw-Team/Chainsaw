@@ -23,7 +23,8 @@ import scala.language.postfixOps
   */
 case class CcaAdder(override val width: Int, override val blockWidth: Int)
     extends CcaAddition(width: Int, blockWidth: Int)
-    with ChainsawOperatorGenerator {
+    with ChainsawOperatorGenerator
+    with FixedLatency {
 
   override def latency() = 2
 

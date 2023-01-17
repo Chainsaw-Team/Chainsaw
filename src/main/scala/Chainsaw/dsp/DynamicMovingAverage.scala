@@ -10,7 +10,8 @@ import scala.util.Random
 
 // TODO: parallel version
 case class DynamicMovingAverage(size: Int, dataType: NumericType)
-    extends ChainsawDynamicInfiniteGenerator {
+    extends ChainsawDynamicInfiniteGenerator
+    with FixedLatency {
 
   override def implNaiveH = None
 
@@ -45,10 +46,9 @@ case class DynamicMovingAverage(size: Int, dataType: NumericType)
 
   val adderTreeLatency = log2Up(size)
   val scalingLatency   = 2
-  val latency =
-    adderTreeLatency + scalingLatency + 4 // 4 for control compensations
 
-  override def latency(control: Seq[BigDecimal]) = latency
+  override def latency() =
+    adderTreeLatency + scalingLatency + 4 // 4 for control compensations
 
   override def resetCycle = size
 
@@ -96,6 +96,6 @@ case class DynamicMovingAverage(size: Int, dataType: NumericType)
       scalingFactorRom.readSync(controlInUse)
     }
     dataOut.head := (sum * scalingFactor).d(2).fixTo(dataType())
-    validOut     := validIn.validAfter(latency)
+    lastOut      := lastIn.validAfter(latency())
   }
 }

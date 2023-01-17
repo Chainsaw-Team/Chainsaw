@@ -4,7 +4,7 @@ import Chainsaw.arithmetic.flopoco.FlopocoOperator
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest._
 
-import scala.util.Try
+import scala.util.{Random, Try}
 import org.apache.commons.io.FileUtils
 import spinal.core.{EnumEtoEnumE2, SpinalConfig}
 

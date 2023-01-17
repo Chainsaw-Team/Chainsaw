@@ -19,7 +19,7 @@ case class Merge(arithInfos: Seq[ArithInfo]) extends UnsignedMerge {
   val compressorGen           = BitHeapCompressor(arithInfos)
   override val positiveLength = compressorGen.positiveLength
 
-  val cpaGen: ChainsawOperatorGenerator = {
+  val cpaGen = {
     if (compressorGen.positiveLength > cpaWidthMax) CcaAdder(positiveLength, 64)
     else if (compressorGen.outputTypes.length == 3)
       Cpa(TernaryAdder, positiveLength)

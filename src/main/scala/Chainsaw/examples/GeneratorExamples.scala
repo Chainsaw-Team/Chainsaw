@@ -11,7 +11,9 @@ import Chainsaw.memory._
 
 // TODO: formal examples
 
-case class ExampleAdder(width: Int) extends ChainsawOperatorGenerator {
+case class ExampleAdder(width: Int)
+    extends ChainsawOperatorGenerator
+    with FixedLatency {
   override def impl(testCase: TestCase) = Seq(testCase.data.sum)
 
   override def metric(yours: Seq[BigDecimal], golden: Seq[BigDecimal]) =
@@ -79,11 +81,11 @@ case class ExampleAddSub(width: Int) extends ChainsawDynamicOperatorGenerator {
 
   override def outputTypes = Seq(NumericType.S(width + 1))
 
-  override def latency(control: Seq[BigDecimal]) = 1
 }
 
 case class ExampleStaticFlip(dataType: NumericType, length: Int)
-    extends ChainsawFrameGenerator {
+    extends ChainsawFrameGenerator
+    with FixedLatency {
 
   override def name = s"staticFlip"
 
@@ -124,7 +126,7 @@ case class ExampleStaticFlip(dataType: NumericType, length: Int)
 
     ram.write(writeAddr, dataIn, doWrite)
     dataOut := ram.readSync(readAddr)
-    lastOut := counterRead.willOverflow.d()
+    lastOut := lastIn.validAfter(latency())
   }
 
   override def implNaiveH = None
@@ -139,7 +141,8 @@ case class ExampleStaticFlip(dataType: NumericType, length: Int)
 }
 
 case class ExampleDynamicFlip(dataType: NumericType, maxLength: Int)
-    extends ChainsawDynamicFrameGenerator {
+    extends ChainsawDynamicFrameGenerator
+    with FixedLatency {
 
   val innerMaxLength = maxLength + 2 // for FIFO latency
 
@@ -158,7 +161,7 @@ case class ExampleDynamicFlip(dataType: NumericType, maxLength: Int)
         TestCase(randomInputFrame(Seq(BigDecimal(20))), Seq(BigDecimal(20)))
       ) // for add
 
-  override def latency(control: Seq[BigDecimal]) = innerMaxLength + 1
+  override def latency() = innerMaxLength + 1
 
   override def resetCycle = 0
 
@@ -201,8 +204,7 @@ case class ExampleDynamicFlip(dataType: NumericType, maxLength: Int)
     val readAddr: UInt = readAddrTop - counterRead
     dataOut := ram.readSync(readAddr)
 
-    validOut := validIn.validAfter(innerMaxLength + 1)
-    lastOut  := readDone.d()
+    lastOut := readDone.d()
   }
 
   override def implNaiveH = None
@@ -219,7 +221,8 @@ case class ExampleDynamicFlip(dataType: NumericType, maxLength: Int)
 }
 
 case class ExampleStaticFir(dataType: NumericType, coeffs: Seq[Double])
-    extends ChainsawInfiniteGenerator {
+    extends ChainsawInfiniteGenerator
+    with FixedLatency {
 
   val productType = dataType * dataType
 
@@ -257,6 +260,7 @@ case class ExampleStaticFir(dataType: NumericType, coeffs: Seq[Double])
       (a +| b).d()
     ) // addition without width growth
     dataOut.head := ret.d()
+    lastOut      := lastIn.validAfter(latency())
   }
 
   override def implNaiveH = None
@@ -273,7 +277,8 @@ case class ExampleStaticFir(dataType: NumericType, coeffs: Seq[Double])
 }
 
 case class ExampleDynamicFir(dataType: NumericType, tap: Int)
-    extends ChainsawDynamicInfiniteGenerator {
+    extends ChainsawDynamicInfiniteGenerator
+    with FixedLatency {
 
   override def impl(testCase: TestCase) = {
     val TestCase(data, coeffs) = testCase
@@ -297,7 +302,7 @@ case class ExampleDynamicFir(dataType: NumericType, tap: Int)
 
   override def controlTypes = Seq.fill(tap)(dataType)
 
-  override def latency(control: Seq[BigDecimal]) = 2 * (tap + 1) + 1
+  override def latency() = 2 * (tap + 1) + 1
 
   override def resetCycle = 2 * (tap + 1) + 1
 
@@ -314,7 +319,7 @@ case class ExampleDynamicFir(dataType: NumericType, tap: Int)
       (a +| b).d()
     ) // addition without width growth
     dataOut.head := ret.d()
-    validOut     := validIn.validAfter(2 * (tap + 1) + 1)
+    lastOut      := lastIn.validAfter(latency())
   }
 
   override def implNaiveH = None
@@ -330,6 +335,7 @@ case class ExampleDynamicFir(dataType: NumericType, tap: Int)
   override def outputTypes = Seq(productType)
 }
 
+// anytime you change the implementation of ChainsawGenerators/ChainsawTest, run this test for verification
 object TestGeneratorExamples extends App {
   ChainsawTest("testAdder", ExampleAdder(8))
   ChainsawTest("testAdder", ExampleAddSub(8), terminateAfter = 1000)

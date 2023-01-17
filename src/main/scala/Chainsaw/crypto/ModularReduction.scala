@@ -18,7 +18,11 @@ trait ModularReductionAttribute {
 
   def isConstant = constantModulus.isDefined
 
-  if (isConstant) require(widthM == constantModulus.get.bitLength, "widthM should be equal to the bit length of the constant modulus")
+  if (isConstant)
+    require(
+      widthM == constantModulus.get.bitLength,
+      "widthM should be equal to the bit length of the constant modulus"
+    )
 
   def vivadoUtilEstimation: VivadoUtil
 
@@ -32,7 +36,10 @@ trait ModularReductionAttribute {
   }
 }
 
-trait ModularReduction extends ChainsawOperatorGenerator with ModularReductionAttribute {
+trait ModularReduction
+    extends ChainsawOperatorGenerator
+    with ModularReductionAttribute
+    with FixedLatency {
 
   override def inputTypes = {
     val widths = if (isConstant) Seq(widthIn) else Seq(widthIn, widthM)
@@ -43,7 +50,8 @@ trait ModularReduction extends ChainsawOperatorGenerator with ModularReductionAt
 
   override def impl(testCase: TestCase) = (constantModulus match {
     case Some(m) => testCase.data.map(_.toBigInt().mod(m))
-    case None => Seq(testCase.data(0).toBigInt().mod(testCase.data(1).toBigInt()))
+    case None =>
+      Seq(testCase.data(0).toBigInt().mod(testCase.data(1).toBigInt()))
   }).map(BigDecimal(_))
 
   override def implNaiveH =
@@ -51,7 +59,7 @@ trait ModularReduction extends ChainsawOperatorGenerator with ModularReductionAt
       val x = dataIn.head.asUInt()
       val m = constantModulus match {
         case Some(m) => U(m, widthM bits)
-        case None => dataIn.head.asUInt()
+        case None    => dataIn.head.asUInt()
       }
 
       dataOut.head := (x % m).toAFix.d(latency())
@@ -60,5 +68,6 @@ trait ModularReduction extends ChainsawOperatorGenerator with ModularReductionAt
   // TODO: should testCases be less than M ?
   override def testCases = Seq.fill(10000)(TestCase(randomDataVector))
 
-  override def metric(yours: Seq[BigDecimal], golden: Seq[BigDecimal]) = yours.equals(golden)
+  override def metric(yours: Seq[BigDecimal], golden: Seq[BigDecimal]) =
+    yours.equals(golden)
 }

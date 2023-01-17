@@ -1,120 +1,139 @@
 package Chainsaw.memory
 
 import Chainsaw._
-import Chainsaw.intel.QuartusFlow
+import Chainsaw.xilinx.VivadoUtil
 import spinal.core._
-import spinal.core.sim._
 import spinal.lib._
 import spinal.lib.fsm._
 
-import scala.collection.mutable.ArrayBuffer
 import scala.language.postfixOps
+import scala.util.Random
 
-// TODO: make this a ChainsawFrameGenerator
-case class FlowWidthConverter(widthIn: Int, widthOut: Int)
-    extends ChainsawCustomModule {
-
-  override def inputTypes = Seq(NumericType.U(widthIn))
-
-  override def outputTypes = Seq(NumericType.U(widthOut))
-
-  val overflow = out Bool ()
+case class FlowWidthConverter(widthIn: Int, widthOut: Int, widthEle: Int)
+    extends ChainsawInfiniteGenerator
+    with Duty {
 
   // based on registers, for small size
-  val regCount           = lcm(widthIn, widthOut).toInt // todo: use lcm
-  val regsPing, regsPong = Reg(Bits(regCount bits))
+  // based on lcm and ping-pong buffer
 
-  val dataInFifo = StreamFifo(flowIn.payload, 32)
-  // buffering dataIn as upstream can't be stopped(is a flow)
-  flowIn.toStream(overflow) >> dataInFifo.io.push
+  override def inputTypes = Seq.fill(widthIn)(NumericType.U(widthEle))
 
-  val counterIn =
-    Counter(stateCount = regCount / widthIn, inc = validIn)
-  val combValid, combReady = Bool()
-  val counterOut =
-    Counter(stateCount = regCount / widthOut, inc = combValid)
-  val ping = RegInit(False)
-  ping.toggleWhen(counterIn.willOverflow)
+  override def outputTypes = Seq.fill(widthOut)(NumericType.U(widthEle))
 
-  val fsm = new StateMachine { // classic ping-pong FSM
-    val EMPTY      = makeInstantEntry()
-    val HALF, FULL = State()
-    // state transition logic
-    EMPTY.whenIsActive(when(counterIn.willOverflow)(goto(HALF)))
-    HALF.whenIsActive(
-      when(counterIn.willOverflow && counterOut.willOverflow)(goto(HALF))
-        .elsewhen(counterOut.willOverflow)(goto(EMPTY))
-        .elsewhen(counterIn.willOverflow)(goto(FULL))
-    )
-    FULL.whenIsActive(when(counterOut.willOverflow)(goto(EMPTY)))
+  val lcmCount = lcm(widthIn, widthOut).toInt
 
-    // read/write logic by connection
+  override def implH = new ChainsawInfiniteModule(this) {
 
-    // write, latency = 0
-    combReady               := isActive(HALF) || isActive(EMPTY)
-    dataInFifo.io.pop.ready := combReady
-    when(validIn) {
-      when(ping)(regsPing(counterIn * widthIn, widthIn bits) := dataIn.asBits)
-        .otherwise(regsPong(counterIn * widthIn, widthIn bits) := dataIn.asBits)
-    }
+    val depth = 32
 
-    // read, latency = 1 for multiplication
-    combValid := (isActive(FULL) || isActive(HALF))
-    val readLatency = 1
-    validOut := combValid.validAfter(readLatency)
-    val regOutPing: Bits =
-      regsPing((counterOut * widthOut).d(readLatency), widthOut bits)
-    val regOutPong: Bits =
-      regsPong((counterOut * widthOut).d(readLatency), widthOut bits)
-    dataOut.head assignFromBits Mux(ping.d(readLatency), regOutPong, regOutPing)
-
-    lastOut := counterOut.willOverflow.d(readLatency) && validOut
+    // buffering dataIn as upstream can't be stopped(is a flow)
+    val dataInFifo = StreamFifo(flowIn.payload, depth) // data + last
+    val overflow   = out Bool ()
     assert(!overflow)
-  }
-}
+    flowIn.toStream(overflow) >> dataInFifo.io.push
 
-object FlowWidthConverter extends App {
-  import scala.util.Random
+    /** -------- typical ping-pong logic
+      * --------
+      */
+    val regCount           = lcm(widthIn, widthOut).toInt
+    val regsPing, regsPong = Reg(Bits(regCount * widthEle bits))
 
-  // verification
-  val widthIn  = 28
-  val widthOut = 32
-  SimConfig.withFstWave.compile(FlowWidthConverter(28, 32)).doSim { dut =>
-    dut.validIn #= false
-    dut.lastIn  #= false
-    dut.clockDomain.forkStimulus(2)
-    dut.clockDomain.waitSampling()
+    val combValid, combReady = Bool()
+    val counterIn  = Counter(stateCount = regCount / widthIn, inc = validIn)
+    val counterOut = Counter(stateCount = regCount / widthOut, inc = combValid)
 
-    val dataCount  = 16 * 100
-    val timeCount  = dataCount * 4 / 3 + 40
-    val data       = Seq.fill(dataCount)(BigInt(widthIn, Random))
-    val dataBuffer = ArrayBuffer[BigInt]()
-    val record     = ArrayBuffer[BigInt]()
+    val pingRead, pingWrite = RegInit(False)
+    pingWrite.toggleWhen(counterIn.willOverflow)
+    pingRead.toggleWhen(counterOut.willOverflow)
 
-    data.copyToBuffer(dataBuffer)
-    (0 until timeCount).foreach { i =>
-      if (dataBuffer.nonEmpty && i % 4 != 1) { // 3/4 occupation
-        dut.validIn         #= true
-        dut.dataIn.head.raw #= dataBuffer.remove(0)
-      } else {
-        dut.validIn         #= false
-        dut.dataIn.head.raw #= BigInt(widthIn, Random)
+    val fsm = new StateMachine {
+      // classic ping-pong FSM
+      val EMPTY      = makeInstantEntry()
+      val HALF, FULL = State()
+      // state transition logic
+      EMPTY.whenIsActive(when(counterIn.willOverflow)(goto(HALF)))
+      HALF.whenIsActive(
+        when(counterIn.willOverflow && counterOut.willOverflow)(goto(HALF))
+          .elsewhen(counterOut.willOverflow)(goto(EMPTY))
+          .elsewhen(counterIn.willOverflow)(goto(FULL))
+      )
+      FULL.whenIsActive(when(counterOut.willOverflow)(goto(HALF)))
+      assert(!(isActive(FULL) && counterIn.willOverflow), "ping-pong overflow")
+
+      // read/write logic by connection
+
+      // write, latency = 0
+      combReady               := isActive(HALF) || isActive(EMPTY)
+      dataInFifo.io.pop.ready := combReady
+
+      val writeStart = counterIn * widthIn * widthEle
+      val writeWidth = widthIn * widthEle bits
+
+      when(validIn) {
+        when(pingWrite)(regsPing(writeStart, writeWidth) := dataIn.asBits)
+          .otherwise((regsPong(writeStart, writeWidth) := dataIn.asBits))
       }
-      dut.clockDomain.waitSampling()
-      if (dut.validOut.toBoolean) {
-        record += dut.dataOut.head.raw.toBigInt
-      }
+
+      // read, latency = 1 for multiplication
+      val readLatency = 1
+      val readStart   = (counterOut * widthOut * widthEle).d(readLatency)
+      val readWidth   = widthOut * widthEle bits
+
+      val regOutPing: Bits = regsPing(readStart, readWidth)
+      val regOutPong: Bits = regsPong(readStart, readWidth)
+      val ret = Mux(pingRead.d(readLatency), regOutPing, regOutPong)
+
+      // TODO: generate last based on lastIn
+      combValid := (isActive(FULL) || isActive(HALF))
+
+      dataOut assignFromBits ret
+      validOut := combValid.validAfter(readLatency)
+
+      // TODO: low-cost implementation
+      val lastInFifo = StreamFifo(Bool(), depth)
+      lastInFifo.io.push.valid   := counterIn.willOverflow
+      lastInFifo.io.push.payload := lastIn
+      lastInFifo.io.pop.ready :=
+        counterOut.willOverflow.d(readLatency) && validOut
+      lastOut := lastInFifo.io.pop.payload && lastInFifo.io.pop.fire
     }
-
-    assert(
-      record.length == dataCount * 7 / 8,
-      s"record length ${record.length}"
-    )
-    val golden = data.reverse.map(_.toBitValue(widthIn)).reduce(_ @@ _).value
-    val yours  = record.reverse.map(_.toBitValue(widthOut)).reduce(_ @@ _).value
-    assert(yours == golden, s"${yours.toString(16)} != ${golden.toString(16)}")
   }
 
-  //
-  new QuartusFlow(FlowWidthConverter(28, 32)).impl()
+  override def implNaiveH = None
+
+  override def name = s"FlowWidthConverter_${widthIn}_${widthOut}_${widthEle}"
+
+  /** -------- performance
+    * --------
+    */
+  override def vivadoUtilEstimation = VivadoUtil()
+
+  override def fmaxEstimation = 600 MHz
+
+  /** -------- model
+    * --------
+    */
+  override def impl(testCase: TestCase) = {
+    require(
+      testCase.data.length % lcmCount == 0,
+      "the length of data should be a multiple of lcmCount, or an unaligned frame will be generated"
+    )
+    testCase.data
+  }
+
+  override def metric(yours: Seq[BigDecimal], golden: Seq[BigDecimal]) =
+    ChainsawMetric.sameAsBigInt(yours, golden)
+
+  override def testCases = {
+    val lengths =
+      Seq.fill(100)(
+        (lcmCount / widthIn) * (Random.nextInt(4) + 1)
+      ) // assure lcm
+    lengths.map(randomTestCase)
+  }
+
+  override def resetCycle = 0
+
+  override def dutyRation =
+    if (widthIn > widthOut) widthOut.toDouble / widthIn else 1
 }

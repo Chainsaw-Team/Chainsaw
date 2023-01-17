@@ -34,7 +34,10 @@ trait MultAttribute {
 
 /** unified behavioral model of unsigned multiplier
   */
-trait UnsignedMultiplier extends ChainsawOperatorGenerator with MultAttribute {
+trait UnsignedMultiplier
+    extends ChainsawOperatorGenerator
+    with MultAttribute
+    with FixedLatency {
 
   override def inputTypes =
     if (isConstantMult || multiplierType == SquareMultiplier)

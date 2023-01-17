@@ -11,7 +11,8 @@ import spinal.lib.fsm._
 import scala.language.postfixOps
 
 case class ComplexMult(dataType: NumericType, coeffType: NumericType)
-    extends ChainsawOperatorGenerator {
+    extends ChainsawOperatorGenerator
+    with FixedLatency {
 
   val retType = (dataType * coeffType).withCarry(1)
 

@@ -21,7 +21,8 @@ case class LUT6_2(init: BigInt) extends Unisim {
 case class LUT5to2(
     expressionO5: (Boolean, Boolean, Boolean, Boolean, Boolean) => Boolean,
     expressionO6: (Boolean, Boolean, Boolean, Boolean, Boolean) => Boolean
-) extends ChainsawOperatorGenerator {
+) extends ChainsawOperatorGenerator
+    with FixedLatency {
 
   override def inputTypes = Seq.fill(5)(NumericType.Bool())
 

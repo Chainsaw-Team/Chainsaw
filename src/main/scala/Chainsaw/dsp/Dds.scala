@@ -14,7 +14,8 @@ import scala.language.postfixOps
   *   output data precision
   */
 case class Dds(ddsWave: DdsWave, dataType: NumericType, parallel: Int)
-    extends ChainsawInfiniteGenerator {
+    extends ChainsawInfiniteGenerator
+    with FixedLatency {
 
   def name = s"Parallel_${parallel}_${Dds}_${dataType}_$ddsWave"
 
@@ -55,5 +56,6 @@ case class Dds(ddsWave: DdsWave, dataType: NumericType, parallel: Int)
     val counter   = Counter(actualPeriod, inc = validIn)
     when(!validIn)(counter.clear())
     dataOut := signalRom.readSync(counter.value).d()
+    lastOut := lastIn.d(latency())
   }
 }

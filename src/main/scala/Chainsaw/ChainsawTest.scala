@@ -46,8 +46,14 @@ case class ChainsawTest(
     }
   }.sortBy(_.control.headOption.getOrElse(BigDecimal(0)))
 
-  if (gen.isInstanceOf[SemiInfinite] && inputSegments.forall(_.data.length == inputSegments.head.data.length))
-    logger.warn("all testCases have a same length, which may miss the problem in reset logic")
+  if (
+    gen.isInstanceOf[SemiInfinite] && inputSegments.forall(
+      _.data.length == inputSegments.head.data.length
+    )
+  )
+    logger.warn(
+      "all testCases have a same length, which may miss the problem in reset logic"
+    )
 
   if (inPortWidth != 0) {
     val pass = gen match { // check data length
@@ -55,41 +61,80 @@ case class ChainsawTest(
         inputSegments.forall { case TestCase(data, control) =>
           data.length == frame.inputFrameFormat(control).allDataCount
         }
-      case _: Operator => inputSegments.map(_.data).forall(_.length == inPortWidth)
-      case _           => true
+      case _: Operator =>
+        inputSegments.map(_.data).forall(_.length == inPortWidth)
+      case _ => true
     }
     require(pass, "input data length is not correct")
   }
 
   val targetSegmentCount = inputSegments.length
-  val targetVectorCount  = inputSegments.map(_.data.length).sum / (if (inPortWidth == 0) 1 else inPortWidth)
+  val targetVectorCount =
+    inputSegments.map(_.data.length).sum /
+      (if (inPortWidth == 0) 1 else inPortWidth)
 
   /** -------- interrupts insertion
     * --------
     */
   val valids = inputSegments.map(testCase => (testCase, true))
+  assert(
+    valids.forall(_._1.data.nonEmpty),
+    "empty segment, check your test cases generator"
+  )
 
   def getRandomControl: Seq[BigDecimal] = gen match {
     case dynamic: Dynamic => dynamic.randomControlVector
     case _                => Seq[BigDecimal]()
   }
 
-  def getRandomInterrupt = TestCase(Seq.fill(Random.nextInt(10) + 1)(randomDataVector).flatten, getRandomControl)
+  def getInterrupt(cycle: Int) = TestCase(
+    Seq.fill(cycle)(randomDataVector).flatten,
+    getRandomControl
+  )
 
-  def getResetInterrupt = TestCase(Seq.fill(resetCycle max 1)(randomDataVector).flatten, getRandomControl)
+  def getRandomInterrupt = getInterrupt(Random.nextInt(10) + 1)
+
+  def getResetInterrupt = getInterrupt(resetCycle max 1)
 
   val randomRatio              = 10
   val inputSegmentsWithInvalid = ArrayBuffer[(TestCase, Boolean)](valids.head)
+
   valids.tail.foreach { case (testCase, valid) =>
-    if (!testCase.control.equals(inputSegmentsWithInvalid.last._1.control) || gen.isInstanceOf[SemiInfinite]) {
-      inputSegmentsWithInvalid += ((getResetInterrupt, false))
+    val lastValidCycle =
+      inputSegmentsWithInvalid.last._1.data.length /
+        (if (inPortWidth == 0) 1 else inPortWidth)
+
+    // insert reset interrupt before control change
+    gen match { // for SemiInfinite, insert interrupt between segments
+      case semiInfinite: SemiInfinite =>
+        inputSegmentsWithInvalid += ((getResetInterrupt, false))
+      case _ => // for other generators, insert interrupt when control change
+        val controlChange =
+          testCase.control != inputSegmentsWithInvalid.last._1.control
+        if (controlChange)
+          inputSegmentsWithInvalid += ((getResetInterrupt, false))
     }
-    if (Random.nextInt(randomRatio) > randomRatio - 2) {
+
+    // insert random interrupt, probability = 1/randomRatio
+    if (Random.nextInt(randomRatio) > randomRatio - 2)
       inputSegmentsWithInvalid += ((getRandomInterrupt, false))
-    } // probability = 1/ratio
+
+    // insert null data for generators with trait Duty
+    gen match {
+      case duty: Duty =>
+        if (duty.dutyRation < 1) {
+          val nullCycle = (lastValidCycle * (1 - duty.dutyRation)).ceil.toInt
+          inputSegmentsWithInvalid += ((getInterrupt(nullCycle), false))
+        }
+      case _ =>
+    }
+
     inputSegmentsWithInvalid += ((testCase, valid))
   }
-  inputSegmentsWithInvalid.insert(0, (getResetInterrupt, false)) // for initialization
+  inputSegmentsWithInvalid.insert(
+    0,
+    (getResetInterrupt, false)
+  ) // for initialization
 
   val sortedValids = inputSegmentsWithInvalid.filter(_._2).map(_._1)
 
@@ -109,13 +154,18 @@ case class ChainsawTest(
 
   val latencies = gen match {
     case overwriteLatency: OverwriteLatency => sortedValids.map(_ => -1)
-    case fixedLatency: FixedLatency         => sortedValids.map(_ => fixedLatency.latency())
-    case dynamicLatency: DynamicLatency     => sortedValids.map(testCase => dynamicLatency.latency(testCase.control))
+    case fixedLatency: FixedLatency =>
+      sortedValids.map(_ => fixedLatency.latency())
+    case dynamicLatency: DynamicLatency =>
+      sortedValids.map(testCase => dynamicLatency.latency(testCase.control))
+    case _ => sortedValids.map(_ => -1)
   }
 
   val pass = gen match { // check golden length
     case frame: Frame =>
-      val validOutputFrameLengths = sortedValids.map(testCase => frame.outputFrameFormat(testCase.control).rawDataCount)
+      val validOutputFrameLengths = sortedValids.map(testCase =>
+        frame.outputFrameFormat(testCase.control).rawDataCount
+      )
       goldenSegments.map(_.length).equals(validOutputFrameLengths)
     case _: Operator =>
       goldenSegments.forall(_.length == outPortWidth)
@@ -126,28 +176,43 @@ case class ChainsawTest(
   require(goldenSegments.length == targetSegmentCount)
 
   // segments -> vectors
-  val inputVectorSize = if (inPortWidth == 0) 1 else inPortWidth // when inPortWidth is 0, the module is driven by clock
-  val inputVectorsWithValid: mutable.Seq[(Seq[BigDecimal], Seq[BigDecimal], Boolean, Boolean)] =
-    inputSegmentsWithInvalid.flatMap { case (TestCase(segment, control), valid) =>
-      val dataVectors = segment.grouped(inputVectorSize).toSeq
-      gen match {
-        case frame: Frame => dataVectors.init.map((_, control, valid, false)) :+ (dataVectors.last, control, valid, true)
-        case _            => dataVectors.map((_, control, valid, true))
-      }
+  val inputVectorSize =
+    if (inPortWidth == 0) 1
+    else inPortWidth // when inPortWidth is 0, the module is driven by clock
+  val inputVectorsWithInValid // data, control, valid, last
+      : mutable.Seq[(Seq[BigDecimal], Seq[BigDecimal], Boolean, Boolean)] =
+    inputSegmentsWithInvalid.flatMap {
+      case (TestCase(segment, control), valid) =>
+        val dataVectors = segment.grouped(inputVectorSize).toSeq
+        gen match { // for operator generator, last is always true
+          case _: Operator =>
+            dataVectors.map((_, control, valid, valid))
+          case _ => // for frame and infinite generator, last is true at the last cycle of a sequence
+            dataVectors.init.map(
+              (_, control, valid, false)
+            ) :+ (dataVectors.last, control, valid, valid)
+        }
     }
 
   // data containers
-  val outputVectors = ArrayBuffer[Seq[BigDecimal]]()
-  val inputTimes    = ArrayBuffer[Long]()
-  val outputTimes   = ArrayBuffer[Long]()
+  val outputVectors =
+    ArrayBuffer[(Seq[BigDecimal], Boolean, Long)]() // (data,last,time)
+  val inputSegmentTimes =
+    ArrayBuffer[Long]() // starting cycle of each input segment
 
   /** -------- simulation
     * --------
     */
 
+  logger.info(s"start simulation for $testName")
   logger.info(s"current naive list: ${naiveSet.mkString(" ")}")
+
   simConfig.compile(gen.getImplH).doSim { dut =>
     import dut.{clockDomain, flowInPointer, flowOutPointer}
+
+    var currentSegments = 0
+    var currentVectors  = 0
+    var noValid         = 0
 
     // init
     def init(): Unit = {
@@ -158,18 +223,31 @@ case class ChainsawTest(
     }
 
     def poke(): SimThread = fork {
-      var i = 0
+      var waitStart = true
+      var i         = 0
       while (true) {
-        if (i < inputVectorsWithValid.length) {
-          val (data, control, valid, last) = inputVectorsWithValid(i)
-          flowInPointer.payload.zip(data).foreach { case (fix, decimal) => fix #= decimal }
-          dut match {
-            case dynamicModule: DynamicModule => dynamicModule.controlIn.zip(control).foreach { case (fix, decimal) => fix #= decimal }
-            case _                            => // no control
+        if (i < inputVectorsWithInValid.length) {
+          val (data, control, valid, last) = inputVectorsWithInValid(i)
+          // data in
+          flowInPointer.payload.zip(data).foreach { case (fix, decimal) =>
+            fix #= decimal
           }
+          // control in
+          dut match {
+            case dynamicModule: DynamicModule =>
+              dynamicModule.controlIn.zip(control).foreach {
+                case (fix, decimal) => fix #= decimal
+              }
+            case _ => // no control
+          }
+          // valid & last
           flowInPointer.valid #= valid
-          flowInPointer.last  #= last
-          if (valid) inputTimes += simTime()
+          if (valid && waitStart) {
+            inputSegmentTimes += simTime()
+            waitStart = false
+          }
+          flowInPointer.last #= last
+          if (last) waitStart = true
         } else {
           flowInPointer.valid #= false
           flowInPointer.last  #= false
@@ -182,19 +260,21 @@ case class ChainsawTest(
     def peek(): SimThread = fork {
       while (true) {
         if (flowOutPointer.valid.toBoolean) {
-          outputVectors += flowOutPointer.payload.map(_.toBigDecimal)
-          outputTimes += simTime()
+          val tuple = (
+            flowOutPointer.payload.map(_.toBigDecimal),
+            flowOutPointer.last.toBoolean,
+            simTime()
+          )
+          outputVectors += tuple
+          if (flowOutPointer.last.toBoolean) currentSegments += 1
         }
         clockDomain.waitSampling()
       }
     }
 
-    var currentVectors = 0
-    var noValid        = 0
-
     // working in the main thread, pushing the simulation forward
     def waitSimDone(): Unit =
-      while (currentVectors < targetVectorCount && noValid < terminateAfter) {
+      while (currentSegments < targetSegmentCount && noValid < terminateAfter) {
         if (outputVectors.length == currentVectors) noValid += 100
         currentVectors = outputVectors.length
         clockDomain.waitSampling(100)
@@ -205,7 +285,10 @@ case class ChainsawTest(
     poke()
     waitSimDone()
 
-    if (noValid >= terminateAfter) logger.error(s"Simulation terminated after $terminateAfter cycles of no valid output")
+    if (noValid >= terminateAfter)
+      logger.error(
+        s"Simulation terminated after $terminateAfter cycles of no valid output"
+      )
   }
 
   /** -------- check & show
@@ -213,36 +296,37 @@ case class ChainsawTest(
     */
   // vectors -> segments
 
+  // output data organized by segments
   var outputSegments     = Seq[Seq[BigDecimal]]()
-  var inputSegmentTimes  = Seq[Long]()
-  var outputSegmentTimes = Seq[Long]()
+  var outputSegmentTimes = Seq[Long]() // starting cycle of each output segment
 
-  gen match {
-    case frame: Frame =>
-      val outputCycleCounts = sortedValids.map(testCase => frame.outputFrameFormat(testCase.control).period)
-      val slices            = outputCycleCounts.scan(0)(_ + _).prevAndNext { case (start, end) => start until end }
-      outputSegments     = slices.map(slice => outputVectors.slice(slice.start, slice.end)).map(_.flatten)
-      inputSegmentTimes  = slices.map(slice => inputTimes.slice(slice.start, slice.end)).map(_.head)
-      outputSegmentTimes = slices.map(slice => outputTimes.slice(slice.start, slice.end)).map(_.head)
-    case _: SemiInfinite =>
-      val discontinuities = outputTimes
-        .sliding(2)
-        .map { case Seq(prev, next) => if (next - prev == 2) 0 else next }
-        .filterNot(_ == 0)
-        .map(outputTimes.indexOf)
-        .toSeq
-      val splitPoints = 0 +: discontinuities :+ outputVectors.length
+  val outputTimes = outputVectors.map(_._3)
+  gen match { // outputVector -> outputSegments
+    case _: Operator => // for operator, each vector is a segment
+      outputSegments     = outputVectors.map(_._1)
+      outputSegmentTimes = outputTimes
+    // for frame and infinite, get segments according to last
+    case _ =>
+      val lasts = outputVectors.map(_._2)
+      val lastPoints = lasts.zipWithIndex
+        .filter(_._1 == true)
+        .map(_._2) // indices where last is true
+      val starts      = lastPoints.map(_ + 1)
+      val splitPoints = 0 +: starts
       outputSegments = splitPoints
         .sliding(2)
-        .map { case Seq(start, end) => outputVectors.slice(start, end) }
+        .map { case Seq(start, end) =>
+          if (verbose >= 1)
+            logger.info(
+              s"output segment: ${outputTimes(start)} -> ${outputTimes(end)}"
+            )
+          outputVectors.slice(start, end)
+        }
+        .map(_.flatMap(_._1))
         .toSeq
-        .map(_.flatten)
-      inputSegmentTimes  = splitPoints.init.map(inputTimes)
+
       outputSegmentTimes = splitPoints.init.map(outputTimes)
-    case _: Operator =>
-      outputSegments     = outputVectors
-      inputSegmentTimes  = inputTimes
-      outputSegmentTimes = outputTimes
+
   }
 
   require(
@@ -250,7 +334,9 @@ case class ChainsawTest(
     s"output segment count ${outputSegments.length} is not equal to golden segment count ${goldenSegments.length}"
   )
 
-  val actualLatencies = outputSegmentTimes.zip(inputSegmentTimes).map { case (outputTime, inputTime) => (outputTime - 2 - inputTime) / 2 }
+  val actualLatencies = outputSegmentTimes.zip(inputSegmentTimes).map {
+    case (outputTime, inputTime) => (outputTime - 2 - inputTime) / 2
+  }
 
   val passRecord = inputSegments.indices.map { i =>
     val payloadPass = metric(outputSegments(i), goldenSegments(i))
@@ -263,13 +349,18 @@ case class ChainsawTest(
   def log(index: Int) = {
     s"-----$index-th segment-----\n" +
       s"${sortedValids(index)}\n" +
-      s"yours  : ${outputSegments(index).take(500).mkString(",")}\n" +
-      s"golden : ${goldenSegments(index).take(500).mkString(",")}\n" +
-      s"expected latency: ${if (latencies(index) < 0) "undetermined" else latencies(index).toString}, actual latency: ${actualLatencies(index)}\n"
+      // TODO: show ...
+      s"yours  : ${outputSegments(index).take(100).mkString(",")}\n" +
+      s"golden : ${goldenSegments(index).take(100).mkString(",")}\n" +
+      s"expected latency: ${if (latencies(index) < 0) "undetermined"
+      else latencies(index).toString}, " +
+      s"actual latency: ${actualLatencies.mkString(" ")}\n"
   }
 
-  val logIndices = if (success) Seq(outputSegments.length - 1) else passRecord.zipWithIndex.filter(!_._1).map(_._2)
-  val allLog     = logIndices.take(errorSegmentsShown).map(log).mkString("\n")
+  val logIndices =
+    if (success) Seq(outputSegments.length - 1)
+    else passRecord.zipWithIndex.filter(!_._1).map(_._2)
+  val allLog = logIndices.take(errorSegmentsShown).map(log).mkString("\n")
 
   if (!success) logger.error(s"failures:\n$allLog")
   else logger.info(s"test $testName passed\n$allLog")
@@ -277,6 +368,11 @@ case class ChainsawTest(
 }
 
 object ChainsawTestWithData {
-  def apply(testName: String, gen: ChainsawBaseGenerator, data: Seq[TestCase], golden: Seq[Seq[BigDecimal]]) =
+  def apply(
+      testName: String,
+      gen: ChainsawBaseGenerator,
+      data: Seq[TestCase],
+      golden: Seq[Seq[BigDecimal]]
+  ) =
     ChainsawTest(testName, gen, Some(data), Some(golden))
 }
