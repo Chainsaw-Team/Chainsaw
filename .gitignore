@@ -29,6 +29,7 @@ out
 !src/main/resources/
 src/main/resources/*
 !src/main/resources/unisims/
+!src/main/resources/install
 !src/main/resources/matlabScripts/
 !src/main/resources/das/
 
