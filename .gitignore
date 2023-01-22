@@ -1,6 +1,7 @@
 *.class
 *.log
 *.bak
+*.mat
 
 # sbt specific
 .cache/
@@ -29,6 +30,8 @@ out
 src/main/resources/*
 !src/main/resources/unisims/
 !src/main/resources/matlabScripts/
+!src/main/resources/das/
+
 
 # Workspaces
 genWorkSpace/
@@ -42,6 +45,7 @@ null
 src/main/scala/draft.sc
 
 # private project
-src/main/scala/Chainsaw/project/das
+#src/main/scala/Chainsaw/project/das
 /leetcode/
-/src/test/scala/Chainsaw/project/das/
+#/src/test/scala/Chainsaw/project/das/
+

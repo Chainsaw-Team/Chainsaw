@@ -1,7 +1,6 @@
 package Chainsaw.crypto
 
 import Chainsaw._
-import Chainsaw.deprecated._
 import Chainsaw.project.zprize.ZPrizeMSM.baseModulus
 import cc.redberry.rings.scaladsl._
 
@@ -10,25 +9,51 @@ import java.io.File
 import javax.imageio.ImageIO
 import scala.collection.mutable.ArrayBuffer
 
-case class ShortWeierstrassCurve(override val modulus: IntZ, override val c: IntZ, override val d: IntZ)
-  extends EllipticCurve(modulus, 0, 0, c, d) {
+case class ShortWeierstrassCurve(
+    override val modulus: IntZ,
+    override val c: IntZ,
+    override val d: IntZ
+) extends EllipticCurve(modulus, 0, 0, c, d) {
 
   implicit val ecc: ShortWeierstrassCurve = this
 
-  /** algorithm for padd & pdbl on homogeneous projective coordinate, 12M required
-   *
-   * @see ''Complete addition formulas for prime order elliptic curves, Joost Renes, Craig Costello, Lejla Batina'' for the algorithm
-   * @see ''PipeMSM: Hardware Acceleration for Multi-Scalar Multiplication, Charles. F. Xavier'' [[https://eprint.iacr.org/2022/999.pdf]] for the pipeline
-   */
+  /** algorithm for padd & pdbl on homogeneous projective coordinate, 12M
+    * required
+    *
+    * @see
+    *   ''Complete addition formulas for prime order elliptic curves, Joost
+    *   Renes, Craig Costello, Lejla Batina'' for the algorithm
+    * @see
+    *   ''PipeMSM: Hardware Acceleration for Multi-Scalar Multiplication,
+    *   Charles. F. Xavier'' [[https://eprint.iacr.org/2022/999.pdf]] for the
+    *   pipeline
+    */
   def paddExtendedHomo(p0: EcPointProj, p1: EcPointProj): EcPointProj = {
     val zp = Zp(modulus)
-    val (x1, y1, z1, t1, x2, y2, z2, t2) = (p0.axis(0), p0.axis(1), p0.axis(2), p0.axis(3), p1.axis(0), p1.axis(1), p1.axis(2), p1.axis(3))
+    val (x1, y1, z1, t1, x2, y2, z2, t2) = (
+      p0.axis(0),
+      p0.axis(1),
+      p0.axis(2),
+      p0.axis(3),
+      p1.axis(0),
+      p1.axis(1),
+      p1.axis(2),
+      p1.axis(3)
+    )
 
     // parallel version with a well-designed pipeline
     // stage0
 
     val r0 = zp.multiply(z1, z2)
-    val r1 = zp.multiply(asBigInteger(BigInt("0196bab03169a4f2ca0b7670ae65fc7437786998c1a32d217f165b2fe0b32139735d947870e3d3e4e02c125684d6e016", 16)), t2)
+    val r1 = zp.multiply(
+      asBigInteger(
+        BigInt(
+          "0196bab03169a4f2ca0b7670ae65fc7437786998c1a32d217f165b2fe0b32139735d947870e3d3e4e02c125684d6e016",
+          16
+        )
+      ),
+      t2
+    )
 
     val R1 = zp.subtract(y1, x1)
     val R2 = zp.subtract(y2, x2)
@@ -40,7 +65,7 @@ case class ShortWeierstrassCurve(override val modulus: IntZ, override val c: Int
     val R7 = zp.multiply(t1, r1)
     val R8 = zp.multiply(2, r0)
 
-    val R9 = zp.subtract(R6, R5)
+    val R9  = zp.subtract(R6, R5)
     val R10 = zp.subtract(R8, R7)
     val R11 = zp.add(R8, R7)
     val R12 = zp.add(R6, R5)
@@ -79,9 +104,9 @@ case class ShortWeierstrassCurve(override val modulus: IntZ, override val c: Int
     }
 
     val (s, t) = getST(p)
-    var x = a.modPow((s + 1) / 2, p)
-    var w = a.modPow(s, p)
-    val b = getB(p)
+    var x      = a.modPow((s + 1) / 2, p)
+    var w      = a.modPow(s, p)
+    val b      = getB(p)
     for (i <- 0 until t - 1) {
       if (w.modPow(BigInt(1) << (t - 2 - i), p) != 1) {
         val lambda = b.modPow((BigInt(1) << i) * s, p).mod(p)
@@ -97,13 +122,27 @@ case class ShortWeierstrassCurve(override val modulus: IntZ, override val c: Int
     val zp = Zp(modulus)
 
     val a = zp.negativeOne
-    val d = zp.divideExact(asBigInteger(BigInt("0196bab03169a4f2ca0b7670ae65fc7437786998c1a32d217f165b2fe0b32139735d947870e3d3e4e02c125684d6e016", 16)), 2)
+    val d = zp.divideExact(
+      asBigInteger(
+        BigInt(
+          "0196bab03169a4f2ca0b7670ae65fc7437786998c1a32d217f165b2fe0b32139735d947870e3d3e4e02c125684d6e016",
+          16
+        )
+      ),
+      2
+    )
 
     val A = zp.divideExact(zp.multiply(2, zp.add(a, d)), zp.subtract(a, d))
     val B = zp.divideExact(asBigInteger(4), zp.subtract(a, d))
 
     val xWeight = zp.negate(zp.divideExact(A, zp.multiply(3, B)))
-    val (yWeight, valid) = sqrt(zp.divideExact(zp.subtract(zp.multiply(2, A, A, A), zp.multiply(9, A)), zp.multiply(27, B, B, B)).toBigInt, baseModulus)
+    val (yWeight, valid) = sqrt(
+      zp.divideExact(
+        zp.subtract(zp.multiply(2, A, A, A), zp.multiply(9, A)),
+        zp.multiply(27, B, B, B)
+      ).toBigInt,
+      baseModulus
+    )
     require(valid)
   }
 
@@ -112,10 +151,16 @@ case class ShortWeierstrassCurve(override val modulus: IntZ, override val c: Int
     val x = zp.multiply(input.x, transformParameters.xWeight)
     val y = zp.multiply(input.y, transformParameters.yWeight)
 
-    val xMont = zp.subtract(zp.multiply(transformParameters.B, x), zp.divideExact(transformParameters.A, 3))
+    val xMont = zp.subtract(
+      zp.multiply(transformParameters.B, x),
+      zp.divideExact(transformParameters.A, 3)
+    )
     val yMont = zp.multiply(transformParameters.B, y)
 
-    EcPointAffine(zp.divideExact(xMont, yMont), zp.divideExact(zp.subtract(xMont, 1), zp.add(xMont, 1)))
+    EcPointAffine(
+      zp.divideExact(xMont, yMont),
+      zp.divideExact(zp.subtract(xMont, 1), zp.add(xMont, 1))
+    )
   }
 
   def fromTwistedEdwards(input: EcPointAffine): EcPointAffine = {
@@ -125,7 +170,22 @@ case class ShortWeierstrassCurve(override val modulus: IntZ, override val c: Int
     val xMont = zp.divideExact(zp.add(1, y), zp.subtract(1, y))
     val yMont = zp.divideExact(xMont, x)
 
-    EcPointAffine(zp.divideExact(zp.add(zp.divideExact(xMont, transformParameters.B), zp.divideExact(transformParameters.A, zp.multiply(3, transformParameters.B))), transformParameters.xWeight), zp.divideExact(zp.divideExact(yMont, transformParameters.B), transformParameters.yWeight))
+    EcPointAffine(
+      zp.divideExact(
+        zp.add(
+          zp.divideExact(xMont, transformParameters.B),
+          zp.divideExact(
+            transformParameters.A,
+            zp.multiply(3, transformParameters.B)
+          )
+        ),
+        transformParameters.xWeight
+      ),
+      zp.divideExact(
+        zp.divideExact(yMont, transformParameters.B),
+        transformParameters.yWeight
+      )
+    )
   }
 
   // for homogeneous projective coordinates which use complete formula, pdbl is the same as padd
@@ -134,8 +194,16 @@ case class ShortWeierstrassCurve(override val modulus: IntZ, override val c: Int
   // TODO: better implementation of ladder on ShortWeierstrassCurve
 
   override def padd(p0: EcPointAffine, p1: EcPointAffine) = {
-    val ret = fromTwistedEdwards(paddExtendedHomo(toTwistedEdwards(p0).toProjective(extendedHomo), toTwistedEdwards(p1).toProjective(extendedHomo)).toAffine)
-    assert(isOnCurve(ret) && ret == super.padd(p0, p1), s"padd failed on $p0 + $p1")
+    val ret = fromTwistedEdwards(
+      paddExtendedHomo(
+        toTwistedEdwards(p0).toProjective(extendedHomo),
+        toTwistedEdwards(p1).toProjective(extendedHomo)
+      ).toAffine
+    )
+    assert(
+      isOnCurve(ret) && ret == super.padd(p0, p1),
+      s"padd failed on $p0 + $p1"
+    )
     ret
   }
 
@@ -217,22 +285,27 @@ case class ShortWeierstrassCurve(override val modulus: IntZ, override val c: Int
   //    override def impl(dataIn: Seq[Any]): Seq[Any] = null
   //  }
 
-  def pladder(XQP: IntZ, XRP: IntZ, M: IntZ, YP: IntZ): (IntZ, IntZ, IntZ, IntZ) = {
+  def pladder(
+      XQP: IntZ,
+      XRP: IntZ,
+      M: IntZ,
+      YP: IntZ
+  ): (IntZ, IntZ, IntZ, IntZ) = {
     val zp = Zp(modulus)
 
-    val YRBar = zp.add(YP, zp.multiply(2, M, XRP))
-    val E = zp.subtract(XQP, XRP)
-    val F = zp.multiply(YRBar, E)
-    val G = zp.multiply(E, E)
-    val XRPDot = zp.multiply(XRP, G)
-    val H = zp.multiply(YRBar, YRBar)
-    val MDot = zp.multiply(M, F)
-    val YPDot = zp.multiply(YP, F, G)
-    val K = zp.add(H, MDot)
-    val L = zp.add(K, MDot)
-    val MDotDot = zp.subtract(XRPDot, K)
-    val XSP = zp.multiply(H, L)
-    val XTP = zp.add(zp.multiply(XRPDot, XRPDot), YPDot)
+    val YRBar    = zp.add(YP, zp.multiply(2, M, XRP))
+    val E        = zp.subtract(XQP, XRP)
+    val F        = zp.multiply(YRBar, E)
+    val G        = zp.multiply(E, E)
+    val XRPDot   = zp.multiply(XRP, G)
+    val H        = zp.multiply(YRBar, YRBar)
+    val MDot     = zp.multiply(M, F)
+    val YPDot    = zp.multiply(YP, F, G)
+    val K        = zp.add(H, MDot)
+    val L        = zp.add(K, MDot)
+    val MDotDot  = zp.subtract(XRPDot, K)
+    val XSP      = zp.multiply(H, L)
+    val XTP      = zp.add(zp.multiply(XRPDot, XRPDot), YPDot)
     val YPDotDot = zp.multiply(YPDot, H)
 
     (XSP, XTP, MDotDot, YPDotDot)
@@ -241,24 +314,34 @@ case class ShortWeierstrassCurve(override val modulus: IntZ, override val c: Int
   override def pmult(k: IntZ, p: EcPointAffine): EcPointAffine = {
     val zp = Zp(modulus)
 
-    val Z2 = zp.multiply(4, p.y, p.y)
-    var M = zp.add(zp.multiply(3, p.x, p.x), c)
+    val Z2        = zp.multiply(4, p.y, p.y)
+    var M         = zp.add(zp.multiply(3, p.x, p.x), c)
     var XQP: IntZ = 0
-    var XRP = zp.subtract(zp.multiply(M, M), zp.multiply(3, p.x, Z2))
-    var YP = zp.multiply(Z2, Z2)
+    var XRP       = zp.subtract(zp.multiply(M, M), zp.multiply(3, p.x, Z2))
+    var YP        = zp.multiply(Z2, Z2)
 
     k.toBigInt.toString(2).tail.foreach { bit =>
-      val pair = if (bit.asDigit == 1) pladder(XQP, XRP, M, YP) else pladder(XRP, XQP, M, YP)
+      val pair =
+        if (bit.asDigit == 1) pladder(XQP, XRP, M, YP)
+        else pladder(XRP, XQP, M, YP)
       XQP = if (bit.asDigit == 1) pair._1 else pair._2
       XRP = if (bit.asDigit == 1) pair._2 else pair._1
-      M = pair._3
-      YP = pair._4
+      M   = pair._3
+      YP  = pair._4
     }
 
-    val XP = zp.divideExact(zp.subtract(zp.subtract(zp.multiply(M, M), XQP), XRP), 3)
-    val Z = zp.divideExact(zp.divideExact(zp.multiply(p.x, YP), 2), zp.multiply(p.y, XP))
+    val XP =
+      zp.divideExact(zp.subtract(zp.subtract(zp.multiply(M, M), XQP), XRP), 3)
+    val Z = zp.divideExact(
+      zp.divideExact(zp.multiply(p.x, YP), 2),
+      zp.multiply(p.y, XP)
+    )
 
-    val ret = EcPointProj(zp.add(XP, XQP), zp.divideExact(zp.add(YP, zp.multiply(2, M, XQP)), 2), Z)(Jacobi).toAffine
+    val ret = EcPointProj(
+      zp.add(XP, XQP),
+      zp.divideExact(zp.add(YP, zp.multiply(2, M, XQP)), 2),
+      Z
+    )(Jacobi).toAffine
     assert(isOnCurve(ret) && ret == multBase(k, p), s"pmult failed on $k * $p")
     ret
   }
@@ -388,4 +471,3 @@ case class ShortWeierstrassCurve(override val modulus: IntZ, override val c: Int
 //    ImageIO.write(image, "PNG", imgFile)
 //  }
 //}
-
