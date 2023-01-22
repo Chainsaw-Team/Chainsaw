@@ -1,4 +1,6 @@
+# auto test for Chainsaw pr
+
 
 # sbt commands for regression test
-testOnly Chainsaw.* -- -l *Isca2023Test *
+sbt testOnly Chainsaw.* -- -l *Isca2023Test *
 
