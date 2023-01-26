@@ -200,10 +200,10 @@ class DspIpTests extends ChainsawFlatSpec {
   )
 
   allowSynthAndImpl = false
-//  testComplexMult()
-//  testCordic()
+  testComplexMult()
+  testCordic()
   testDelay()
-//  testFirs()
-//  testDds()
-//  testMovingAverage()
+  testFirs()
+  testDds()
+  testMovingAverage()
 }
