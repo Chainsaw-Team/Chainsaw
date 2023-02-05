@@ -4,16 +4,6 @@ import Chainsaw._
 
 class FlopocoOperatorTest extends ChainsawFlatSpec {
 
-  override val generatorConfigTable = Map(
-    "IntMultiAdder" -> TestConfig(full = false, naive = true, synth = false, impl = false),
-    "IntMultiplier" -> TestConfig(full = false, naive = true, synth = false, impl = false),
-    "BaseKaratsuba" -> TestConfig(full = false, naive = true, synth = false, impl = false)
-  )
-
-  testIntMultiAdder()
-  testIntMultiplier()
-  testBaseKaratsuba()
-
   /** --------
    * IntMultiAdder
    * -------- */
@@ -47,4 +37,15 @@ class FlopocoOperatorTest extends ChainsawFlatSpec {
     ns.foreach(n => testFlopocoOperator(BaseMultiplierDSPKaratsuba(17, 17, n), synth = false, impl = false))
   }
 
+  override val generatorConfigTable = Map(
+    "IntMultiAdder" -> TestConfig(full = false, naive = true, synth = false, impl = false),
+    "IntMultiplier" -> TestConfig(full = false, naive = true, synth = false, impl = false),
+    "BaseKaratsuba" -> TestConfig(full = false, naive = true, synth = false, impl = false)
+  )
+
+  // TODO: check existence of flopoco
+
+  testIntMultiAdder()
+  testIntMultiplier()
+  testBaseKaratsuba()
 }

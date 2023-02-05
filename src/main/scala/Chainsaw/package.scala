@@ -1,6 +1,6 @@
 import cc.redberry.rings.scaladsl.IntZ
 import com.mathworks.engine.MatlabEngine
-import org.slf4j.LoggerFactory
+import org.slf4j.{Logger, LoggerFactory}
 import spinal.core._
 import spinal.core.internals.PhaseContext
 import spinal.lib._
@@ -38,19 +38,43 @@ package object Chainsaw {
   /** -------- global run-time environment
     * --------
     */
-  val logger  = LoggerFactory.getLogger("Chainsaw logger") // global logger
-  var verbose = 0
 
-  val naiveSet = mutable.Set[String]()
+  // loading configs
+  import org.yaml.snakeyaml.Yaml
+  import scala.io.Source
 
-  def setAsNaive(generator: Any*) =
+  val yaml                 = new Yaml()
+  private val configSource = Source.fromFile("config.yaml")
+  private val configString = configSource.getLines().mkString("\n")
+  private val configs =
+    yaml.load(configString).asInstanceOf[java.util.LinkedHashMap[String, Any]]
+
+  val hasVivado: Boolean = sys.env.contains("VIVADO")
+  val allowSynth: Boolean =
+    configs.get("allowSynth").asInstanceOf[Boolean] && hasVivado
+  val allowImpl: Boolean =
+    configs.get("allowImpl").asInstanceOf[Boolean] && hasVivado
+  val verbose: Int = configs.get("verbose").asInstanceOf[Int]
+  configSource.close()
+
+  // global data
+  val logger: Logger =
+    LoggerFactory.getLogger("Chainsaw logger") // global logger
+  var atSimTime = true // indicating current task(sim/synth or impl)
+
+  val naiveSet: mutable.Set[String] =
+    mutable.Set[
+      String
+    ]() // list of generators which should be implemented by its naive version
+  def setAsNaive(
+      generator: Any*
+  ): naiveSet.type = // add a generator to the naiveSet
     naiveSet += generator.getClass.getSimpleName.replace("$", "")
 
-  var allowSynthAndImpl = true // TODO: implement this by a config file
-  var testFlopoco       = false
-  var testVhdl          = false
-  var atSimTime         = true
+  var testFlopoco = false
+  var testVhdl    = false
 
+  // TODO: better dots
   val positiveDot   = "⬛"
   val complementDot = "⬜"
   val downArrow     = "↓"
@@ -64,22 +88,24 @@ package object Chainsaw {
   /** -------- paths
     * --------
     */
-  // vivado executable path TODO: should be read from environment variables
-  val vivadoPath  = new File("/tools/Xilinx/Vivado/2021.1/bin/vivado")
-  val quartusDir  = new File("/tools/quartus/bin")
-  val quartusPath = new File(quartusDir, "quartus")
+
+  // outside Chainsaw
+  val vivadoPath =
+    new File(sys.env.getOrElse("VIVADO", "")) // vivado executable path
+  val flopocoPath = new File(sys.env.getOrElse("FLOPOCO", ""))
+
+  // inside Chainsaw
   val unisimDir =
     new File("src/main/resources/unisims") // for Xilinx primitives
+  val matlabScriptDir = new File("src/main/resources/matlabScripts")
+  val pythonScriptDir = new File("goldenModel")
+
   val genWorkspace   = new File("genWorkspace")   // RTL
   val simWorkspace   = new File("simWorkspace")   // waveform
   val synthWorkspace = new File("synthWorkspace") // log & checkpoint
-  val cplexJarPath = new File(
-    "/opt/ibm/ILOG/CPLEX_Studio1210/cplex/lib/cplex.jar"
-  )
-  val flopocoPath      = new File("/home/ltr/flopoco/build/flopoco")
+
   val flopocoOutputDir = new File("src/main/resources/flopocoGenerated")
-  val matlabScriptDir  = new File("src/main/resources/matlabScripts")
-  val dagFigDir        = new File("src/main/resources/dfgGenerated")
+  val dagOutputDir     = new File("src/main/resources/dfgGenerated")
 
   /** -------- scala type utils
     * --------

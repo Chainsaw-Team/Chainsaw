@@ -30,7 +30,7 @@ object ExportGraph {
 
     layout.execute(graphAdapter.getDefaultParent) // starts from a tree layout
     val image = mxCellRenderer.createBufferedImage(graphAdapter, null, 2, Color.WHITE, true, null)
-    val imgFile = new File(dagFigDir, s"$name.png")
+    val imgFile = new File(dagOutputDir, s"$name.png")
     logger.info(s"view the DFG of $name at ${imgFile.getAbsolutePath}")
     ImageIO.write(image, "PNG", imgFile)
   }

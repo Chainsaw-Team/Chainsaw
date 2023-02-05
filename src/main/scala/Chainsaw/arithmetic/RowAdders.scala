@@ -9,7 +9,7 @@ import spinal.lib._
 import scala.collection.mutable.ArrayBuffer
 import scala.math.{BigInt, log}
 
-abstract class RowAdder extends CompressorGenerator {
+abstract class RowAdder extends CompressorGenerator  {
 
   def width: Int
 

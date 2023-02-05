@@ -8,17 +8,17 @@ import scala.util.Random
 
 class ArithmeticIpTests extends ChainsawFlatSpec {
 
-  val multTypes =
+  val multTypes: Seq[MultiplierType] =
     Seq(FullMultiplier, MsbMultiplier, LsbMultiplier, SquareMultiplier)
-  val adderTypes = Seq(
+  val adderTypes: Seq[AdderType] = Seq(
     BinaryAdder,
     BinarySubtractor,
     TernaryAdder,
     TernarySubtractor1,
     TernarySubtractor2
   )
-  val lsbConstants = Seq(Some(ZPrizeMSM.baseModulus), None)
-  val msbConstants = Seq(Some(ZPrizeMSM.MPrime), None)
+  val lsbConstants: Seq[Option[BigInt]] = Seq(Some(ZPrizeMSM.baseModulus), None)
+  val msbConstants: Seq[Option[BigInt]] = Seq(Some(ZPrizeMSM.MPrime), None)
 
   /** traverse all possible combinations of multiplier types for a given
     * bitwidth
@@ -217,7 +217,8 @@ class ArithmeticIpTests extends ChainsawFlatSpec {
       BaseDspMult(34, 34),
       BaseDspMult(48, 48)
     )
-    val allMults = smallKaratsubas ++ smallTilings
+    //    val allMults = smallKaratsubas ++ smallTilings
+    val allMults = smallTilings
     allMults.foreach(testOperator(_, generatorConfigTable("Dsp")))
   }
 
@@ -264,7 +265,6 @@ class ArithmeticIpTests extends ChainsawFlatSpec {
     )
     testOperator(Merge(heap0 ++ heap1), generatorConfigTable("Merge"))
 
-    verbose = 1
     // a merge operation from Karatsuba
     val arithInfosKara = Seq(
       ArithInfo(64, 160),
@@ -347,23 +347,21 @@ class ArithmeticIpTests extends ChainsawFlatSpec {
   )
 
   FileUtils.deleteDirectory(compressorSolutionDir)
-  // set true when synth is needed
-  allowSynthAndImpl = true
   // for reproducibility
   Random.setSeed(42)
   // level 1: compressors and DSPs
-//  testDspMults()
-//  testCompressors()
+  testDspMults()
+  testCompressors()
   // level 2: bit (multi-input)adders
-//  testCpa()
-//  testFastAdditionAlgos()
+  testCpa()
+  testFastAdditionAlgos()
   testCcaAdder()
-//  testMerge()
-//  // level 3: multipliers
-//  testBmAlgo()
-//  testBcmAlgo()
-//  testBm()
-//  testBcm()
-//  // level 4: DSE
-//  testMultSearch()
+  testMerge()
+  // level 3: multipliers
+  testBmAlgo()
+  testBcmAlgo()
+  //  testBm()
+  //  testBcm()
+  // level 4: DSE
+  testMultSearch()
 }

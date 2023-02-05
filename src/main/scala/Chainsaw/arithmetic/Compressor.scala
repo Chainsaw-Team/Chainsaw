@@ -81,7 +81,12 @@ trait Compressor {
   }
 }
 
-trait CompressorGenerator extends ChainsawOperatorGenerator with Compressor {
+trait CompressorGenerator
+    extends ChainsawOperatorGenerator
+    with Compressor
+    with FixedLatency {
+
+  override def latency: Int = 0
 
   // complement related
   def complementHeap: Seq[Seq[Boolean]]

@@ -12,9 +12,9 @@ import scala.io.Source
 
 trait Flopoco {
 
-  /** --------
-   * params for Flopoco generation
-   * -------- */
+  /** -------- params for Flopoco generation
+    * --------
+    */
   // required parameters
   def name: String
 
@@ -26,53 +26,57 @@ trait Flopoco {
 
   def fmaxEstimation: HertzNumber
 
-  def familyLine = family match {
+  private def familyLine = family match {
     case UltraScale => "VirtexUltrascalePlus"
-    case Series7 => "Kintex7"
+    case Series7    => "Kintex7"
   }
 
   // optional parameters
   val params: Seq[(String, Any)]
 
-  def getSimBackEnd: SpinalSimBackendSel = if (testFlopoco) GHDL else VERILATOR // for VHDL verification
+  def getSimBackEnd: SpinalSimBackendSel =
+    if (testFlopoco) GHDL else VERILATOR // for VHDL verification
 
-  def getUseNaive =
+  def getUseNaive: Boolean =
     if (atSimTime) !testFlopoco // while sim
-    else false // while synth/impl
+    else false                  // while synth/impl
 
   /** output RTL file name defined by all params, making cache file possible
-   */
+    */
   def rtlPath = new File(flopocoOutputDir, s"$name.vhd")
 
   /** black box used in synthesis
-   */
+    */
   def blackbox: FlopocoBlackBox
 
   /** invoke flopoco to generate RTL and get terminal output
-   */
+    */
   def flopocoRun(): Unit = {
-    val paramsLine = params.map { case (param, value) => s"$param=$value" }.mkString(" ")
-    val command = s"$flopocoPath frequency=${fmaxEstimation.toInt / 1e6} target=$familyLine verbose=1 outputFile=${rtlPath.getAbsolutePath} $operatorName $paramsLine"
+    val paramsLine =
+      params.map { case (param, value) => s"$param=$value" }.mkString(" ")
+    val command =
+      s"$flopocoPath frequency=${fmaxEstimation.toInt / 1e6} target=$familyLine verbose=1 outputFile=${rtlPath.getAbsolutePath} $operatorName $paramsLine"
     flopocoOutputDir.mkdirs()
     DoCmd.doCmd(command, flopocoOutputDir.getAbsolutePath)
   }
 
   /** extract the module name as well as the pipeline level from generated RTL
-   */
+    */
   def getInfoFromRtl: (Int, String) = { // FIXME: this is not robust
     if (!rtlPath.exists()) flopocoRun()
-    val src = Source.fromFile(rtlPath)
-    val lines = src.getLines().toSeq
-    val lineIndex = lines.indexWhere(_.contains(s"${entityName}_"))
+    val src            = Source.fromFile(rtlPath)
+    val lines          = src.getLines().toSeq
+    val lineIndex      = lines.indexWhere(_.contains(s"${entityName}_"))
     val linesForSearch = lines.drop(lineIndex)
     val latencyLine = linesForSearch.find(_.startsWith("-- Pipeline depth: "))
     val latency = latencyLine match {
       case Some(line) => line.filter(_.isDigit).mkString("").toInt
-      case None => 0
+      case None       => 0
     }
     //    println(linesForSearch.mkString("\n"))
     val moduleName = linesForSearch
-      .filter(_.startsWith(s"entity ${entityName}_")).head
+      .filter(_.startsWith(s"entity ${entityName}_"))
+      .head
       .split(" ")(1)
     src.close()
     (latency, moduleName)
@@ -84,8 +88,7 @@ trait Flopoco {
 }
 
 /** base class of wrappers of Flopoco operators
- *
- */
+  */
 abstract class FlopocoOperator extends ChainsawOperatorGenerator with Flopoco {
 
   override def simBackEnd: SpinalSimBackendSel = getSimBackEnd
@@ -107,10 +110,13 @@ abstract class FlopocoOperator extends ChainsawOperatorGenerator with Flopoco {
 }
 
 abstract class FlopocoBlackBox extends BlackBox {
-  def mapChainsawModule(flowIn: Flow[Fragment[Vec[AFix]]], flowOut: Flow[Fragment[Vec[AFix]]]): Unit
+  def mapChainsawModule(
+      flowIn: Flow[Fragment[Vec[AFix]]],
+      flowOut: Flow[Fragment[Vec[AFix]]]
+  ): Unit
 }
 
 abstract class FlopocoBlackBoxWithClk extends FlopocoBlackBox {
-  val clk = in Bool()
+  val clk = in Bool ()
   mapCurrentClockDomain(clk)
 }
