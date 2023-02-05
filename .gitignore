@@ -23,6 +23,8 @@ out
 /*.v
 *.json
 *.vcd
+*.npz
+*.npy
 # exceptions
 !tester/src/test/resources/*.vhd
 # resources
@@ -50,3 +52,5 @@ src/main/scala/draft.sc
 /leetcode/
 #/src/test/scala/Chainsaw/project/das/
 
+/goldenModel/.ipynb_checkpoints/
+/tmpRtl/

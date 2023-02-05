@@ -1,10 +1,6 @@
 package Chainsaw.memory
 
-import Chainsaw.xilinx.VivadoSynth
-import Chainsaw.{ChainsawFlatSpec, NumericType, TestConfig, allowSynthAndImpl}
-import spinal.core.sim.{SimConfig, _}
-
-import scala.util.Random
+import Chainsaw.{ChainsawFlatSpec, NumericType, TestConfig}
 
 class MemoryIpTests extends ChainsawFlatSpec {
 
@@ -66,9 +62,8 @@ class MemoryIpTests extends ChainsawFlatSpec {
     )
   )
 
-  allowSynthAndImpl = false
-//  testP2S()
+  testP2S()
   testHeaderInserter()
-//  testWidthConverter()
-//  testDynamicDownSample()
+  testWidthConverter()
+  testDynamicDownSample()
 }

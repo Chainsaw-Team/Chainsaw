@@ -77,12 +77,12 @@ abstract class ChainsawFlatSpec extends AnyFlatSpec {
       }
     }
 
-    if (synth && allowSynthAndImpl) { // when impl is set, synth is not necessary
+    if (synth && allowSynth) { // when impl is set, synth is not necessary
       it should "meet the util & fmax requirement after synth" in
         ChainsawSynth(gen, testConfig.utilRequirementStrategy)
     }
 
-    if (impl && allowSynthAndImpl) {
+    if (impl && allowImpl) {
       it should "meet the util & fmax requirement after impl" in
         ChainsawImpl(gen, testConfig.utilRequirementStrategy)
     }
