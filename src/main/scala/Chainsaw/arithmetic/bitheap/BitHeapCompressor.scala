@@ -20,7 +20,7 @@ case class BitHeapCompressor(
   val bitHeapGroup            = BitHeapGroup.fromInfos(arithInfos)
   override val positiveLength = bitHeapGroup.positiveLength
 
-  val solutionFile = new File(compressorSolutionDir, s"$name")
+  val solutionFile = new File(compressorSolutionOutputDir, s"$name")
   val solution = if (solutionFile.exists()) {
     logger.info(s"take existing solution from $solutionFile")
     CompressorFullSolution.load(solutionFile)

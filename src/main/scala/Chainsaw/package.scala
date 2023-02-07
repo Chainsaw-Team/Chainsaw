@@ -50,6 +50,7 @@ package object Chainsaw {
     yaml.load(configString).asInstanceOf[java.util.LinkedHashMap[String, Any]]
 
   val hasVivado: Boolean = sys.env.contains("VIVADO")
+  val hasFlopoco: Boolean = sys.env.contains("FLOPOCO")
   val allowSynth: Boolean =
     configs.get("allowSynth").asInstanceOf[Boolean] && hasVivado
   val allowImpl: Boolean =
@@ -75,8 +76,8 @@ package object Chainsaw {
   var testVhdl    = false
 
   // TODO: better dots
-  val positiveDot   = "⬛"
-  val complementDot = "⬜"
+  val positiveDot = "+"
+  val complementDot = "-"
   val downArrow     = "↓"
 
   /** -------- type def

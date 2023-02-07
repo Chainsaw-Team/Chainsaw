@@ -32,8 +32,8 @@ class BitHeapSolverTest extends ChainsawFlatSpec {
     * --------
     */
   def testSolver(solverUnderTest: BitHeapSolver): Unit = {
-    FileUtils.deleteDirectory(compressorSolutionDir)
-    compressorSolutionDir.mkdir()
+    FileUtils.deleteDirectory(compressorSolutionOutputDir)
+    compressorSolutionOutputDir.mkdir()
     testCases.foreach(testCase => {
       val gen = BitHeapCompressor(testCase, solverUnderTest)
       testOperator(gen, generatorConfigTable("BitHeapCompressor"))

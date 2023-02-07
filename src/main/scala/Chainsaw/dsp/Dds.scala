@@ -28,7 +28,7 @@ case class Dds(ddsWave: DdsWave, dataType: NumericType, parallel: Int)
     ddsWave.generate(testCase.data.length * parallel).map(BigDecimal(_))
 
   override def metric(yours: Seq[BigDecimal], golden: Seq[BigDecimal]) =
-    correlationMetric(yours, golden, 0.9)
+    ChainsawMetric.corrMetric(yours, golden, 0.9)
 
   override def testCases =
     Seq.fill(3)(TestCase(randomDataSequence(Random.nextInt(100) + 10)))

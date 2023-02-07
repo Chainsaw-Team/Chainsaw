@@ -10,6 +10,7 @@ import scala.language.postfixOps
 
 class UnisimTest extends AnyFlatSpec {
 
+  // TODO: use ChainsawFlatSpec
   // TODO: primitives need more encapsulation like this
   case class Lut6Dut(init: BigInt) extends Component {
     val dataIn  = in Bits (6 bits)
@@ -25,8 +26,11 @@ class UnisimTest extends AnyFlatSpec {
     dataOut(1) := lut6.O6
   }
 
-  "LUT6" should "synth" in VivadoSynth(Lut6Dut(BigInt(0)), "lut6")
-    .requireUtil(VivadoUtil(lut = 1), PreciseRequirement)
+  "LUT6" should "synth" in {
+    if (hasVivado)
+      VivadoSynth(Lut6Dut(BigInt(0)), "lut6")
+        .requireUtil(VivadoUtil(lut = 1), PreciseRequirement)
+  }
 
   it should "work" in SimConfig.withFstWave
     .compile {
@@ -43,8 +47,11 @@ class UnisimTest extends AnyFlatSpec {
   behavior of "CARRY8"
 
   // TODO: add DUT
-  ignore should "synth" in VivadoSynth(CARRY8(), "carry8")
-    .requireUtil(VivadoUtil(carry8 = 1), PreciseRequirement)
+  it should "synth" in {
+    if (hasVivado)
+      VivadoSynth(CARRY8(), "carry8")
+        .requireUtil(VivadoUtil(carry8 = 1), PreciseRequirement)
+  }
 
   // TODO: add assertions
   it should "work" in SimConfig.withFstWave.compile(CARRY8()).doSim { dut =>

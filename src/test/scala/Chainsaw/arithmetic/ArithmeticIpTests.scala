@@ -346,7 +346,7 @@ class ArithmeticIpTests extends ChainsawFlatSpec {
     "Bcm" -> TestConfig(full = true, naive = true, synth = false, impl = false)
   )
 
-  FileUtils.deleteDirectory(compressorSolutionDir)
+  FileUtils.deleteDirectory(compressorSolutionOutputDir)
   // for reproducibility
   Random.setSeed(42)
   // level 1: compressors and DSPs
