@@ -1,6 +1,6 @@
 package Chainsaw.intel
 
-import Chainsaw.phases
+import Chainsaw.{phases, quartusDir}
 import org.apache.commons.io.FileUtils
 import spinal.core._
 
@@ -45,7 +45,9 @@ class QuartusFlow[T <: Component](dut: => T = null, workspace: String = "quartus
 
     // new project and compile--tcl
     tclGen()
-    Process("quartus_sh -t set.tcl", new File(workspace)) !
+    val quartus_sh = new File(quartusDir, "quartus_sh")
+//    Process("quartus_sh -t set.tcl", new File(workspace)) !
+    Process(s"${quartus_sh.getAbsolutePath} -t set.tcl", new File(workspace)) !
     // get report
     val resourceReport = getReport(Report.RESOURCE)
     val timingReport = getReport(Report.TIMING)
@@ -101,9 +103,12 @@ class QuartusFlow[T <: Component](dut: => T = null, workspace: String = "quartus
 
 object QuartusFlow extends App {
 
-  import Chainsaw._
+  import Chainsaw.dsp.Fir
+  import Chainsaw._ // for basic templates
+  import Chainsaw.dsp._ // for dsp operators
+  import Chainsaw.arithmetic._ // for arithmetic operators
+  import Chainsaw.crypto._ // for crypto operators
+  import Chainsaw.xilinx._ // for Xilinx FPGA Flow
 
-  //  new QuartusFlow(Chainsaw.dsp.ComplexMult(SFixInfo(0, 17)).implH).impl()
-  val netList = new File("/home/ltr/Chainsaw/src/main/resources/netlists")
-  new QuartusFlow(netlistDir = Some(netList)).impl()
+  new QuartusFlow(Fir(Seq(1.0,1.0,1.0),NumericType.SFix(2, 16),dataType = NumericType.SFix(2, 16)).implH).impl()
 }
