@@ -46,8 +46,6 @@ lazy val Chainsaw = (project in file("."))
     libraryDependencies += djlCore,
     libraryDependencies += djlBackend,
     libraryDependencies += snakeYaml,
-    Compile / unmanagedJars += file("lib/cplex.jar"),
-    Compile / unmanagedJars += file("lib/engine.jar")
   )
 
 fork := true

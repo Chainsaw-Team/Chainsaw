@@ -10,7 +10,7 @@ package object arithmetic {
 
   type BitHeapHard = ArrayBuffer[ArrayBuffer[Bit[Bool]]]
 
-  val compressorSolutionDir = {
+  val compressorSolutionOutputDir = {
     val dir = new File("src/main/resources/compressorSolutions")
     dir.mkdirs()
     dir

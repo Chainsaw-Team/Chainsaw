@@ -116,17 +116,16 @@ case class ParallelFir(
     }
 
   override def impl(testCase: TestCase) = {
-    fir(testCase.data.toArray.map(_.toDouble), coeffs)
+    conv(testCase.data.toArray.map(_.toDouble), coeffs.toArray)
       .drop(coeffs.length - 1)
       .map(BigDecimal(_))
   }
 
-  override def metric(yours: Seq[BigDecimal], golden: Seq[BigDecimal]) = {
-    correlationMetric(yours, golden, 0.9)
-  }
+  override def metric(yours: Seq[BigDecimal], golden: Seq[BigDecimal]) =
+    ChainsawMetric.corrMetric(yours, golden, 0.9)
 
   override def testCases =
-    Seq.fill(3)(TestCase(randomDataSequence(Random.nextInt(1000))))
+    Seq.fill(3)(TestCase(randomDataSequence(Random.nextInt(1000) + 100)))
 
   override def resetCycle = latency()
 

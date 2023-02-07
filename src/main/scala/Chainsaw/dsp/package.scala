@@ -64,12 +64,6 @@ package object dsp {
     getCorr(y, g) > 0.9
   }
 
-  def correlationMetric(yours: Seq[BigDecimal], golden: Seq[BigDecimal], threshold: Double) =
-    getCorr(
-      yours.map(_.toDouble).toArray,
-      golden.map(_.toDouble).toArray
-    ) > threshold
-
   def plot(signal: MatlabSignal, name: String): Unit = {
     matlabEngine.putVariable("data", signal)
     matlabEngine.eval(s"plot(data); title('$name');")
