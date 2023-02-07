@@ -11,9 +11,9 @@ class DspIpTests extends ChainsawFlatSpec {
   /** -------- parameters
     * --------
     */
-  val coeffType = NumericType(2, 14, signed = true)
-  val dataType  = NumericType(2, 14, signed = true)
-  val ddsType   = NumericType(1, 16, signed = true)
+  val coeffType: NumericType = NumericType(2, 14, signed = true)
+  val dataType: NumericType = NumericType(2, 14, signed = true)
+  val ddsType: NumericType = NumericType(1, 16, signed = true)
 
   val testIteration = 12
   val testFraction  = 16
@@ -161,7 +161,7 @@ class DspIpTests extends ChainsawFlatSpec {
     * --------
     */
 
-  override def generatorConfigTable = Map(
+  override def generatorConfigTable: Map[String, TestConfig] = Map(
     "ComplexMult" -> TestConfig(
       full  = true,
       naive = false,
@@ -199,5 +199,4 @@ class DspIpTests extends ChainsawFlatSpec {
   //  testFirs() // temp
   testDds()
   testMovingAverage()
-
 }
