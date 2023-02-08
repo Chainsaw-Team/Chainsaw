@@ -93,6 +93,8 @@ package object Chainsaw {
   // outside Chainsaw
   val vivadoPath =
     new File(sys.env.getOrElse("VIVADO", "")) // vivado executable path
+  val vitisPath =
+    new File(sys.env.getOrElse("VITIS", "")) // vitis executable path
   val flopocoPath = new File(sys.env.getOrElse("FLOPOCO", ""))
   val quartusDir = new File(sys.env.getOrElse("QUARTUS", "")).getParentFile // quartus executable dir
 
