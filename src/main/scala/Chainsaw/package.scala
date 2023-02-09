@@ -97,6 +97,7 @@ package object Chainsaw {
     new File(sys.env.getOrElse("VITIS", "")) // vitis executable path
   val flopocoPath = new File(sys.env.getOrElse("FLOPOCO", ""))
   val quartusDir = new File(sys.env.getOrElse("QUARTUS", "")).getParentFile // quartus executable dir
+  val pythonPath = new File(sys.env.getOrElse("PYTHON", "")) // python executable dir
 
   // inside Chainsaw
   val unisimDir =
