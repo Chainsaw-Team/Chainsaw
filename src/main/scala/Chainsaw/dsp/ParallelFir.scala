@@ -122,7 +122,7 @@ case class ParallelFir(
   }
 
   override def metric(yours: Seq[BigDecimal], golden: Seq[BigDecimal]) =
-    ChainsawMetric.corrMetric(yours, golden, 0.9)
+    corrMetric(yours, golden, 0.9)
 
   override def testCases =
     Seq.fill(3)(TestCase(randomDataSequence(Random.nextInt(1000) + 100)))

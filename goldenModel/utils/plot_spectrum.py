@@ -3,12 +3,14 @@ import sys
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import signal
-def plot_spectrum(fs):
 
-    npz_path = "./pair.npz"
+
+def plot_spectrum(fs):
+    npz_path = "./temp.npz"
     npz = np.load(npz_path)
     data = npz["arr_0"]
     data = np.real(data)
+
 
     dt = 1 / fs
     t = np.arange(0, len(data)) * dt
