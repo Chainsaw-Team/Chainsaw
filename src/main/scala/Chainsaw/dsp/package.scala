@@ -14,6 +14,7 @@ import spinal.lib._
 import spinal.lib.fsm._
 
 import java.nio.file.{Files, Paths}
+import scala.collection.mutable.ArrayBuffer
 
 package object dsp {
 
@@ -70,12 +71,12 @@ package object dsp {
     ret
   }
 
-  // TODO: implement this without Matlab
-  val corrMetric = (yours: Seq[Any], golden: Seq[Any]) => {
-    val y = yours.asInstanceOf[Seq[Double]].toArray
-    val g = golden.asInstanceOf[Seq[Double]].toArray
-    getCorr(y, g) > 0.9
-  }
+//  // TODO: implement this without Matlab
+//  val corrMetric = (yours: Seq[Any], golden: Seq[Any]) => {
+//    val y = yours.asInstanceOf[Seq[Double]].toArray
+//    val g = golden.asInstanceOf[Seq[Double]].toArray
+//    getCorr(y, g) > 0.9
+//  }
 
   def plot(signal: MatlabSignal, name: String): Unit = {
     matlabEngine.putVariable("data", signal)
@@ -146,31 +147,57 @@ package object dsp {
 
   // python utils
 
-  def exportSignal(yours: Signal) = {
+  def exportSignal(yours: Signal*): File = {
     val manager = NDManager.newBaseManager()
-    val signal =
-      new NDList(manager.create(yours.toArray.map(_.toDouble)))
-    val os = Files.newOutputStream(Paths.get("pair.npz"))
+    val arrays = yours.toArray.map(signal =>
+      manager.create(signal.toArray.map(_.toDouble))
+    )
+    val signal = new NDList(arrays: _*)
+    val os     = Files.newOutputStream(Paths.get("temp.npz"))
     signal.encode(os, true)
+    new File("temp.npz")
   }
 
-  def runPython(pyPath: File, args: String*) = {
-    val process: Process =
-      Runtime.getRuntime.exec(s"$pythonPath ${pyPath.getAbsolutePath} ${args.mkString(" ")}") // 执行py文件
-    val in   = new BufferedReader(new InputStreamReader(process.getInputStream))
+  def importSignal(npz: File): Seq[Signal] = {
+    val manager     = NDManager.newBaseManager()
+    val is          = Files.newInputStream(Paths.get(npz.getAbsolutePath))
+    val decoded     = NDList.decode(manager, is)
+    val signalCount = decoded.size()
+    (0 until signalCount)
+      .map(decoded.get)
+      .map(_.toDoubleArray.map(BigDecimal(_)).toSeq)
+  }
+
+  def runPython(pyPath: File, args: String*): String = {
+    val command = s"$pythonPath ${pyPath.getAbsolutePath} ${args.mkString(" ")}"
+    val process: Process = Runtime.getRuntime.exec(command) // 执行py文件
+    val in = new BufferedReader(new InputStreamReader(process.getInputStream))
+    val lines = ArrayBuffer[String]()
+
     var line = in.readLine()
     while (line != null) {
-      println(line)
+      lines += line
       line = in.readLine()
     }
 
     in.close()
+    println(s"python output:\n ${lines.mkString("\n")}")
+    lines.last
   }
 
-  def plot_spectrum(signal: Signal, samplingFreq: HertzNumber): Unit = {
+  def plotSpectrum(signal: Signal, samplingFreq: HertzNumber) = {
     exportSignal(signal)
     val pyPath = new File("goldenModel/utils/plot_spectrum.py")
     runPython(pyPath, samplingFreq.toDouble.toString)
+  }
+
+  def corrMetric(yours: Signal, golden: Signal, threshold: Double) = {
+    exportSignal(yours, golden)
+    val pyPath   = new File("goldenModel/utils/corr_metric.py")
+    val rets     = runPython(pyPath).split(" ")
+    val corrcoef = rets(0).toDouble
+    val lag      = rets(1).toInt
+    corrcoef >= threshold
   }
 
 }

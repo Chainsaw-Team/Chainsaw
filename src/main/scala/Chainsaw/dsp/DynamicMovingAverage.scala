@@ -34,7 +34,7 @@ case class DynamicMovingAverage(size: Int, dataType: NumericType)
 
   override def metric(yours: Seq[BigDecimal], golden: Seq[BigDecimal]) = {
     require(yours.length == golden.length)
-    ChainsawMetric.corrMetric(yours, golden, 0.9)
+    corrMetric(yours, golden, 0.9)
   }
 
   override def testCases = {

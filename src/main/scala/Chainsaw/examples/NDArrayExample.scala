@@ -15,4 +15,13 @@ object NDArrayExample extends App {
   encoded.encode()
   val os = Files.newOutputStream(Paths.get("ndarray.npz"))
   encoded.encode(os, true)
+
+  val is        = Files.newInputStream(Paths.get("ndarray.npz"))
+  val decoded   = NDList.decode(manager, is)
+  val recovered = decoded.get(0)
+
+  println(s"number of arrays: ${decoded.size()}")
+  println(s"recovered ${recovered}")
+  println(s"recovered array ${recovered.toFloatArray.mkString("\n")}")
+  println(s"recovered ${recovered.getFloat(0,0)}")
 }
