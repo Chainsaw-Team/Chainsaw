@@ -49,7 +49,7 @@ package object Chainsaw {
   private val configs =
     yaml.load(configString).asInstanceOf[java.util.LinkedHashMap[String, Any]]
 
-  val hasVivado: Boolean = sys.env.contains("VIVADO")
+  val hasVivado: Boolean  = sys.env.contains("VIVADO")
   val hasFlopoco: Boolean = sys.env.contains("FLOPOCO")
   val allowSynth: Boolean =
     configs.get("allowSynth").asInstanceOf[Boolean] && hasVivado
@@ -76,7 +76,7 @@ package object Chainsaw {
   var testVhdl    = false
 
   // TODO: better dots
-  val positiveDot = "+"
+  val positiveDot   = "+"
   val complementDot = "-"
   val downArrow     = "↓"
 
@@ -96,14 +96,15 @@ package object Chainsaw {
   val vitisPath =
     new File(sys.env.getOrElse("VITIS", "")) // vitis executable path
   val flopocoPath = new File(sys.env.getOrElse("FLOPOCO", ""))
-  val quartusDir = new File(sys.env.getOrElse("QUARTUS", "")).getParentFile // quartus executable dir
-  val pythonPath = new File(sys.env.getOrElse("PYTHON", "")) // python executable dir
+  val quartusDir =
+    new File(
+      sys.env.getOrElse("QUARTUS", "")
+    ).getParentFile // quartus executable dir
 
   // inside Chainsaw
   val unisimDir =
     new File("src/main/resources/unisims") // for Xilinx primitives
   val matlabScriptDir = new File("src/main/resources/matlabScripts")
-  val pythonScriptDir = new File("goldenModel")
 
   val genWorkspace   = new File("genWorkspace")   // RTL
   val simWorkspace   = new File("simWorkspace")   // waveform

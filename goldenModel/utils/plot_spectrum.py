@@ -1,3 +1,4 @@
+import os
 import sys
 
 import matplotlib.pyplot as plt
@@ -10,7 +11,6 @@ def plot_spectrum(fs):
     npz = np.load(npz_path)
     data = npz["arr_0"]
     data = np.real(data)
-
 
     dt = 1 / fs
     t = np.arange(0, len(data)) * dt

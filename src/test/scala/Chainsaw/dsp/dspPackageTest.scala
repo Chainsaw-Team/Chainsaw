@@ -17,12 +17,12 @@ class dspPackageTest extends org.scalatest.flatspec.AnyFlatSpec {
   val sin_shifted =
     (10 until 10010).map(_.toDouble).map(scala.math.sin).map(BigDecimal(_))
 
-  "signal export and import" should "work" in {
-    val file = exportSignal(sin, sin_shifted)
-    println(importSignal(file).head.take(100).mkString(" "))
-  }
-
   "plot_spectrum" should "work" in plotSpectrum(sin, 240 MHz)
+
   "get_corr" should "work" in corrMetric(sin, sin_shifted, 0.9)
 
+  "design filter" should "work" in {
+    val coeffs = designFilter(29, Seq(1.6 MHz), 240 MHz, "lowpass")
+    println(coeffs.mkString(" "))
+  }
 }
