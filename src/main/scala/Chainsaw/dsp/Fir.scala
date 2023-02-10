@@ -48,7 +48,12 @@ case class Fir(
     corrMetric(yours, golden, 0.9)
 
   override def testCases =
-    Seq.fill(3)(TestCase(randomDataSequence(Random.nextInt(1000) + 100)))
+    Seq.fill(3)(
+      TestCase(
+        randomDataSequence(Random.nextInt(1000) + 1000)
+          ++ Seq.fill(coeffs.length)(BigDecimal(0))
+      )
+    )
 
   override def resetCycle = latency()
 

@@ -6,7 +6,6 @@ import ai.djl.ndarray.types._
 
 import java.io.{BufferedReader, File, InputStreamReader}
 import scala.language.implicitConversions
-import com.mathworks.matlab.types.Struct
 import spinal.core.Data
 import spinal.core._
 import spinal.core.sim._
@@ -146,45 +145,7 @@ package object dsp {
   }
 
   // python utils
-
-  def exportSignal(yours: Signal*): File = {
-    val manager = NDManager.newBaseManager()
-    val arrays = yours.toArray.map(signal =>
-      manager.create(signal.toArray.map(_.toDouble))
-    )
-    val signal = new NDList(arrays: _*)
-    val os     = Files.newOutputStream(Paths.get("temp.npz"))
-    signal.encode(os, true)
-    new File("temp.npz")
-  }
-
-  def importSignal(npz: File): Seq[Signal] = {
-    val manager     = NDManager.newBaseManager()
-    val is          = Files.newInputStream(Paths.get(npz.getAbsolutePath))
-    val decoded     = NDList.decode(manager, is)
-    val signalCount = decoded.size()
-    (0 until signalCount)
-      .map(decoded.get)
-      .map(_.toDoubleArray.map(BigDecimal(_)).toSeq)
-  }
-
-  def runPython(pyPath: File, args: String*): String = {
-    val command = s"$pythonPath ${pyPath.getAbsolutePath} ${args.mkString(" ")}"
-    val process: Process = Runtime.getRuntime.exec(command) // 执行py文件
-    val in = new BufferedReader(new InputStreamReader(process.getInputStream))
-    val lines = ArrayBuffer[String]()
-
-    var line = in.readLine()
-    while (line != null) {
-      lines += line
-      line = in.readLine()
-    }
-
-    in.close()
-    println(s"python output:\n ${lines.mkString("\n")}")
-    lines.last
-  }
-
+  import Chainsaw.io.pythonIo._
   def plotSpectrum(signal: Signal, samplingFreq: HertzNumber) = {
     exportSignal(signal)
     val pyPath = new File("goldenModel/utils/plot_spectrum.py")
@@ -200,4 +161,20 @@ package object dsp {
     corrcoef >= threshold
   }
 
+  def designFilter(
+      tap: Int,
+      target: Seq[HertzNumber],
+      samplingFreq: HertzNumber,
+      filterType: String
+  ): Signal = {
+    val pyPath = new File("goldenModel/utils/design_filter.py")
+    runPython(
+      pyPath,
+      s"$tap [${target.map(_.toDouble).mkString(", ")}] ${samplingFreq.toDouble} $filterType"
+    )
+    importSignal.head
+  }
+
+  def unwrap(signal: Signal) =
+    goldenModelBySignal(new File(pythongProjectDir, "utils/unwrap"), "", signal)
 }
