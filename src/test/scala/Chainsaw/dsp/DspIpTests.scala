@@ -25,15 +25,6 @@ class DspIpTests extends ChainsawFlatSpec {
   val testIteration = 12
   val testFraction  = 16
 
-  val coeffLengths = Seq(17, 25, 33)
-  val coeffs = coeffLengths.map(
-    designFilter(_, Seq(1.6 MHz), 240 MHz, "lowpass").map(_.toDouble)
-  )
-  val symmetricCoeffs = coeffs.map(coeff => coeff ++ coeff.reverse)
-
-  val symmetrics      = Seq(true, false)
-  val parallelFactors = Seq(4)
-
   val sizeMax   = 50
   val parallels = 1 to 4
   val dynamics  = Seq(true, false)
@@ -94,6 +85,16 @@ class DspIpTests extends ChainsawFlatSpec {
     */
 
   def testFirs(): Unit = {
+
+    val coeffLengths = Seq(17, 25, 33)
+    val coeffs = coeffLengths.map(
+      designFilter(_, Seq(1.6 MHz), 240 MHz, "lowpass").map(_.toDouble)
+    )
+    val symmetricCoeffs = coeffs.map(coeff => coeff ++ coeff.reverse)
+
+    val symmetrics = Seq(true, false)
+    val parallelFactors = Seq(4)
+
     // Pipelined FIR
     coeffs.foreach(coeff =>
       testOperator(Fir(coeff, coeffType, dataType), generatorConfigTable("Fir"))
@@ -173,6 +174,13 @@ class DspIpTests extends ChainsawFlatSpec {
     )
   }
 
+  def testPeriodicUnwrap() = {
+    testOperator(
+      PeriodicUnwrap(NumericType.SFix(10, 14), 10),
+      generatorConfigTable("Unwrap")
+    )
+  }
+
   /** -------- tests
     * --------
     */
@@ -218,6 +226,6 @@ class DspIpTests extends ChainsawFlatSpec {
 //  testDds()
 //  testMovingAverage()
 //  testFirs()
-
   testUnwrap()
+  testPeriodicUnwrap()
 }

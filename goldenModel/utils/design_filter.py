@@ -32,7 +32,7 @@ def design_lowpass(tap, target, fs):
     fig.tight_layout()
     plt.savefig("filter response.png")
 
-    np.savez("temp.npz", fir_firwin2)
+    np.savez("output.npz", fir_firwin2)
     print("view filter response.png for performance")
     print("load temp.npz for coeffs")
 

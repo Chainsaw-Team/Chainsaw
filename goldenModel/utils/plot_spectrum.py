@@ -7,7 +7,7 @@ from scipy import signal
 
 
 def plot_spectrum(fs):
-    npz_path = "./temp.npz"
+    npz_path = "input.npz"
     npz = np.load(npz_path)
     data = npz["arr_0"]
     data = np.real(data)

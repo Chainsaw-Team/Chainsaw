@@ -55,35 +55,6 @@ package object dsp {
     matlabEngine.getVariable("ret").asInstanceOf[T]
   }
 
-  // TODO: implement xcorr in Scala, and paint the result by matplotlib, rather than Matlab
-  def getCorr(yours: MatlabSignal, golden: MatlabSignal) = {
-    val length = yours.length min golden.length
-    val a      = yours.take(length)
-    val b      = golden.take(length)
-    matlabEngine.eval(s"addpath('${matlabScriptDir.getAbsolutePath}')")
-    val ret = matlabEngine.feval("getCorr", a, b).asInstanceOf[Double]
-    logger.info(s"corr factor = $ret")
-    if (ret < 0.9) {
-      val pngFile = new File("src/main/resources/matlabGenerated/corr.png")
-      logger.info(s"view ${pngFile.getAbsolutePath}")
-    }
-    ret
-  }
-
-//  // TODO: implement this without Matlab
-//  val corrMetric = (yours: Seq[Any], golden: Seq[Any]) => {
-//    val y = yours.asInstanceOf[Seq[Double]].toArray
-//    val g = golden.asInstanceOf[Seq[Double]].toArray
-//    getCorr(y, g) > 0.9
-//  }
-
-  def plot(signal: MatlabSignal, name: String): Unit = {
-    matlabEngine.putVariable("data", signal)
-    matlabEngine.eval(s"plot(data); title('$name');")
-    val pngFile = new File(s"src/main/resources/matlabGenerated/$name.png")
-    matlabEngine.eval(s"saveas(gcf,'${pngFile.getAbsolutePath}')")
-  }
-
   /** -------- modeling Z domain
     * --------
     */
@@ -172,9 +143,9 @@ package object dsp {
       pyPath,
       s"$tap [${target.map(_.toDouble).mkString(", ")}] ${samplingFreq.toDouble} $filterType"
     )
-    importSignal.head
+    importSignal().head
   }
 
   def unwrap(signal: Signal) =
-    goldenModelBySignal(new File(pythongProjectDir, "utils/unwrap"), "", signal)
+    goldenModelBySignal(new File(pythongProjectDir, "utils/unwrap.py"), "", signal)
 }
