@@ -10,11 +10,11 @@ import scala.language.postfixOps
 import scala.util.Random
 
 // TODO: parallel version
-case class DynamicDelay(delay: Int, dataType: NumericType, parallel: Int)
+case class DynamicDelay(delayMax: Int, dataType: NumericType, parallel: Int)
     extends ChainsawDynamicInfiniteGenerator
     with DynamicLatency {
 
-  override def name = s"DynamicDelay_$delay"
+  override def name = s"DynamicDelay_$delayMax"
 
   override def impl(testCase: TestCase) = testCase.data
 
@@ -24,7 +24,7 @@ case class DynamicDelay(delay: Int, dataType: NumericType, parallel: Int)
   override def testCases = {
     // test for 20 segments
     val controls = Seq
-      .fill(20)((Random.nextInt(delay) + 4) min delay)
+      .fill(20)((Random.nextInt(delayMax) + 4) min delayMax)
       .map(ctrl => Seq(BigDecimal(ctrl)))
     controls.map(ctrl =>
       TestCase(Seq.fill(100)(randomDataVector).flatten, ctrl)
@@ -33,7 +33,7 @@ case class DynamicDelay(delay: Int, dataType: NumericType, parallel: Int)
 
   override def latency(control: Seq[BigDecimal]) = control.head.toInt
 
-  override def controlTypes = Seq(NumericType.U(log2Up(delay + 1)))
+  override def controlTypes = Seq(NumericType.U(log2Up(delayMax + 1)))
 
   override def inputTypes = Seq.fill(parallel)(dataType)
 
@@ -49,7 +49,7 @@ case class DynamicDelay(delay: Int, dataType: NumericType, parallel: Int)
     // TODO: assertion for delay >= 4
     val control        = controlIn.head.asUInt()
     val currentLatency = RegNextWhen(control, validIn.rise())
-    val counterWidth   = log2Up(delay + 1)
+    val counterWidth   = log2Up(delayMax + 1)
     val paddedLength   = pow2(counterWidth)
     val indexCounter   = CounterFreeRun(paddedLength)
 
@@ -73,5 +73,5 @@ case class DynamicDelay(delay: Int, dataType: NumericType, parallel: Int)
 
   override def implNaiveH = None
 
-  override def resetCycle = delay
+  override def resetCycle = delayMax
 }

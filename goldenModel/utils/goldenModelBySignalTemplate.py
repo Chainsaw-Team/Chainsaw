@@ -8,11 +8,11 @@ import funcs
 
 
 def add():
-    npz_path = "../temp.npz"
+    npz_path = "../input.npz"
     npz = np.load(npz_path)
     a = npz["arr_0"]
     b = npz["arr_1"]
-    np.savez("temp.npz", a + b)
+    np.savez("output.npz", a + b)
 
 
 if __name__ == '__main__':

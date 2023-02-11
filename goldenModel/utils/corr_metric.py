@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import funcs
 
 def corr_metric():
-    npz_path = "../temp.npz"
+    npz_path = "input.npz"
     npz = np.load(npz_path)
     yours = npz["arr_0"]
     golden = npz["arr_1"]
@@ -33,11 +33,14 @@ def corr_metric():
     ret = funcs.get_corrcoef(your_valid, golden_valid)
 
     if ret < 0.9:
-        fig, ax = plt.subplots()
-        ax.plot(your_valid)
-        ax.plot(golden_valid)
-        ax.legend(['yours', 'golden'])
-        fig.savefig("./corr.png")
+        fig, axs = plt.subplots(2)
+        axs[0].plot(yours)
+        axs[0].plot(golden)
+        axs[0].legend(['yours', 'golden'])
+        axs[1].plot(your_valid)
+        axs[1].plot(golden_valid)
+        axs[1].legend(['yours', 'golden'])
+        fig.savefig("corr.png")
         print("view corr.png for failed test")
 
     print(ret, lag)  # return corrcoef and lag by output
