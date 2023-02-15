@@ -47,12 +47,6 @@ object NumericExt {
       ret := sf.truncated
       ret
     }
-
-    def fractionalPart = {
-      val ret = SFix(0 exp, sf.minExp exp)
-      ret.assignFromBits(sf.asBits.msb ## sf.asBits.takeLow(-sf.minExp))
-      ret
-    }
   }
 
   implicit class afixUtil(afix: AFix) {
@@ -74,6 +68,28 @@ object NumericExt {
 
     // FIXME: precise range will be lost
     //    def fixTo(that: NumericType) = afix.fixTo(that.qFormat)
+    def fractionalPart = {
+      require(afix.fracWidth > 0)
+      val ret = UFix(0 exp, -afix.fracWidth exp)
+      ret assignFromBits afix.asBits.takeLow(afix.fracWidth)
+      ret
+    }
+    def integralPart = {
+      require(afix.intWidth > 0)
+      val ret = SInt(afix.intWidth bits)
+      val intBits =
+        if (afix.signed) afix.asBits.takeHigh(afix.intWidth)
+        else B(0, 1 bits) ## afix.asBits.takeHigh(afix.intWidth)
+      ret assignFromBits intBits
+      ret
+    }
+
+    def roundWithPipeline = {
+      val half = UF(0.5, 0 exp, -afix.fracWidth exp)
+      val ge   = (fractionalPart >= half).d()
+      val int  = integralPart.d()
+      Mux(ge, int +^ S(1), int.resize(int.getBitsWidth)).d()
+    }
   }
 
   implicit class hardVecUtil(vec: Seq[AFix]) {
