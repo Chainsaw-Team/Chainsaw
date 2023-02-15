@@ -169,7 +169,7 @@ class DspIpTests extends ChainsawFlatSpec {
 
   def testUnwrap() = {
     testOperator(
-      UnwrapPointByPoint(NumericType.SFix(3, 14)),
+      UnwrapPointByPoint(NumericType.SFix(10, 14)),
       generatorConfigTable("Unwrap")
     )
   }

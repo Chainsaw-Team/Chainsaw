@@ -1,5 +1,4 @@
 package Chainsaw.dsp
-
 import Chainsaw._
 import Chainsaw.io.pythonIo._
 import Chainsaw.xilinx._
@@ -9,7 +8,7 @@ import java.io.File
 import scala.language.postfixOps
 
 case class PeriodicUnwrap(numericType: NumericType, periodMax: Int)
-    extends ChainsawDynamicInfiniteGenerator {
+  extends ChainsawDynamicInfiniteGenerator {
 
   override def name: String = s"PeriodicUnwrap_${numericType}_$periodMax"
   override def inputTypes: Seq[NumericType] = Seq(numericType)
@@ -55,9 +54,9 @@ case class PeriodicUnwrap(numericType: NumericType, periodMax: Int)
     ).head
 
   override def metric(
-      yours: Seq[BigDecimal],
-      golden: Seq[BigDecimal]
-  ): Boolean = corrMetric(yours, golden, threshold = 0.9)
+                       yours: Seq[BigDecimal],
+                       golden: Seq[BigDecimal]
+                     ): Boolean = corrMetric(yours, golden, threshold = 0.9)
 
   override def testCases: Seq[TestCase] =
     Seq.fill(10)(

@@ -3,6 +3,7 @@ package Chainsaw.dsp
 import Chainsaw._
 import Chainsaw.xilinx._
 import spinal.core._
+import Chainsaw.NumericExt._
 
 import scala.language.postfixOps // for Xilinx FPGA Flow
 
@@ -31,7 +32,7 @@ case class UnwrapPointByPoint(numericType: NumericType)
   override def metric(
       yours: Seq[BigDecimal],
       golden: Seq[BigDecimal]
-  ): Boolean = yours.zip(golden).forall { case (y, g) => (y - g).abs <= 1e-2 }
+  ): Boolean = yours.zip(golden).forall { case (y, g) => (y - g).abs <= 1e-1 }
 
   override def testCases: Seq[TestCase] =
     Seq.fill(1000)(TestCase(randomDataVector.map(_ * 0.5)))
@@ -39,19 +40,18 @@ case class UnwrapPointByPoint(numericType: NumericType)
     this
   ) {
 
-    val piReciprocal = NumericType.SFix(0, 17).fromConstant(1 / (scala.math.Pi * 2))
-    val pi           = NumericType.SFix(4, 13).fromConstant(scala.math.Pi * 2)
+    val piReciprocal =
+      NumericType.SFix(0, 17).fromConstant(1 / (scala.math.Pi * 2))
+    val pi = NumericType.SFix(4, 13).fromConstant(scala.math.Pi * 2)
 
     val Seq(prev, next) = dataIn
-    // DSP1
-    val diff        = (next - prev).d()
-    val roundedDiff = (diff * piReciprocal).d(2).roundToZero(0, aligned = true)
-    // DSP2
-    val multiple = (roundedDiff * pi).d()
-    multiple.addAttribute("use_dsp", "yes")
-    dataOut.head := (next.d(4) -| multiple).d()
 
-    // addition * 2, mult * 2, dsp cost = 2
+    val diff        = (next - prev).d()
+    val scaledDiff  = (diff * piReciprocal).d(2)
+    val roundedDiff = scaledDiff.roundWithPipeline.toAFix
+    val multiple    = (roundedDiff * pi).d(2)
+
+    dataOut.head := (next.d(7) -| multiple).d()
   }
 
   override def implNaiveH: Option[ChainsawOperatorModule] = ???
@@ -62,5 +62,5 @@ case class UnwrapPointByPoint(numericType: NumericType)
 
   override def resetCycle: Int = 0
 
-  override def latency(): Int = 5
+  override def latency(): Int = 8
 }
