@@ -8,10 +8,24 @@ import scala.language.postfixOps
 
 // TODO: a unified test for RAMs
 
+
+/** multi-ported RAM based on SingleRAM/DoubleRAM
+ */
+case class GeneralRam(
+                       width: Int,
+                       depth: Int,
+                       readPort: Int,
+                       writePort: Int,
+                       readLatency: Int,
+                       w2rLatency: Int,
+                       ramType: RamType
+                     ) extends Component {
+
+}
+
 /** 1W1R RAM with arbitrary width and depth
   */
-case class SingleRam(width: Int, depth: Int, readLatency: Int, w2rLatency: Int)
-    extends Component {
+case class SingleRam(width: Int, depth: Int, readLatency: Int, w2rLatency: Int) extends Component {
 
   val writeLatency = w2rLatency - readLatency
 
@@ -38,8 +52,7 @@ case class SingleRam(width: Int, depth: Int, readLatency: Int, w2rLatency: Int)
 
 /** dual-port RAM with arbitrary width and depth
   */
-case class DoubleRam(width: Int, depth: Int, readLatency: Int, w2rLatency: Int)
-    extends Component {
+case class DoubleRam(width: Int, depth: Int, readLatency: Int, w2rLatency: Int) extends Component {
 
   val writeLatency = w2rLatency - readLatency
 
@@ -68,13 +81,3 @@ case class DoubleRam(width: Int, depth: Int, readLatency: Int, w2rLatency: Int)
   )
 }
 
-/** multi-ported RAM based on SingleRAM/DoubleRAM
-  */
-case class GeneralRam(
-    width: Int,
-    depth: Int,
-    readPort: Int,
-    writePort: Int,
-    readLatency: Int,
-    w2rLatency: Int
-) extends Component {}
