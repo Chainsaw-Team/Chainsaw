@@ -46,7 +46,7 @@ class DspIpTests extends ChainsawFlatSpec {
 
   def testCordic(): Unit = {
     // CORDIC under all 6 modes
-    val algebraicModes = Seq(CIRCULAR)
+    val algebraicModes = Seq(CIRCULAR, HYPERBOLIC, LINEAR)
     val rotationModes  = Seq(ROTATION, VECTORING)
     algebraicModes.foreach(alg =>
       rotationModes.foreach(rot =>
@@ -71,13 +71,22 @@ class DspIpTests extends ChainsawFlatSpec {
       generatorConfigTable("Cordic")
     )
     testOperator(
-      CordicCos(iteration = testIteration, fractional = testFraction),
+      CordicCosSin(iteration = testIteration, fractional = testFraction),
       generatorConfigTable("Cordic")
     )
     testOperator(
-      CordicSin(iteration = testIteration, fractional = testFraction),
+      CordicMulti(iteration = testIteration, fractional = testFraction),
       generatorConfigTable("Cordic")
     )
+    testOperator(
+      CordicDiv(iteration = testIteration, fractional = testFraction),
+      generatorConfigTable("Cordic")
+    )
+    testOperator(
+      CordicHyperFun(iteration = testIteration, fractional = testFraction),
+      generatorConfigTable("Cordic")
+    )
+
   }
 
   /** -------- FIRs
@@ -92,7 +101,7 @@ class DspIpTests extends ChainsawFlatSpec {
     )
     val symmetricCoeffs = coeffs.map(coeff => coeff ++ coeff.reverse)
 
-    val symmetrics = Seq(true, false)
+    val symmetrics      = Seq(true, false)
     val parallelFactors = Seq(4)
 
     // Pipelined FIR
@@ -221,11 +230,11 @@ class DspIpTests extends ChainsawFlatSpec {
   )
 
 //  testComplexMult()
-//  testCordic()
+  testCordic()
 //  testDelay()
 //  testDds()
 //  testMovingAverage()
 //  testFirs()
-  testUnwrap()
-  testPeriodicUnwrap()
+//  testUnwrap()
+//  testPeriodicUnwrap()
 }

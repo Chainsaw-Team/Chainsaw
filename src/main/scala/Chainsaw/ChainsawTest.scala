@@ -354,7 +354,7 @@ case class ChainsawTest(
       s"golden : ${goldenSegments(index).take(100).mkString(",")}\n" +
       s"expected latency: ${if (latencies(index) < 0) "undetermined"
       else latencies(index).toString}, " +
-      s"actual latency: ${actualLatencies.mkString(" ")}\n"
+      s"actual latency: ${actualLatencies(index)}\n"
   }
 
   val logIndices =

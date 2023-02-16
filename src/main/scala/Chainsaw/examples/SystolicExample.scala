@@ -31,15 +31,15 @@ case class SystolicExample() extends Component {
   firout      := core.firout.d()
 }
 
-/** -------- part of the output of the synthesis report
-  * | Module Name                          | DSP Mapping                         | A Size | B Size | C Size | D Size | P Size | AREG | BREG | CREG | DREG | ADREG | MREG | PREG |
-  * |:-------------------------------------|:------------------------------------|:-------|:-------|:-------|:-------|:-------|:-----|:-----|:-----|:-----|:------|:-----|:-----|
-  * | sfir_even_symmetric_systolic_element | ((D'+A'')*(B:0x7)')'                | 16     | 16     | -      | 16     | 32     | 2    | 1    | -    | 1    | 1     | 1    | 1    |
-  * | sfir_even_symmetric_systolic_element | (PCIN+((D'+ACIN'')*(B:0xe)')')'     | 16     | 16     | -      | 16     | 32     | 2    | 1    | -    | 1    | 1     | 1    | 1    |
-  * | sfir_even_symmetric_systolic_element | (PCIN+((D'+ACIN'')*(B:0x3ff76)')')' | 16     | 16     | -      | 16     | 32     | 2    | 1    | -    | 1    | 1     | 1    | 1    |
-  * | sfir_even_symmetric_systolic_element | (PCIN+((D'+ACIN'')*(B:0x81)')')'    | 16     | 16     | -      | 16     | 32     | 2    | 1    | -    | 1    | 1     | 1    | 1    |
-  * --------
-  */
+///** -------- part of the output of the synthesis report
+//  * | Module Name                          | DSP Mapping                         | A Size | B Size | C Size | D Size | P Size | AREG | BREG | CREG | DREG | ADREG | MREG | PREG |
+//  * |:-------------------------------------|:------------------------------------|:-------|:-------|:-------|:-------|:-------|:-----|:-----|:-----|:-----|:------|:-----|:-----|
+//  * | sfir_even_symmetric_systolic_element | ((D'+A'')*(B:0x7)')'                | 16     | 16     | -      | 16     | 32     | 2    | 1    | -    | 1    | 1     | 1    | 1    |
+//  * | sfir_even_symmetric_systolic_element | (PCIN+((D'+ACIN'')*(B:0xe)')')'     | 16     | 16     | -      | 16     | 32     | 2    | 1    | -    | 1    | 1     | 1    | 1    |
+//  * | sfir_even_symmetric_systolic_element | (PCIN+((D'+ACIN'')*(B:0x3ff76)')')' | 16     | 16     | -      | 16     | 32     | 2    | 1    | -    | 1    | 1     | 1    | 1    |
+//  * | sfir_even_symmetric_systolic_element | (PCIN+((D'+ACIN'')*(B:0x81)')')'    | 16     | 16     | -      | 16     | 32     | 2    | 1    | -    | 1    | 1     | 1    | 1    |
+//  * --------
+//  */
 
 case class SystolicSpinal(bs: Seq[BigInt]) extends Component {
   val dataIn = in SInt (16 bits)
@@ -52,16 +52,16 @@ case class SystolicSpinal(bs: Seq[BigInt]) extends Component {
   out(y)
 }
 
-/** -------- part of the output of the synthesis report
-  * | Module Name   | DSP Mapping                   | A Size | B Size | C Size | D Size | P Size | AREG | BREG | CREG | DREG | ADREG | MREG | PREG |
-  * |:--------------|:------------------------------|:-------|:-------|:-------|:-------|:-------|:-----|:-----|:-----|:-----|:------|:-----|:-----|
-  * | synthSystolic | (A''*(B:0x15a8)')'            | 16     | 16     | -      | -      | 32     | 2    | 1    | -    | -    | -     | 1    | 1    |
-  * | synthSystolic | (PCIN+(ACIN''*(B:0xca06)')')' | 16     | 16     | -      | -      | 32     | 2    | 1    | -    | -    | -     | 1    | 1    |
-  * | synthSystolic | (PCIN+(ACIN''*(B:0xd37f)')')' | 16     | 16     | -      | -      | 32     | 2    | 1    | -    | -    | -     | 1    | 1    |
-  * | synthSystolic | (PCIN+(ACIN''*(B:0x8081)')')' | 16     | 16     | -      | -      | 32     | 2    | 1    | -    | -    | -     | 1    | 1    |
-  * | synthSystolic | (PCIN+(ACIN''*(B:0x962)')')'  | 16     | 16     | -      | -      | 32     | 2    | 1    | -    | -    | -     | 1    | 1    |
-  * --------
-  */
+///** -------- part of the output of the synthesis report
+//  * | Module Name   | DSP Mapping                   | A Size | B Size | C Size | D Size | P Size | AREG | BREG | CREG | DREG | ADREG | MREG | PREG |
+//  * |:--------------|:------------------------------|:-------|:-------|:-------|:-------|:-------|:-----|:-----|:-----|:-----|:------|:-----|:-----|
+//  * | synthSystolic | (A''*(B:0x15a8)')'            | 16     | 16     | -      | -      | 32     | 2    | 1    | -    | -    | -     | 1    | 1    |
+//  * | synthSystolic | (PCIN+(ACIN''*(B:0xca06)')')' | 16     | 16     | -      | -      | 32     | 2    | 1    | -    | -    | -     | 1    | 1    |
+//  * | synthSystolic | (PCIN+(ACIN''*(B:0xd37f)')')' | 16     | 16     | -      | -      | 32     | 2    | 1    | -    | -    | -     | 1    | 1    |
+//  * | synthSystolic | (PCIN+(ACIN''*(B:0x8081)')')' | 16     | 16     | -      | -      | 32     | 2    | 1    | -    | -    | -     | 1    | 1    |
+//  * | synthSystolic | (PCIN+(ACIN''*(B:0x962)')')'  | 16     | 16     | -      | -      | 32     | 2    | 1    | -    | -    | -     | 1    | 1    |
+//  * --------
+//  */
 
 object SystolicExample extends App {
   val bs = Seq.fill(5)(BigInt(16, Random) - pow2(15))
