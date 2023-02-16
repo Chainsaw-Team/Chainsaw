@@ -26,12 +26,20 @@ object pythonIo {
 
   def exportSignal(yours: Signal*): File = {
     val manager = NDManager.newBaseManager()
-    val arrays = yours.toArray.map(signal =>
-      manager.create(signal.toArray.map(_.toDouble))
-    )
-    val signal = new NDList(arrays: _*)
-    val file   = inputArrayFile
-    val os     = Files.newOutputStream(file.toPath)
+    val arrays  = yours.toArray.map(signal => manager.create(signal.toArray.map(_.toDouble)))
+    val signal  = new NDList(arrays: _*)
+    val file    = inputArrayFile
+    val os      = Files.newOutputStream(file.toPath)
+    signal.encode(os, true)
+    file
+  }
+
+  def exportSignal2D(yours: Seq[Signal]*): File = {
+    val manager = NDManager.newBaseManager()
+    val arrays  = yours.toArray.map(signal => manager.create(signal.toArray.map(_.map(_.toDouble).toArray)))
+    val signal  = new NDList(arrays: _*)
+    val file    = inputArrayFile
+    val os      = Files.newOutputStream(file.toPath)
     signal.encode(os, true)
     file
   }
@@ -80,7 +88,7 @@ object pythonIo {
       Array[String](),
       pythonUtilsPath
     ) // 执行py文件
-    val in = new BufferedReader(new InputStreamReader(process.getInputStream))
+    val in    = new BufferedReader(new InputStreamReader(process.getInputStream))
     val lines = ArrayBuffer[String]()
 
     var line = in.readLine()

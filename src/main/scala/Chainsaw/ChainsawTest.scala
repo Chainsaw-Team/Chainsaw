@@ -1,6 +1,5 @@
 package Chainsaw
 
-import Chainsaw.phases.IoAlign
 import spinal.core._
 import spinal.core.sim._
 import spinal.lib._
@@ -9,6 +8,7 @@ import spinal.sim.SimThread
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.util.Random
+import Chainsaw.io.pythonIo._
 
 case class ChainsawTest(
     testName: String = "testTemp",
@@ -16,7 +16,8 @@ case class ChainsawTest(
     stimulus: Option[Seq[TestCase]]      = None,
     golden: Option[Seq[Seq[BigDecimal]]] = None,
     terminateAfter: Int                  = 10000,
-    errorSegmentsShown: Int              = 10
+    errorSegmentsShown: Int              = 10,
+    saveNpz: Boolean                     = false
 ) {
 
   import gen._
@@ -163,9 +164,7 @@ case class ChainsawTest(
 
   val pass = gen match { // check golden length
     case frame: Frame =>
-      val validOutputFrameLengths = sortedValids.map(testCase =>
-        frame.outputFrameFormat(testCase.control).rawDataCount
-      )
+      val validOutputFrameLengths = sortedValids.map(testCase => frame.outputFrameFormat(testCase.control).rawDataCount)
       goldenSegments.map(_.length).equals(validOutputFrameLengths)
     case _: Operator =>
       goldenSegments.forall(_.length == outPortWidth)
@@ -178,20 +177,19 @@ case class ChainsawTest(
   // segments -> vectors
   val inputVectorSize =
     if (inPortWidth == 0) 1
-    else inPortWidth // when inPortWidth is 0, the module is driven by clock
+    else inPortWidth          // when inPortWidth is 0, the module is driven by clock
   val inputVectorsWithInValid // data, control, valid, last
       : mutable.Seq[(Seq[BigDecimal], Seq[BigDecimal], Boolean, Boolean)] =
-    inputSegmentsWithInvalid.flatMap {
-      case (TestCase(segment, control), valid) =>
-        val dataVectors = segment.grouped(inputVectorSize).toSeq
-        gen match { // for operator generator, last is always true
-          case _: Operator =>
-            dataVectors.map((_, control, valid, valid))
-          case _ => // for frame and infinite generator, last is true at the last cycle of a sequence
-            dataVectors.init.map(
-              (_, control, valid, false)
-            ) :+ (dataVectors.last, control, valid, valid)
-        }
+    inputSegmentsWithInvalid.flatMap { case (TestCase(segment, control), valid) =>
+      val dataVectors = segment.grouped(inputVectorSize).toSeq
+      gen match { // for operator generator, last is always true
+        case _: Operator =>
+          dataVectors.map((_, control, valid, valid))
+        case _ => // for frame and infinite generator, last is true at the last cycle of a sequence
+          dataVectors.init.map(
+            (_, control, valid, false)
+          ) :+ (dataVectors.last, control, valid, valid)
+      }
     }
 
   // data containers
@@ -235,8 +233,8 @@ case class ChainsawTest(
           // control in
           dut match {
             case dynamicModule: DynamicModule =>
-              dynamicModule.controlIn.zip(control).foreach {
-                case (fix, decimal) => fix #= decimal
+              dynamicModule.controlIn.zip(control).foreach { case (fix, decimal) =>
+                fix #= decimal
               }
             case _ => // no control
           }
@@ -247,7 +245,10 @@ case class ChainsawTest(
             waitStart = false
           }
           flowInPointer.last #= last
-          if (last) waitStart = true
+          if (last) {
+            waitStart = true
+            println("segment done")
+          }
         } else {
           flowInPointer.valid #= false
           flowInPointer.last  #= false
@@ -326,7 +327,6 @@ case class ChainsawTest(
         .toSeq
 
       outputSegmentTimes = splitPoints.init.map(outputTimes)
-
   }
 
   require(
@@ -334,8 +334,11 @@ case class ChainsawTest(
     s"output segment count ${outputSegments.length} is not equal to golden segment count ${goldenSegments.length}"
   )
 
-  val actualLatencies = outputSegmentTimes.zip(inputSegmentTimes).map {
-    case (outputTime, inputTime) => (outputTime - 2 - inputTime) / 2
+  if (saveNpz) exportSignal2D(outputSegments) // export valid data as numpy array
+
+
+  val actualLatencies = outputSegmentTimes.zip(inputSegmentTimes).map { case (outputTime, inputTime) =>
+    (outputTime - 2 - inputTime) / 2
   }
 
   val passRecord = inputSegments.indices.map { i =>
