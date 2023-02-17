@@ -334,13 +334,7 @@ class CordicModule(cordic: Cordic) extends ChainsawOperatorModule(cordic) {
 
 object ComplexToMagnitudeAngle {
   def apply(iteration: Int, fractional: Int): Cordic = {
-    new Cordic(
-      CIRCULAR,
-      VECTORING,
-      iteration,
-      fractional,
-      Seq(None, None, Some(0.0))
-    ) {
+    new Cordic(CIRCULAR, VECTORING, iteration, fractional, Seq(None, None, Some(0.0))) {
       override def name = s"ComplexToMagnitudeAngle_${iteration}_$fractional"
     }
   }

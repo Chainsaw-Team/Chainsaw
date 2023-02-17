@@ -1,10 +1,12 @@
 package Chainsaw
 
 import spinal.core._
+import spinal.core.sim._
 import spinal.lib._
 
-abstract class ChainsawBaseModule(val gen: ChainsawBaseGenerator)
-    extends Component {
+import scala.collection.mutable.ArrayBuffer
+
+abstract class ChainsawBaseModule(val gen: ChainsawBaseGenerator) extends Component {
 
   import gen._
 
@@ -51,14 +53,20 @@ abstract class ChainsawBaseModule(val gen: ChainsawBaseGenerator)
 
   def fixTo(af: AFix) = map(_.map(_.fixTo(af)))
 
+  val monitoredFlows = ArrayBuffer[ChainsawFlow]()
+
+  def addMonitoredFlow(flow: ChainsawFlow, name: String) = {
+    monitoredFlows += flow
+    flow.setName(name)
+    flow.simPublic()
+  }
 }
 
 trait DynamicModule {
   val controlIn: Vec[AFix]
 }
 
-class ChainsawOperatorModule(override val gen: ChainsawOperatorGenerator)
-    extends ChainsawBaseModule(gen) {
+class ChainsawOperatorModule(override val gen: ChainsawOperatorGenerator) extends ChainsawBaseModule(gen) {
   gen match {
     case fixedLatency: FixedLatency =>
       lastOut := lastIn.validAfter(fixedLatency.latency())
@@ -81,8 +89,7 @@ class ChainsawDynamicOperatorModule(
   }
 }
 
-class ChainsawFrameModule(override val gen: ChainsawFrameGenerator)
-    extends ChainsawBaseModule(gen) {
+class ChainsawFrameModule(override val gen: ChainsawFrameGenerator) extends ChainsawBaseModule(gen) {
 
   import gen._
 
@@ -102,8 +109,7 @@ class ChainsawDynamicFrameModule(
   override val controlIn = in Vec controlTypes.map(_.apply())
 }
 
-class ChainsawInfiniteModule(override val gen: ChainsawInfiniteGenerator)
-    extends ChainsawBaseModule(gen) {}
+class ChainsawInfiniteModule(override val gen: ChainsawInfiniteGenerator) extends ChainsawBaseModule(gen) {}
 
 class ChainsawDynamicInfiniteModule(
     override val gen: ChainsawDynamicInfiniteGenerator
