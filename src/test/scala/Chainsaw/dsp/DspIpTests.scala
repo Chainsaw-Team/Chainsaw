@@ -185,7 +185,7 @@ class DspIpTests extends ChainsawFlatSpec {
 
   def testPeriodicUnwrap() = {
     testOperator(
-      PeriodicUnwrap(NumericType.SFix(10, 14), 10),
+      PeriodicUnwrap(NumericType.SFix(10, 14), 20),
       generatorConfigTable("Unwrap")
     )
   }
@@ -230,11 +230,11 @@ class DspIpTests extends ChainsawFlatSpec {
   )
 
 //  testComplexMult()
-  testCordic()
+//  testCordic()
 //  testDelay()
 //  testDds()
 //  testMovingAverage()
 //  testFirs()
-//  testUnwrap()
-//  testPeriodicUnwrap()
+  testUnwrap()
+  testPeriodicUnwrap()
 }

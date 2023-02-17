@@ -34,11 +34,10 @@ object pythonIo {
     file
   }
 
-  def exportSignal2D(yours: Seq[Signal]*): File = {
+  def exportSignal(file: File, yours: Signal*): File = {
     val manager = NDManager.newBaseManager()
-    val arrays  = yours.toArray.map(signal => manager.create(signal.toArray.map(_.map(_.toDouble).toArray)))
+    val arrays  = yours.toArray.map(signal => manager.create(signal.toArray.map(_.toDouble)))
     val signal  = new NDList(arrays: _*)
-    val file    = inputArrayFile
     val os      = Files.newOutputStream(file.toPath)
     signal.encode(os, true)
     file
@@ -122,5 +121,4 @@ object pythonIo {
     exportConfig(Config("config", 50, 50000, Array(1, 2, 3, 4)))
     println(importConfig[Config]().data.mkString(" "))
   }
-
 }

@@ -10,6 +10,8 @@ import scala.collection.mutable.ArrayBuffer
 import scala.util.Random
 import Chainsaw.io.pythonIo._
 
+import java.io.File
+
 case class ChainsawTest(
     testName: String = "testTemp",
     gen: ChainsawBaseGenerator,
@@ -17,7 +19,7 @@ case class ChainsawTest(
     golden: Option[Seq[Seq[BigDecimal]]] = None,
     terminateAfter: Int                  = 10000,
     errorSegmentsShown: Int              = 10,
-    saveNpz: Boolean                     = false
+    doInterruptInsertion: Boolean        = true
 ) {
 
   import gen._
@@ -27,6 +29,7 @@ case class ChainsawTest(
     val ret = SimConfig
       .workspaceName(testName)
       .withFstWave
+//      .allOptimisation
       .withConfig(spinalConfig)
     ret._backend = gen.simBackEnd
     ret
@@ -83,59 +86,65 @@ case class ChainsawTest(
     "empty segment, check your test cases generator"
   )
 
-  def getRandomControl: Seq[BigDecimal] = gen match {
-    case dynamic: Dynamic => dynamic.randomControlVector
-    case _                => Seq[BigDecimal]()
-  }
-
-  def getInterrupt(cycle: Int) = TestCase(
-    Seq.fill(cycle)(randomDataVector).flatten,
-    getRandomControl
-  )
-
-  def getRandomInterrupt = getInterrupt(Random.nextInt(10) + 1)
-
-  def getResetInterrupt = getInterrupt(resetCycle max 1)
-
-  val randomRatio              = 10
   val inputSegmentsWithInvalid = ArrayBuffer[(TestCase, Boolean)](valids.head)
 
-  valids.tail.foreach { case (testCase, valid) =>
-    val lastValidCycle =
-      inputSegmentsWithInvalid.last._1.data.length /
-        (if (inPortWidth == 0) 1 else inPortWidth)
+  def insertInterrupts = {
 
-    // insert reset interrupt before control change
-    gen match { // for SemiInfinite, insert interrupt between segments
-      case semiInfinite: SemiInfinite =>
-        inputSegmentsWithInvalid += ((getResetInterrupt, false))
-      case _ => // for other generators, insert interrupt when control change
-        val controlChange =
-          testCase.control != inputSegmentsWithInvalid.last._1.control
-        if (controlChange)
+    def getRandomControl: Seq[BigDecimal] = gen match {
+      case dynamic: Dynamic => dynamic.randomControlVector
+      case _                => Seq[BigDecimal]()
+    }
+
+    def getInterrupt(cycle: Int) = TestCase(
+      Seq.fill(cycle)(randomDataVector).flatten,
+      getRandomControl
+    )
+
+    def getRandomInterrupt = getInterrupt(Random.nextInt(10) + 1)
+
+    def getResetInterrupt = getInterrupt(resetCycle max 1)
+
+    val randomRatio = 10
+
+    valids.tail.foreach { case (testCase, valid) =>
+      val lastValidCycle =
+        inputSegmentsWithInvalid.last._1.data.length /
+          (if (inPortWidth == 0) 1 else inPortWidth)
+
+      // insert reset interrupt before control change
+      gen match { // for SemiInfinite, insert interrupt between segments
+        case semiInfinite: SemiInfinite =>
           inputSegmentsWithInvalid += ((getResetInterrupt, false))
+        case _ => // for other generators, insert interrupt when control change
+          val controlChange =
+            testCase.control != inputSegmentsWithInvalid.last._1.control
+          if (controlChange)
+            inputSegmentsWithInvalid += ((getResetInterrupt, false))
+      }
+
+      // insert random interrupt, probability = 1/randomRatio
+      if (Random.nextInt(randomRatio) > randomRatio - 2)
+        inputSegmentsWithInvalid += ((getRandomInterrupt, false))
+
+      // insert null data for generators with trait Duty
+      gen match {
+        case duty: Duty =>
+          if (duty.dutyRation < 1) {
+            val nullCycle = (lastValidCycle * (1 - duty.dutyRation)).ceil.toInt
+            inputSegmentsWithInvalid += ((getInterrupt(nullCycle), false))
+          }
+        case _ =>
+      }
+
+      inputSegmentsWithInvalid += ((testCase, valid))
     }
-
-    // insert random interrupt, probability = 1/randomRatio
-    if (Random.nextInt(randomRatio) > randomRatio - 2)
-      inputSegmentsWithInvalid += ((getRandomInterrupt, false))
-
-    // insert null data for generators with trait Duty
-    gen match {
-      case duty: Duty =>
-        if (duty.dutyRation < 1) {
-          val nullCycle = (lastValidCycle * (1 - duty.dutyRation)).ceil.toInt
-          inputSegmentsWithInvalid += ((getInterrupt(nullCycle), false))
-        }
-      case _ =>
-    }
-
-    inputSegmentsWithInvalid += ((testCase, valid))
+    inputSegmentsWithInvalid.insert(
+      0,
+      (getResetInterrupt, false)
+    ) // for initialization
   }
-  inputSegmentsWithInvalid.insert(
-    0,
-    (getResetInterrupt, false)
-  ) // for initialization
+
+  if (doInterruptInsertion) insertInterrupts else valids.foreach(inputSegmentsWithInvalid += _)
 
   val sortedValids = inputSegmentsWithInvalid.filter(_._2).map(_._1)
 
@@ -220,6 +229,8 @@ case class ChainsawTest(
       clockDomain.waitSampling()
     }
 
+    var segmentsCounter = 1
+
     def poke(): SimThread = fork {
       var waitStart = true
       var i         = 0
@@ -247,7 +258,8 @@ case class ChainsawTest(
           flowInPointer.last #= last
           if (last) {
             waitStart = true
-            println("segment done")
+            if (verbose >= 1) println(s"$segmentsCounter segment done")
+            segmentsCounter += 1
           }
         } else {
           flowInPointer.valid #= false
@@ -257,6 +269,9 @@ case class ChainsawTest(
         clockDomain.waitSampling()
       }
     }
+
+    val npzData: Map[ChainsawFlow, ArrayBuffer[BigDecimal]] =
+      dut.monitoredFlows.map(flow => flow -> ArrayBuffer[BigDecimal]()).toMap
 
     def peek(): SimThread = fork {
       while (true) {
@@ -269,6 +284,13 @@ case class ChainsawTest(
           outputVectors += tuple
           if (flowOutPointer.last.toBoolean) currentSegments += 1
         }
+
+        dut.monitoredFlows.foreach { flow =>
+          if (flow.valid.toBoolean) {
+            npzData(flow) ++= flow.fragment.map(_.toBigDecimal)
+          }
+        }
+
         clockDomain.waitSampling()
       }
     }
@@ -286,10 +308,15 @@ case class ChainsawTest(
     poke()
     waitSimDone()
 
+    logger.info(s"simulation done for $testName")
+
     if (noValid >= terminateAfter)
       logger.error(
         s"Simulation terminated after $terminateAfter cycles of no valid output"
       )
+
+    npzData.foreach { case (flow, decimals) => exportSignal(new File(s"${flow.getName()}.npz"), decimals) }
+    logger.info("data exported")
   }
 
   /** -------- check & show
@@ -333,9 +360,6 @@ case class ChainsawTest(
     outputSegments.length == goldenSegments.length,
     s"output segment count ${outputSegments.length} is not equal to golden segment count ${goldenSegments.length}"
   )
-
-  if (saveNpz) exportSignal2D(outputSegments) // export valid data as numpy array
-
 
   val actualLatencies = outputSegmentTimes.zip(inputSegmentTimes).map { case (outputTime, inputTime) =>
     (outputTime - 2 - inputTime) / 2
