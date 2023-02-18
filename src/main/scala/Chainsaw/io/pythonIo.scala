@@ -24,9 +24,11 @@ object pythonIo {
   val outputArrayFile = new File(pythonUtilsPath, "output.npz")
   val configFile      = new File(pythonUtilsPath, "config.json")
 
-  def exportSignal(yours: Signal*): File = {
+  /** export signals to a .npz file
+   */
+  def exportSignal(signals: Signal*): File = {
     val manager = NDManager.newBaseManager()
-    val arrays  = yours.toArray.map(signal => manager.create(signal.toArray.map(_.toDouble)))
+    val arrays  = signals.toArray.map(signal => manager.create(signal.toArray.map(_.toDouble)))
     val signal  = new NDList(arrays: _*)
     val file    = inputArrayFile
     val os      = Files.newOutputStream(file.toPath)
@@ -34,6 +36,7 @@ object pythonIo {
     file
   }
 
+  // FIXME: better export method
   def exportSignal(file: File, yours: Signal*): File = {
     val manager = NDManager.newBaseManager()
     val arrays  = yours.toArray.map(signal => manager.create(signal.toArray.map(_.toDouble)))

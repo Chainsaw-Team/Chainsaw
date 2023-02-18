@@ -9,7 +9,7 @@ import java.nio.file.{Files, Paths}
 object NDArrayExample extends App {
 
   val manager = NDManager.newBaseManager()
-  val ndArray = manager.ones(new Shape(2, 3))
+  val ndArray = manager.ones(new Shape(1000, 1000))
 
   val encoded = new NDList(ndArray)
   encoded.encode()
@@ -23,5 +23,5 @@ object NDArrayExample extends App {
   println(s"number of arrays: ${decoded.size()}")
   println(s"recovered ${recovered}")
   println(s"recovered array ${recovered.toFloatArray.mkString("\n")}")
-  println(s"recovered ${recovered.getFloat(0,0)}")
+  println(s"recovered ${recovered.getFloat(0, 0)}")
 }

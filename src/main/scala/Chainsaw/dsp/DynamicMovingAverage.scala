@@ -39,9 +39,7 @@ case class DynamicMovingAverage(size: Int, dataType: NumericType)
 
   override def testCases = {
     val sizes = Seq.fill(3)(Random.nextInt(size) + 3 min size)
-    sizes.map(size =>
-      TestCase(randomDataSequence(Random.nextInt(size * 3) + 5), Seq(size))
-    )
+    sizes.map(size => TestCase(randomDataSequence(Random.nextInt(size * 3) + 5), Seq(size)))
   }
 
   val adderTreeLatency = log2Up(size)
@@ -73,8 +71,8 @@ case class DynamicMovingAverage(size: Int, dataType: NumericType)
     val head    = Mux(validIn, dataIn.head, dataIn.head.getZero).d(3)
     val history = Seq.iterate(head, size)(_.d())
     // get moving sum
-    val validElements = history.zip(valids.asBools.reverse).map {
-      case (ele, bool) => Mux(bool, ele, ele.getZero).d()
+    val validElements = history.zip(valids.asBools.reverse).map { case (ele, bool) =>
+      Mux(bool, ele, ele.getZero).d()
     }
     val sum: AFix = validElements
       .pipelinedBalancedTree(_ + _, 1)
@@ -89,13 +87,11 @@ case class DynamicMovingAverage(size: Int, dataType: NumericType)
     // TODO: build a method: ROM by
     val scalingFactor = {
       val scalingFactorRom = Mem(
-        (Seq(2.0, 2.0) ++ (2 to size).map(_.toDouble)).map(i =>
-          scalingFactorType.fromConstant(1 / i)
-        )
+        (Seq(2.0, 2.0) ++ (2 to size).map(_.toDouble)).map(i => scalingFactorType.fromConstant(1 / i))
       )
       scalingFactorRom.readSync(controlInUse)
     }
-    dataOut.head := (sum * scalingFactor).d(2).fixTo(dataType())
+    dataOut.head := (sum * scalingFactor).d(2).fixTo(dataType(), roundType = RoundType.FLOOR)
     lastOut      := lastIn.validAfter(latency())
   }
 }

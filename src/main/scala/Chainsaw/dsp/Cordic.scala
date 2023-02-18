@@ -12,8 +12,8 @@ import scala.util.Random
 
 /** Cordic Module Generator
   * @example
-  *   Cordic(HYPERBOLIC, ROTATION, iteration, fractional, Seq(Some(1.0), Some(0.0), None)), leave the third input as a port, bind th first and second input with
-  *   constants
+  *   Cordic(HYPERBOLIC, ROTATION, iteration, fractional, Seq(Some(1.0), Some(0.0), None)), leave the third input as a
+  *   port, bind th first and second input with constants
   * @param speedLevel
   *   1 for 400MHz, 2 for 600 MHz on Xilinx UltraScale+
   * @see
@@ -86,15 +86,18 @@ case class Cordic(
 
   require(Seq(1, 2).contains(speedLevel))
   val quadrantShiftLatency = algebraicMode match {
-    case CIRCULAR => speedLevel
-    case LINEAR   => speedLevel - 1
+    case CIRCULAR =>
+      rotationMode match {
+        case ROTATION  => speedLevel
+        case VECTORING => speedLevel
+      }
+    case LINEAR => speedLevel - 1
     case HYPERBOLIC =>
       rotationMode match {
         case ROTATION  => speedLevel - 1
         case VECTORING => speedLevel
       }
   }
-  speedLevel
   val iterationLatency = iteration * speedLevel
   val scalingLatency   = speedLevel
 
@@ -155,8 +158,13 @@ case class Cordic(
       case CIRCULAR =>
         val phase0 = getOne * Pi              // [-Pi, Pi]
         val length = getOne.abs * 0.95 + 0.05 // avoid values too close to 0
-        val phase1 = 0.0
+        val phase1 = rotationMode match {
+          case ROTATION  => getOne * Pi
+          case VECTORING => 0
+        }
+
         Seq(cos(phase0) * length, sin(phase0) * length, phase1)
+
       case LINEAR =>
         rotationMode match {
           case ROTATION =>
@@ -237,32 +245,44 @@ class CordicModule(cordic: Cordic) extends ChainsawOperatorModule(cordic) {
       }
     }
 
-  /** -------- quadrant shift, latency = 0
+  /** -------- quadrant shift
     * --------
     */
   val Seq(x, y, z) = dataInUse
   val xyzPrev, xyz = Vec(dataInUse.map(cloneOf(_)))
 
+  val quadrant = phaseType.fromConstant(Pi / 2)
   // stage 0, add/sub
-  val determinant = (y.raw.msb ## x.raw.msb).asUInt.d()
-  val yNegate     = y.symmetricNegate.d()
-  val xNegate     = x.symmetricNegate.d()
-  val zUp         = (z +| phaseType.fromConstant(Pi / 2)).d()
-  val zDown       = (z -| phaseType.fromConstant(Pi / 2)).d()
+  val determinantVec = (y.raw.msb ## x.raw.msb).asUInt.d()
+  // TODO: optimize determinantRot
+  val determinantRot = ((z > quadrant) ## (z < quadrant.symmetricNegate)).asUInt.d()
+  val yNegate        = y.symmetricNegate.d()
+  val xNegate        = x.symmetricNegate.d()
+  val zUp            = (z +| quadrant).d()
+  val zDown          = (z -| quadrant).d()
   // stage 1, mult
   algebraicMode match {
     case CIRCULAR =>
-      // for atan(rather than angle, take reverse Z in second & third quadrant)
-      switch(determinant) { // range extension
-        is(U(1))(xyzPrev := Seq(y.d(), xNegate, zUp))   // second quadrant
-        is(U(3))(xyzPrev := Seq(yNegate, x.d(), zDown)) // third quadrant
-        default(xyzPrev  := dataInUse.map(_.d()))
+      rotationMode match {
+        case ROTATION =>
+          switch(determinantRot) { // range extension
+            is(U(1))(xyzPrev := Seq(y.d(), xNegate, zUp))   // 01 for z < -Pi/2
+            is(U(2))(xyzPrev := Seq(yNegate, x.d(), zDown)) // 10 for z > Pi/2
+            default(xyzPrev  := dataInUse.map(_.d()))
+          }
+        case VECTORING =>
+          // for atan(rather than angle, take reverse Z in second & third quadrant)
+          switch(determinantVec) { // range extension
+            is(U(1))(xyzPrev := Seq(y.d(), xNegate, zUp))   // second quadrant
+            is(U(3))(xyzPrev := Seq(yNegate, x.d(), zDown)) // third quadrant
+            default(xyzPrev  := dataInUse.map(_.d()))
+          }
       }
     case HYPERBOLIC =>
       rotationMode match {
         case ROTATION => xyzPrev := dataInUse // need not do anything
         case VECTORING =>
-          when(determinant.lsb) { // second quadrant or third quadrant
+          when(determinantVec.lsb) { // second quadrant or third quadrant
             xyzPrev := Seq(xNegate, yNegate, z.d())
           }.otherwise(xyzPrev := dataInUse.map(_.d()))
       }
@@ -332,7 +352,9 @@ class CordicModule(cordic: Cordic) extends ChainsawOperatorModule(cordic) {
   val phaseOut     = dataOut(2)
 }
 
-object ComplexToMagnitudeAngle {
+/** get magnitude and angle of (x,y)
+  */
+object CordicMagnitudePhase {
   def apply(iteration: Int, fractional: Int): Cordic = {
     new Cordic(CIRCULAR, VECTORING, iteration, fractional, Seq(None, None, Some(0.0))) {
       override def name = s"ComplexToMagnitudeAngle_${iteration}_$fractional"
@@ -340,16 +362,28 @@ object ComplexToMagnitudeAngle {
   }
 }
 
-object CordicCosSin {
-  // first port is cos, second port is sin
+/** rotate (x,y) counter-clockwise by z
+  */
+object CordicRotate {
   def apply(iteration: Int, fractional: Int): Cordic = {
-    new Cordic(CIRCULAR, ROTATION, iteration, fractional, Seq(Some(1.0), Some(0.0), None)) {
-      override def name = s"CordicCos_${iteration}_$fractional"
+    new Cordic(CIRCULAR, ROTATION, iteration, fractional, Seq(None, None, None)) {
+      override def name = s"CordicRotate_${iteration}_$fractional"
     }
   }
 }
 
-object CordicMulti {
+/** get sin(z) and cos(z)
+  */
+object CordicCosSin {
+  // first port is cos, second port is sin
+  def apply(iteration: Int, fractional: Int): Cordic = {
+    new Cordic(CIRCULAR, ROTATION, iteration, fractional, Seq(Some(1.0), Some(0.0), None)) {
+      override def name = s"CordicCosSin_${iteration}_$fractional"
+    }
+  }
+}
+
+object CordicMultiplication {
   def apply(iteration: Int, fractional: Int): Cordic = {
     new Cordic(LINEAR, ROTATION, iteration, fractional, Seq(None, Some(0.0), None)) {
       override def name = s"CordicMulti_${iteration}_$fractional"
@@ -357,9 +391,9 @@ object CordicMulti {
   }
 }
 
-/** get x/y at output port
+/** get x/y
   */
-object CordicDiv {
+object CordicDivision {
   def apply(iteration: Int, fractional: Int): Cordic = {
     new Cordic(LINEAR, VECTORING, iteration, fractional, Seq(None, None, Some(0.0))) {
       override def name = s"CordicDiv_${iteration}_$fractional"
@@ -367,7 +401,9 @@ object CordicDiv {
   }
 }
 
-object CordicHyperFun {
+/** get sinh(z) and cosh(z)
+  */
+object CordicHyperFunction {
   def apply(iteration: Int, fractional: Int): Cordic = {
     new Cordic(HYPERBOLIC, ROTATION, iteration, fractional, Seq(Some(1.0), Some(0.0), None)) {
       override def name = s"CordicHyperFun_${iteration}_$fractional"
