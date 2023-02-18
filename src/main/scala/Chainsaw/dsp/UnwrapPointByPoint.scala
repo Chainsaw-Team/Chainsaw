@@ -51,7 +51,7 @@ case class UnwrapPointByPoint(numericType: NumericType)
     val roundedDiff = scaledDiff.roundWithPipeline.toAFix
     val multiple    = (roundedDiff * pi).d(2)
 
-    dataOut.head := (next.d(7) -| multiple).d()
+    dataOut.head := (next.d(7) -| multiple).d().truncated
   }
 
   override def implNaiveH: Option[ChainsawOperatorModule] = ???

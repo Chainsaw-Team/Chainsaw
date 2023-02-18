@@ -11,7 +11,7 @@ import spinal.lib.fsm._       // for finite state machine dialect
 import spinal.lib.bus._       // for all kinds of bus and regIf
 import spinal.lib.bus.regif._ // for regIf
 import spinal.sim._           // for simulation
-import spinal.core.sim._      // for more simulation
+import spinal.core.sim._ // for more simulation
 
 class DspIpTests extends ChainsawFlatSpec {
 
@@ -64,7 +64,7 @@ class DspIpTests extends ChainsawFlatSpec {
 
     // most frequently used CORDIC modes(with initValues)
     testOperator(
-      ComplexToMagnitudeAngle(
+      CordicMagnitudePhase(
         iteration  = testIteration,
         fractional = testFraction
       ),
@@ -75,18 +75,21 @@ class DspIpTests extends ChainsawFlatSpec {
       generatorConfigTable("Cordic")
     )
     testOperator(
-      CordicMulti(iteration = testIteration, fractional = testFraction),
+      CordicMultiplication(iteration = testIteration, fractional = testFraction),
       generatorConfigTable("Cordic")
     )
     testOperator(
-      CordicDiv(iteration = testIteration, fractional = testFraction),
+      CordicDivision(iteration = testIteration, fractional = testFraction),
       generatorConfigTable("Cordic")
     )
     testOperator(
-      CordicHyperFun(iteration = testIteration, fractional = testFraction),
+      CordicHyperFunction(iteration = testIteration, fractional = testFraction),
       generatorConfigTable("Cordic")
     )
-
+    testOperator(
+      CordicRotate(iteration = testIteration, fractional = testFraction),
+      generatorConfigTable("Cordic")
+    )
   }
 
   /** -------- FIRs
@@ -105,9 +108,7 @@ class DspIpTests extends ChainsawFlatSpec {
     val parallelFactors = Seq(4)
 
     // Pipelined FIR
-    coeffs.foreach(coeff =>
-      testOperator(Fir(coeff, coeffType, dataType), generatorConfigTable("Fir"))
-    )
+    coeffs.foreach(coeff => testOperator(Fir(coeff, coeffType, dataType), generatorConfigTable("Fir")))
     // Pipelined FIR with symmetric coefficients
     symmetricCoeffs.foreach(coeff =>
       testOperator(
@@ -233,8 +234,8 @@ class DspIpTests extends ChainsawFlatSpec {
 //  testCordic()
 //  testDelay()
 //  testDds()
-//  testMovingAverage()
+  testMovingAverage()
 //  testFirs()
-  testUnwrap()
-  testPeriodicUnwrap()
+//  testUnwrap()
+//  testPeriodicUnwrap()
 }

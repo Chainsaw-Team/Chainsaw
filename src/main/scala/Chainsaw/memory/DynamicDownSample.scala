@@ -1,20 +1,12 @@
 package Chainsaw.memory
 
 import Chainsaw.xilinx.VivadoUtil
-import Chainsaw.{
-  ChainsawDynamicInfiniteGenerator,
-  ChainsawDynamicInfiniteModule,
-  ChainsawMetric,
-  NumericType,
-  TestCase,
-  logger
-}
+import Chainsaw._
 import spinal.core._
 
-import scala.util.Random
+import scala.util.Random     // for Xilinx FPGA Flow
 
-case class DynamicDownSample(factor: Int, dataType: NumericType)
-    extends ChainsawDynamicInfiniteGenerator {
+case class DynamicDownSample(factor: Int, dataType: NumericType) extends ChainsawDynamicInfiniteGenerator {
   override def implNaiveH = None
 
   override def controlTypes = Seq(NumericType.U(log2Up(factor)))
@@ -49,8 +41,8 @@ case class DynamicDownSample(factor: Int, dataType: NumericType)
       val counter       = DynamicCounter(currentFactor)
       when(lastIn)(counter.clear())
       when(validIn)(counter.increment())
-      dataOut := dataIn
-      validOut := counter.willOverflow && validIn || lastIn // the last one is a must
-      lastOut := lastIn
+      dataOut  := dataIn.d()
+      validOut := (counter.willOverflow && validIn || lastIn).validAfter(1) // the last one is a must
+      lastOut  := lastIn.validAfter(1)
     }
 }
