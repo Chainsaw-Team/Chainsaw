@@ -21,6 +21,7 @@ import scala.util.Random
   * @see
   *   [[CordicModule]]
   */
+
 case class Cordic(
     algebraicMode: AlgebraicMode,
     rotationMode: RotationMode,
@@ -129,8 +130,7 @@ case class Cordic(
         rotationMode match {
           case ROTATION =>
             Seq(x * cosh(z) + y * sinh(z), y * cosh(z) + x * sinh(z), 0.0)
-          case VECTORING =>
-            Seq(sqrt(x * x - y * y), 0.0, z + atanh(y / x))
+          case VECTORING => Seq(sqrt(x * x - y * y), 0.0, z + atanh(y / x))
         }
       case LINEAR =>
         rotationMode match {
@@ -150,7 +150,6 @@ case class Cordic(
   }
 
   override def testCases: Seq[TestCase] = {
-
     def randRange(min: Double, max: Double): Double =
       min + (max - min) * Random.nextDouble() // [min, max)
     def randSign(): Int = if (Random.nextInt(2).toBoolean) 1 else -1
@@ -197,7 +196,7 @@ case class Cordic(
 
     Seq.fill(1000)(getGroup).map(TestCase(_))
   }
-//
+
   override def inputTypes: Seq[NumericType] =
     Seq(amplitudeType, amplitudeType, phaseType)
       .zip(initValues)
@@ -205,7 +204,6 @@ case class Cordic(
         case (t, Some(_)) => None
         case (t, None)    => Some(t)
       }
-
   logger.info(s"inputTypes: ${inputTypes.mkString(", ")}")
 
   override def outputTypes = Seq(amplitudeType, amplitudeType, phaseType)
@@ -216,8 +214,8 @@ case class Cordic(
 
   override def implH = new CordicModule(this)
 
-
 }
+
 
 class CordicModule(cordic: Cordic) extends ChainsawOperatorModule(cordic) {
 
