@@ -10,7 +10,9 @@ import spinal.lib._
 import java.io.File
 import scala.io.Source
 
-trait Flopoco {
+import Chainsaw._
+
+trait Flopoco extends FixedLatency {
 
   /** -------- params for Flopoco generation
     * --------
@@ -68,7 +70,7 @@ trait Flopoco {
     val lines          = src.getLines().toSeq
     val lineIndex      = lines.indexWhere(_.contains(s"${entityName}_"))
     val linesForSearch = lines.drop(lineIndex)
-    val latencyLine = linesForSearch.find(_.startsWith("-- Pipeline depth: "))
+    val latencyLine    = linesForSearch.find(_.startsWith("-- Pipeline depth: "))
     val latency = latencyLine match {
       case Some(line) => line.filter(_.isDigit).mkString("").toInt
       case None       => 0

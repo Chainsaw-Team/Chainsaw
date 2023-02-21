@@ -1,14 +1,3 @@
-sudo apt
-sudo apt install python3-pip
-pip install numpy
-pip install scipy
-pip install matplotlib
-
-# for human user only
-# jupyter notebook
-# pip install notebook
-# pip install jinja2  --upgrade
-
-echo  | cat >> ~/.bashrc # empty line
-echo export PYTHON=/usr/bin/python3 | cat >> ~/.bashrc
-echo alias python=/usr/bin/python3 | cat >> ~/.bashrc
+sudo sh src/main/resources/install/installPython.sh
+sudo sh src/main/resources/install/installFlopoco.sh
+sudo sh src/main/resources/install/installSimulator.sh
