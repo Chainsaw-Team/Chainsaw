@@ -187,16 +187,16 @@ case class Cordic(
     def getHyperbolicGroup = {
       rotationMode match {
         case ROTATION =>
-          val x = randRange(-halfAmplitude, halfAmplitude)
-          val y = randRange(0, x.abs*0.8069) * randSign()
-          val z = randRange(-1.1181, 1.1181)
-          Seq(x, y, z)
-        case VECTORING =>
           Seq(
             randRange(-halfAmplitude, halfAmplitude),
             randRange(-halfAmplitude, halfAmplitude),
-            randRange(-0.8069, 0.8069)
+            randRange(-1.1181, 1.1181)
           )
+        case VECTORING =>
+          val x = randRange(-halfAmplitude, halfAmplitude)
+          val y = randRange(0, x.abs*0.8069) * randSign()
+          val z = randRange(-0.8069, 0.8069)
+          Seq(x, y, z)
       }
     }
     def getGroup = (algebraicMode match {

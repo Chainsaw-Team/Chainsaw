@@ -56,7 +56,7 @@ class DspIpTests extends ChainsawFlatSpec {
             rot,
             iteration  = testIteration,
             fractional = testFraction,
-            amplitudeType = NumericType(2.1, -2.1, -16)
+            amplitudeType = NumericType(10.0, -10.0, -16)
           ),
           generatorConfigTable("Cordic")
         )
