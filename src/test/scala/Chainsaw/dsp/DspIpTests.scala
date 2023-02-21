@@ -11,7 +11,7 @@ import spinal.lib.fsm._       // for finite state machine dialect
 import spinal.lib.bus._       // for all kinds of bus and regIf
 import spinal.lib.bus.regif._ // for regIf
 import spinal.sim._           // for simulation
-import spinal.core.sim._      // for more simulation
+import spinal.core.sim._ // for more simulation
 
 class DspIpTests extends ChainsawFlatSpec {
 
@@ -48,11 +48,16 @@ class DspIpTests extends ChainsawFlatSpec {
     // CORDIC under all 6 modes
     val algebraicModes = Seq(CIRCULAR, HYPERBOLIC, LINEAR)
     val rotationModes  = Seq(ROTATION, VECTORING)
-
     algebraicModes.foreach(alg =>
       rotationModes.foreach(rot =>
         testOperator(
-          Cordic(alg, rot, iteration = testIteration, fractional = testFraction),
+          Cordic(
+            alg,
+            rot,
+            iteration  = testIteration,
+            fractional = testFraction,
+            amplitudeType = NumericType(2.1, -2.1, -16)
+          ),
           generatorConfigTable("Cordic")
         )
       )
@@ -201,7 +206,7 @@ class DspIpTests extends ChainsawFlatSpec {
     "Cordic" -> TestConfig(
       full  = true,
       naive = false,
-      synth = true,
+      synth = false,
       impl  = false
     ),
     "DynamicDelay" -> TestConfig(
@@ -227,11 +232,11 @@ class DspIpTests extends ChainsawFlatSpec {
   )
 
 //  testComplexMult()
-//  testCordic()
+testCordic()
 //  testDelay()
 //  testDds()
 //  testMovingAverage()
-  testFirs()
+//  testFirs()
 //  testUnwrap()
 //  testPeriodicUnwrap()
 }
