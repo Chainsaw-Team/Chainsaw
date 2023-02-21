@@ -10,7 +10,7 @@ abstract class ChainsawBaseModule(val gen: ChainsawBaseGenerator) extends Compon
 
   import gen._
 
-  val flowIn  = slave Flow Fragment(Vec(inputTypes.map(_.apply())))
+  val flowIn: Flow[Fragment[Vec[AFix]]] = slave Flow Fragment(Vec(inputTypes.map(_.apply())))
   val flowOut = master Flow Fragment(Vec(outputTypes.map(_.apply())))
 
   val dataIn  = flowIn.fragment

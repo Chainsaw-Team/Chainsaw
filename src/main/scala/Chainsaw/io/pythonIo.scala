@@ -1,10 +1,10 @@
 package Chainsaw.io
 
 import ai.djl.ndarray._
-import spinal.core._
+import Chainsaw._
 
 import java.io.{BufferedReader, File, InputStreamReader, PrintWriter}
-import java.nio.file.{Files, Paths}
+import java.nio.file.Files
 import scala.collection.mutable.ArrayBuffer
 import scala.io.Source
 import scala.language.implicitConversions
@@ -12,10 +12,7 @@ import scala.language.implicitConversions
 object pythonIo {
 
   val pythongProjectDir = new File("goldenModel")
-  val pythonUtilsPath =
-    new File(pythongProjectDir, "utils")
-  val pythonPath =
-    new File(sys.env.getOrElse("PYTHON", "")) // python executable dir
+  val pythonUtilsPath = new File(pythongProjectDir, "utils")
 
   // array io
   type Signal = Seq[BigDecimal] // datatype for golden model
@@ -59,7 +56,7 @@ object pythonIo {
 
   import org.json4s._
   import org.json4s.jackson.JsonMethods._
-  import org.json4s.jackson.Serialization.{read, write}
+  import org.json4s.jackson.Serialization.write
 
   /** import serialized python dict for config parameters
     * @param file
@@ -83,6 +80,7 @@ object pythonIo {
   }
 
   def runPython(pyPath: File, args: String*): String = {
+    require(hasPython, "to use python module, please set the environment variable 'PYTHON' to the python executable with numpy,scipy & matplotlib, e.g. /usr/bin/python3")
     val command = s"$pythonPath ${pyPath.getAbsolutePath} ${args.mkString(" ")}"
     println(command)
     val process: Process = Runtime.getRuntime.exec(

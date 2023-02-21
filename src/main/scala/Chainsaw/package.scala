@@ -13,11 +13,11 @@ import scala.math.BigInt
 import scala.reflect.ClassTag
 import spinal.core._
 import spinal.lib._
-import spinal.lib.fsm._ // for finite state machine dialect
-import spinal.lib.bus._ // for all kinds of bus and regIf
+import spinal.lib.fsm._       // for finite state machine dialect
+import spinal.lib.bus._       // for all kinds of bus and regIf
 import spinal.lib.bus.regif._ // for regIf
-import spinal.sim._ // for simulation
-import spinal.core.sim._ // for more simulation
+import spinal.sim._           // for simulation
+import spinal.core.sim._      // for more simulation
 
 package object Chainsaw {
 
@@ -57,6 +57,7 @@ package object Chainsaw {
     yaml.load(configString).asInstanceOf[java.util.LinkedHashMap[String, Any]]
 
   val hasVivado: Boolean  = sys.env.contains("VIVADO")
+  val hasPython: Boolean  = sys.env.contains("PYTHON")
   val hasFlopoco: Boolean = sys.env.contains("FLOPOCO")
   val allowSynth: Boolean =
     configs.get("allowSynth").asInstanceOf[Boolean] && hasVivado
@@ -107,6 +108,7 @@ package object Chainsaw {
     new File(
       sys.env.getOrElse("QUARTUS", "")
     ).getParentFile // quartus executable dir
+  val pythonPath = new File(sys.env.getOrElse("PYTHON", "")) // python executable
 
   // inside Chainsaw
   val unisimDir =
