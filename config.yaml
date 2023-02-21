@@ -1,5 +1,5 @@
-allowSynth: true
+allowSynth: false
 
-allowImpl: true
+allowImpl: false
 
 verbose: 0
