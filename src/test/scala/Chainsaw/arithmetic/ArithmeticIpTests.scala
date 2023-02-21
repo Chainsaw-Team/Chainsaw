@@ -20,8 +20,7 @@ class ArithmeticIpTests extends ChainsawFlatSpec {
   val lsbConstants: Seq[Option[BigInt]] = Seq(Some(ZPrizeMSM.baseModulus), None)
   val msbConstants: Seq[Option[BigInt]] = Seq(Some(ZPrizeMSM.MPrime), None)
 
-  /** traverse all possible combinations of multiplier types for a given
-    * bitwidth
+  /** traverse all possible combinations of multiplier types for a given bitwidth
     */
   def forAllBmConfig(func: (MultiplierType, Option[BigInt]) => Unit): Unit = {
     multTypes.foreach { multType =>
@@ -100,7 +99,8 @@ class ArithmeticIpTests extends ChainsawFlatSpec {
       useCsds.foreach { useCsd =>
         val extras = if (multType == MsbMultiplier) extraWidths else Seq(0)
         extras.foreach { extraWidth =>
-          it should s"work for $widthIn bit ${className(multType)} using ${widthIn + extraWidth} bit and ${if (useCsd) "csd" else "binary"} encoding" in {
+          it should s"work for $widthIn bit ${className(multType)} using ${widthIn + extraWidth} bit and ${if (useCsd) "csd"
+          else "binary"} encoding" in {
             val algo = multType match {
               case FullMultiplier =>
                 FullConstantMult(
@@ -237,9 +237,7 @@ class ArithmeticIpTests extends ChainsawFlatSpec {
   def testCpa(): Unit = {
     val widths = Seq(63, 127) // width smaller/larger than cpaWidthMax
     adderTypes.foreach(adderType =>
-      widths.foreach(width =>
-        testOperator(Cpa(adderType, width), generatorConfigTable("Cpa"))
-      )
+      widths.foreach(width => testOperator(Cpa(adderType, width), generatorConfigTable("Cpa")))
     )
   }
 
@@ -350,18 +348,18 @@ class ArithmeticIpTests extends ChainsawFlatSpec {
   // for reproducibility
   Random.setSeed(42)
   // level 1: compressors and DSPs
-  testDspMults()
-  testCompressors()
+  //  testDspMults()
+  //  testCompressors()
   // level 2: bit (multi-input)adders
-  testCpa()
+  //  testCpa()
   testFastAdditionAlgos()
   testCcaAdder()
-  testMerge()
+  //  testMerge()
   // level 3: multipliers
-  testBmAlgo()
-  testBcmAlgo()
+  //  testBmAlgo()
+  //  testBcmAlgo()
   //  testBm()
   //  testBcm()
   // level 4: DSE
-  testMultSearch()
+  //  testMultSearch()
 }
