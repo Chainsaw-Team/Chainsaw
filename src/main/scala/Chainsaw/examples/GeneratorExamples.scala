@@ -11,19 +11,17 @@ import Chainsaw.memory._
 
 // TODO: formal examples
 
-case class ExampleAdder(width: Int)
-    extends ChainsawOperatorGenerator
-    with FixedLatency {
+case class ExampleAdder(width: Int) extends ChainsawOperatorGenerator with FixedLatency {
   override def impl(testCase: TestCase) = Seq(testCase.data.sum)
 
   override def metric(yours: Seq[BigDecimal], golden: Seq[BigDecimal]) =
     yours.equals(golden)
 
-  override def testCases = Seq.fill(1000)(TestCase(randomDataVector))
+  override def testCases = Seq.fill(1000)(TestCase(randomDataVector)) // 1000 random frames
 
   override def latency() = 1
 
-  override def name = s"adder"
+  override def name = s"adder_$width"
 
   override def vivadoUtilEstimation = VivadoUtil(lut = width)
 
@@ -65,6 +63,7 @@ case class ExampleAddSub(width: Int) extends ChainsawDynamicOperatorGenerator {
       dataOut.head := dataIn.reduce(_ + _).d()
     }
     validOut := validIn.validAfter(1)
+    lastOut  := lastIn.validAfter(1)
   }
 
   override def implNaiveH = None
@@ -83,9 +82,7 @@ case class ExampleAddSub(width: Int) extends ChainsawDynamicOperatorGenerator {
 
 }
 
-case class ExampleStaticFlip(dataType: NumericType, length: Int)
-    extends ChainsawFrameGenerator
-    with FixedLatency {
+case class ExampleStaticFlip(dataType: NumericType, length: Int) extends ChainsawFrameGenerator with FixedLatency {
 
   override def name = s"staticFlip"
 
@@ -217,7 +214,7 @@ case class ExampleDynamicFlip(dataType: NumericType, maxLength: Int)
 
   override def outputTypes = Seq(dataType)
 
-  override def controlTypes = Seq(NumericType.U(log2Up(innerMaxLength)))
+  override def controlTypes = Seq(NumericType.U(log2Up(innerMaxLength + 1)))
 }
 
 case class ExampleStaticFir(dataType: NumericType, coeffs: Seq[Double])
@@ -256,9 +253,7 @@ case class ExampleStaticFir(dataType: NumericType, coeffs: Seq[Double])
     }
     val zero = productType.fromConstant(0.0)
     // the first element is a dummy, it is a must for extreme fmax, or PREG won't be used for the first DSP
-    val ret = (zero +: scaled).reduce((a, b) =>
-      (a +| b).d()
-    ) // addition without width growth
+    val ret = (zero +: scaled).reduce((a, b) => (a +| b).d()) // addition without width growth
     dataOut.head := ret.d()
     lastOut      := lastIn.validAfter(latency())
   }
@@ -282,7 +277,7 @@ case class ExampleDynamicFir(dataType: NumericType, tap: Int)
 
   override def impl(testCase: TestCase) = {
     val TestCase(data, coeffs) = testCase
-    val dataWithZeros = data ++ Seq.fill(coeffs.length - 1)(BigDecimal(0))
+    val dataWithZeros          = data ++ Seq.fill(coeffs.length - 1)(BigDecimal(0))
     dataWithZeros.sliding(coeffs.length).map { window =>
       window.zip(coeffs.reverse).map { case (d, c) => d * c }.sum
     }
@@ -294,9 +289,7 @@ case class ExampleDynamicFir(dataType: NumericType, tap: Int)
     yours.zip(golden).forall { case (y, g) => dataType.same(y, g, 1e-1, 1e-1) }
 
   override def testCases = {
-    val data = Seq(10, 20, 30, 20, 10).map(i =>
-      Seq.fill(i)(Random.nextDouble()).map(BigDecimal(_))
-    )
+    val data = Seq(10, 20, 30, 20, 10).map(i => Seq.fill(i)(Random.nextDouble()).map(BigDecimal(_)))
     data.map(TestCase(_, Seq.fill(tap)(Random.nextDouble()).map(BigDecimal(_))))
   }
 
@@ -315,9 +308,7 @@ case class ExampleDynamicFir(dataType: NumericType, tap: Int)
       preAdded.zip(coeffs).map { case (port, coeff) => (port * coeff.d()).d() }
     val zero = productType.fromConstant(0.0)
     // the first element is a dummy, it is a must for extreme fmax, or PREG won't be used for the first DSP
-    val ret = (zero +: scaled).reduce((a, b) =>
-      (a +| b).d()
-    ) // addition without width growth
+    val ret = (zero +: scaled).reduce((a, b) => (a +| b).d()) // addition without width growth
     dataOut.head := ret.d()
     lastOut      := lastIn.validAfter(latency())
   }

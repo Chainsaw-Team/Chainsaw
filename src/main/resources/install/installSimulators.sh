@@ -1,6 +1,7 @@
 sudo apt-get install git make autoconf g++ flex bison  # First time prerequisites
+sudo apt-get install libz-dev # For verilator in Ubuntu
 git clone http://git.veripool.org/git/verilator   # Only first time
-unsetenv VERILATOR_ROOT  # For csh; ignore error if on bash
+# unsetenv VERILATOR_ROOT  # For csh; ignore error if on bash
 unset VERILATOR_ROOT  # For bash
 cd verilator
 git pull        # Make sure we're up-to-date
@@ -10,7 +11,5 @@ autoconf        # Create ./configure script
 make -j$(nproc)
 sudo make install
 echo "DONE"
-
-sudo apt-get install libz-dev # For verilator
 
 sudo apt-get install gtkwave

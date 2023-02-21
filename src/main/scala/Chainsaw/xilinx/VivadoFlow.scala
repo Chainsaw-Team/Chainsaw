@@ -24,7 +24,7 @@ class VivadoFlow[T <: Component](
     customizedConfig: Option[SpinalConfig] = None
 ) {
 
-  require(hasVivado, "to use VivadoFlow, please set the environment variable 'VIVADO' to the vivado executable, e.g. /tools/Xilinx/Vivado/2022.1/bin/vivado ")
+  require(hasVivado, "to use VivadoFlow, please set the environment variable 'VIVADO' to the vivado executable, e.g. /tools/Xilinx/Vivado/2022.1/bin/vivado")
 
   // TODO: for windows
   val isWindows = System.getProperty("os.name").toLowerCase().contains("win")
