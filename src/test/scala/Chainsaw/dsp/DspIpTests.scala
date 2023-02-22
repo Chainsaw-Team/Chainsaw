@@ -1,17 +1,11 @@
 package Chainsaw.dsp
 
 import Chainsaw._
-import spinal.core.{False, IntToBuilder}
+import spinal.core.{IntToBuilder, _}
 
-import scala.language.postfixOps
-import scala.util.Random
-import spinal.core._
-import spinal.lib._
-import spinal.lib.fsm._       // for finite state machine dialect
-import spinal.lib.bus._       // for all kinds of bus and regIf
-import spinal.lib.bus.regif._ // for regIf
-import spinal.sim._           // for simulation
-import spinal.core.sim._      // for more simulation
+import scala.language.postfixOps      // for more simulation
+
+
 
 class DspIpTests extends ChainsawFlatSpec {
 
@@ -130,7 +124,6 @@ class DspIpTests extends ChainsawFlatSpec {
   /** -------- DDS
     * --------
     */
-
   def testDds(): Unit = {
     testOperator(
       Dds(
@@ -187,9 +180,11 @@ class DspIpTests extends ChainsawFlatSpec {
     )
   }
 
-  /** -------- tests
-    * --------
-    */
+  def testFftAlgos() = {
+    CooleyTukeyFftAlgo(16).selfTest()
+  }
+
+  override def algoNames = Seq("CooleyTukeyFft")
 
   override def generatorConfigTable: Map[String, TestConfig] = Map(
     "ComplexMult" -> TestConfig(
@@ -231,7 +226,9 @@ class DspIpTests extends ChainsawFlatSpec {
 //  testDelay()
 //  testDds()
 //  testMovingAverage()
-  testFirs()
+//  testFirs()
 //  testUnwrap()
 //  testPeriodicUnwrap()
+//  testFftAlgos()
+
 }

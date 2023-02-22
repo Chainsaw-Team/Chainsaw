@@ -31,7 +31,11 @@ case class DynamicDownSample(factor: Int, dataType: NumericType) extends Chainsa
   override def metric(yours: Seq[BigDecimal], golden: Seq[BigDecimal]) =
     ChainsawMetric.sameAsBigInt(yours, golden)
 
-  override def testCases = Seq.fill(10)(randomTestCase(Random.nextInt(100) + 1))
+  override def testCases = Seq(
+    TestCase(randomDataSequence(100), Seq(BigDecimal(10))),
+    TestCase(randomDataSequence(100), Seq(BigDecimal(5))),
+    TestCase(randomDataSequence(100), Seq(BigDecimal(20)))
+  )
 
   override def resetCycle = 0
 

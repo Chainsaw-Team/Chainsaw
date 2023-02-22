@@ -2,13 +2,9 @@ package Chainsaw
 
 import Chainsaw.arithmetic.flopoco.FlopocoOperator
 import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest._
-
-import scala.util.{Random, Try}
-import org.apache.commons.io.FileUtils
-import spinal.core.{EnumEtoEnumE2, SpinalConfig}
 
 import java.util.Calendar
+import scala.util.Random
 
 case class TestConfig(
     full: Boolean,
@@ -20,6 +16,8 @@ case class TestConfig(
 )
 
 abstract class ChainsawFlatSpec extends AnyFlatSpec {
+
+  val seed: Int = 42
 
   def generatorConfigTable: Map[String, TestConfig] = Map[String, TestConfig]()
 
@@ -43,6 +41,8 @@ abstract class ChainsawFlatSpec extends AnyFlatSpec {
   }
 
   it should "show the test summary" in {
+    Random.setSeed(seed)
+    logger.info(s"scala random seed = $seed")
     logger.info(
       "------------Chainsaw test summary------------" +
         s"\nalgorithms: \n\t${algoNames.mkString("\n\t")}" +
