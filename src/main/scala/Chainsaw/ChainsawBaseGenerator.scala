@@ -143,9 +143,7 @@ trait ChainsawBaseGenerator {
 
   def cloneOutput = Vec(outputTypes.map(_.apply()))
 
-  def ffioUtil = VivadoUtil(ff =
-    inputTypes.map(_.bitWidth).sum + outputTypes.map(_.bitWidth).sum
-  )
+  def ffIoUtil = VivadoUtil(ff = inputTypes.map(_.bitWidth).sum + outputTypes.map(_.bitWidth).sum)
 }
 
 trait Dynamic {
@@ -216,10 +214,7 @@ trait ChainsawOperatorGenerator extends ChainsawBaseGenerator with Operator {
   override def randomTestCase = TestCase(randomDataVector)
 }
 
-trait ChainsawDynamicOperatorGenerator
-    extends ChainsawBaseGenerator
-    with Operator
-    with Dynamic {
+trait ChainsawDynamicOperatorGenerator extends ChainsawBaseGenerator with Operator with Dynamic {
 
   override def resetCycle = 0
 
@@ -241,6 +236,15 @@ trait ChainsawFrameGenerator extends ChainsawBaseGenerator with Frame {
   def inputFrameFormat: FrameFormat
 
   def outputFrameFormat: FrameFormat
+
+  require(
+    inputFrameFormat.portSize == inPortWidth,
+    s"Frame inPort size = ${inputFrameFormat.portSize}, actual inPort size = $inPortWidth"
+  )
+  require(
+    outputFrameFormat.portSize == outPortWidth,
+    s"Frame outPort size = ${outputFrameFormat.portSize}, actual outPort size = $outPortWidth"
+  )
 
   override def inputFrameFormat(control: Seq[BigDecimal]) = inputFrameFormat
 
@@ -272,10 +276,16 @@ trait ChainsawFrameGenerator extends ChainsawBaseGenerator with Frame {
   override def randomTestCase = TestCase(randomInputFrame)
 }
 
-trait ChainsawDynamicFrameGenerator
-    extends ChainsawBaseGenerator
-    with Frame
-    with Dynamic {
+trait ChainsawDynamicFrameGenerator extends ChainsawBaseGenerator with Frame with Dynamic {
+
+  require(
+    inputFrameFormat(randomControlVector).portSize == inPortWidth,
+    s"Frame inPort size = ${inputFrameFormat(randomControlVector).portSize}, actual inPort size = $inPortWidth"
+  )
+  require(
+    outputFrameFormat(randomControlVector).portSize == outPortWidth,
+    s"Frame outPort size = ${outputFrameFormat(randomControlVector).portSize}, actual outPort size = $outPortWidth"
+  )
 
   override def implH: ChainsawDynamicFrameModule
 
@@ -296,9 +306,7 @@ trait ChainsawDynamicFrameGenerator
   }
 }
 
-trait ChainsawInfiniteGenerator
-    extends ChainsawBaseGenerator
-    with SemiInfinite {
+trait ChainsawInfiniteGenerator extends ChainsawBaseGenerator with SemiInfinite {
 
   override def implH: ChainsawInfiniteModule
 
@@ -317,10 +325,7 @@ trait ChainsawInfiniteGenerator
   )
 }
 
-trait ChainsawDynamicInfiniteGenerator
-    extends ChainsawBaseGenerator
-    with SemiInfinite
-    with Dynamic {
+trait ChainsawDynamicInfiniteGenerator extends ChainsawBaseGenerator with SemiInfinite with Dynamic {
 
   override def implH: ChainsawDynamicInfiniteModule
 

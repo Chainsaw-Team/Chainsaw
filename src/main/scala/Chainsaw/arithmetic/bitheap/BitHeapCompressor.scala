@@ -11,11 +11,12 @@ import scala.language.postfixOps
   */
 case class BitHeapCompressor(
     arithInfos: Seq[ArithInfo],
-    solver: BitHeapSolver = GreedSolver
+    solver: BitHeapSolver = null
 ) extends UnsignedMerge {
 
   override def name =
-    s"BitHeapCompressor_${hashName(arithInfos)}_${className(solver)}"
+    s"BitHeapCompressor_${hashName(arithInfos)}_${if (solver != null) className(solver)
+    else "inferred"}"
 
   val bitHeapGroup            = BitHeapGroup.fromInfos(arithInfos)
   override val positiveLength = bitHeapGroup.positiveLength
@@ -25,7 +26,9 @@ case class BitHeapCompressor(
     logger.info(s"take existing solution from $solutionFile")
     CompressorFullSolution.load(solutionFile)
   } else {
-    val solution = solver.solveAll(bitHeapGroup)
+    val solution =
+      if (solver == null) searchBestSolver(bitHeapGroup)
+      else solver.solveAll(bitHeapGroup)
     solution.save(solutionFile)
     solution
   }
@@ -50,7 +53,7 @@ case class BitHeapCompressor(
 
   override def fmaxEstimation = 600 MHz
 
-  override def latency() = solution.latency
+  override def latency() = solution.latency + doFinal3to2.toInt
 
   override def implH = new ChainsawOperatorModule(this) {
     val operands = dataIn.map(_.asUInt())
@@ -58,19 +61,28 @@ case class BitHeapCompressor(
       WeightedUInt(int, info)
     }
     val bitHeapGroup = BitHeapGroup.fromUInts(weightedUInts)
-    val heapOut      = bitHeapGroup.implAllHard(solution)
+    if (verbose >= 1)
+      logger.info(s"--------initial bitHeap--------\n$bitHeapGroup")
+    val heapOut = bitHeapGroup.implAllHard(solution)
     if (doFinal3to2) { // TODO: skip 3:2 compressor for columns with height = 2 / 1
       val finalStage = CompressorStageSolution(
-        (0 until heapOut.width).map(i =>
-          CompressorStepSolution("Compressor3to2", 1, i)
-        ),
-        stageHeight = 2,
-        pipelined   = false
+        (0 until heapOut.width).map(i => CompressorStepSolution("Compressor3to2", 1, i)),
+        stageInHeight  = 3,
+        stageOutHeight = 2,
+        pipelined      = true
       )
       heapOut.implStageHard(finalStage)
     }
+    logger.info(s"constant = ${heapOut.constant.mod(pow2(positiveLength))}")
     dataOut := heapOut.toUInts
       .map(_.resize(positiveLength))
       .map(_.toAFix)
+  }
+
+  override def doSelfTest(): ChainsawTest = {
+//    logger.info(s"Solver: $")
+    logger.info(s"solution information table: \n$solution")
+    logger.info(s"solution vivadoUtils: \n${solution.vivadoUtilEstimation}")
+    super.doSelfTest()
   }
 }
