@@ -7,10 +7,6 @@ import spinal.core._
 import scala.language.postfixOps
 import scala.util.Random
 
-case class FilterPrecisionNew(coeffType: NumericType, dataType: NumericType) {
-  override def toString = ""
-}
-
 /** systolic fir for FPGAs, extremely efficient for Xilinx device
   */
 case class Fir(
@@ -86,9 +82,7 @@ case class Fir(
     }
     val zero = S(0, productType.bitWidth bits)
     // the first element is a dummy, it is a must for extreme fmax, or PREG won't be used for the first DSP
-    val ret = (zero +: scaled).reduce((a, b) =>
-      (a + b).d()
-    ) // addition without width growth
+    val ret = (zero +: scaled).reduce((a, b) => (a + b).d()) // addition without width growth
 
     // SInt datapath end
     dataOut.head.assignFromBits(ret.d().asBits)

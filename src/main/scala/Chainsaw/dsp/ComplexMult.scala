@@ -10,9 +10,19 @@ import spinal.lib.fsm._
 
 import scala.language.postfixOps
 
+/** fully-pipelined complex number multiplication using 3 multipliers
+  *
+  * input order = (real0, imag0, real1, imag1); output order = (real, imag)
+  * @param dataType
+  *   numeric type of the multiplier
+  * @param coeffType
+  *   numeric type of the multiplicand
+  */
 case class ComplexMult(dataType: NumericType, coeffType: NumericType)
     extends ChainsawOperatorGenerator
     with FixedLatency {
+
+  override def name = s"ComplexMult_${dataType}_$coeffType"
 
   val retType = (dataType * coeffType).withCarry(1)
 
@@ -26,17 +36,17 @@ case class ComplexMult(dataType: NumericType, coeffType: NumericType)
 
   override def implH = new ChainsawOperatorModule(this) {
     // using SInt in tht datapath for better DSP inference, as - method of AFix lead to indirect RTL representation
-    val Seq(ar, ai, br, bi) = dataIn.map(_.raw.asSInt)
+    private val Seq(ar, ai, br, bi) = dataIn.map(_.raw.asSInt)
     // regs outside dsp
-    val arD1 = ar.d()
-    val aiD2 = ai.d(2)
-    val brD2 = br.d(2)
-    val biD2 = bi.d(2)
+    private val arD1 = ar.d()
+    private val aiD2 = ai.d(2)
+    private val brD2 = br.d(2)
+    private val biD2 = bi.d(2)
     // dsp operation and regs inside dsp
-    val mid = ((br.d() +^ bi.d()).d() * ar.d(2)).d(2)
-    val productImag =
+    private val mid = ((br.d() +^ bi.d()).d() * ar.d(2)).d(2)
+    private val productImag =
       (mid.d() + ((aiD2.d() -^ arD1.d(2)).d() * brD2.d(2)).d()).d()
-    val productReal =
+    private val productReal =
       (mid.d() - ((aiD2.d() +^ arD1.d(2)).d() * biD2.d(2)).d()).d()
     dataOut := Seq(productReal, productImag).map { sint =>
       val ret = retType()
@@ -48,8 +58,6 @@ case class ComplexMult(dataType: NumericType, coeffType: NumericType)
   override def implNaiveH = None
 
   override def latency() = 6
-
-  override def name = s"ComplexMult_${dataType}_$coeffType"
 
   /** -------- model
     * --------

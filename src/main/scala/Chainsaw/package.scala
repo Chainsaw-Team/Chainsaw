@@ -57,6 +57,7 @@ package object Chainsaw {
     yaml.load(configString).asInstanceOf[java.util.LinkedHashMap[String, Any]]
 
   val hasVivado: Boolean  = sys.env.contains("VIVADO")
+  val hasQuartus: Boolean  = sys.env.contains("QUARTUS")
   val hasPython: Boolean  = sys.env.contains("PYTHON")
   val hasFlopoco: Boolean = sys.env.contains("FLOPOCO")
   val allowSynth: Boolean =
@@ -106,11 +107,9 @@ package object Chainsaw {
   val vitisPath =
     new File(sys.env.getOrElse("VITIS", "")) // vitis executable path
   val flopocoPath = new File(sys.env.getOrElse("FLOPOCO", ""))
-  val quartusDir =
-    new File(
-      sys.env.getOrElse("QUARTUS", "")
-    ).getParentFile // quartus executable dir
-  val pythonPath = new File(sys.env.getOrElse("PYTHON", "")) // python executable
+  val quartusPath = new File(sys.env.getOrElse("QUARTUS", ""))
+  val quartusDir  = quartusPath.getParentFile                 // quartus executable dir
+  val pythonPath  = new File(sys.env.getOrElse("PYTHON", "")) // python executable
 
   // inside Chainsaw
   val unisimDir =
