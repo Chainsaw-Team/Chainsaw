@@ -163,27 +163,47 @@ object ArithInfoGenerator {
       height: Int,
       shift: Int                     = 0,
       sign: Boolean                  = true,
+      randomSign: Boolean            = false,
       withNoise: Boolean             = false,
       timeStrategy: TimeDiffStrategy = NoneTimeDiff,
-      upBound: Int                   = 0
+      timeUpBound: Int               = 0
   ): Seq[ArithInfo] = {
-    def randomShift: Int = if (withNoise) Random.nextInt(width) else 0
+    def randomNoise: Int = if (withNoise) Random.nextInt(width / 2) else 0
 
-    val delta = if (height != 1) upBound / (height - 1) else upBound
+    val delta     = if (height != 1) timeUpBound / (height - 1) else timeUpBound
+    val highNoise = randomNoise
     Seq.tabulate(height) { i =>
-      val noise = randomShift
+      val shiftNoise = randomNoise
+      def randomHighNoise =
+        if (withNoise) Random.nextInt(width / 2 - highNoise) else 0
       timeStrategy match {
-        case NoneTimeDiff => ArithInfo(width - noise, shift + noise, sign)
+        case NoneTimeDiff =>
+          ArithInfo(
+            width - shiftNoise - highNoise - randomHighNoise,
+            shift + shiftNoise,
+            if (randomSign) Random.nextBoolean() else sign,
+            timeUpBound
+          )
         case IncreaseTimeDiff =>
-          ArithInfo(width - noise, shift + noise, sign, i * delta)
+          ArithInfo(
+            width - shiftNoise - highNoise - randomHighNoise,
+            shift + shiftNoise,
+            if (randomSign) Random.nextBoolean() else sign,
+            i * delta
+          )
         case DecreaseTimeDiff =>
-          ArithInfo(width - noise, shift + noise, sign, (height - i) * delta)
+          ArithInfo(
+            width - shiftNoise - highNoise - randomHighNoise,
+            shift + shiftNoise,
+            if (randomSign) Random.nextBoolean() else sign,
+            (height - i) * delta
+          )
         case RandomTimeDiff =>
           ArithInfo(
-            width - noise,
-            shift + noise,
-            sign,
-            Random.nextInt(upBound + 1)
+            width - shiftNoise - highNoise - randomHighNoise,
+            shift + shiftNoise,
+            if (randomSign) Random.nextBoolean() else sign,
+            Random.nextInt(timeUpBound + 1)
           )
       }
     }
@@ -193,82 +213,124 @@ object ArithInfoGenerator {
   def genTriangleInfos(
       width: Int,
       stairShape: (Int, Int)         = (1, 1),
+      shift: Int                     = 0,
       withNoise: Boolean             = false,
       truncate: Range                = null,
+      randomTruncate: Boolean        = false,
       sign: Boolean                  = true,
+      randomSign: Boolean            = false,
       timeStrategy: TimeDiffStrategy = NoneTimeDiff,
-      upBound: Int                   = 0
+      timeUpBound: Int               = 0
   ): Seq[ArithInfo] = {
-    require(
-      (width / stairShape._1) % 2 == 1,
-      s"the width / stairShape._1 must be odd number ! your input width is $width\t row stairShape is ${stairShape._1}"
+    val (rowStairParameter, colStairParameter) = stairShape
+    logger.info(
+      s"the width / rowStairParameter must be odd number ! your width is $width\t rowStairParameter is $rowStairParameter, now expand width to ${width + rowStairParameter}",
+      (width / rowStairParameter) % 2 == 1
     )
-    if (truncate != null) {
-      require(
-        truncate.head >= 0 && truncate.last <= width - 1,
-        s"the truncate range is out of width! your truncate start : ${truncate.head}  end : ${truncate.last}"
+    val fixedWidth =
+      if ((width / rowStairParameter) % 2 == 1) width
+      else width + rowStairParameter
+    if (truncate != null && !randomTruncate) {
+      logger.info(
+        s"the truncate range is out of width! your truncate: [${truncate.head}:${truncate.last}], now adjust to [${truncate.head max 0}:${truncate.last min fixedWidth - 1}]",
+        truncate.head >= 0 && truncate.last <= fixedWidth - 1
       )
     }
+    val fixedTruncate = if (randomTruncate) {
+      val randomValues =
+        Seq(Random.nextInt(fixedWidth), Random.nextInt(fixedWidth))
+      val (minRandomValue, maxRandomValue) =
+        (randomValues.min, randomValues.max)
+      Range.inclusive(minRandomValue, maxRandomValue)
+    } else {
+      if (truncate == null) truncate
+      else
+        Range.inclusive(truncate.head max 0, truncate.last min fixedWidth - 1)
+    }
+
     val delta =
-      if (width / stairShape._1 != 1) upBound / (width / stairShape._1 - 1)
-      else upBound
-    val infos = (0 until width / stairShape._1).flatMap { i =>
-      val mid = ((width / stairShape._1) + 1) / 2
-      val shift = (if (withNoise && i > 0) genNoise(stairShape._1)
-                   else if (withNoise && i == 0) genNoise(stairShape._1).abs
-                   else 0) + i * stairShape._1
+      if (fixedWidth / rowStairParameter != 1)
+        timeUpBound / (fixedWidth / rowStairParameter - 1)
+      else timeUpBound
+    val infos = (0 until fixedWidth / rowStairParameter).flatMap { i =>
+      val mid = ((fixedWidth / rowStairParameter) + 1) / 2
+      val regShift = (if (withNoise && i > 0) genNoise(rowStairParameter)
+                      else if (withNoise && i == 0)
+                        genNoise(rowStairParameter).abs
+                      else 0) + i * rowStairParameter
       val number = mid - (i - mid + 1).abs
       timeStrategy match {
         case NoneTimeDiff =>
-          Seq.fill(number * stairShape._2)(
+          Seq.fill(
+            number * colStairParameter - (if (withNoise)
+                                            genNoise(rowStairParameter / 5)
+                                          else 0)
+          )(
             ArithInfo(
-              (if (withNoise) genNoise(stairShape._1 / 5)
-               else 0) + stairShape._1,
-              shift,
-              sign
+              rowStairParameter - (if (withNoise)
+                                     genNoise(rowStairParameter / 5)
+                                   else 0),
+              shift + regShift,
+              if (randomSign) Random.nextBoolean() else sign,
+              timeUpBound
             )
           )
         case IncreaseTimeDiff =>
-          Seq.fill(number * stairShape._2)(
+          Seq.fill(
+            number * colStairParameter - (if (withNoise)
+                                            genNoise(rowStairParameter / 5)
+                                          else 0)
+          )(
             ArithInfo(
-              (if (withNoise) genNoise(stairShape._1 / 5)
-               else 0) + stairShape._1,
-              shift,
-              sign,
+              rowStairParameter - (if (withNoise)
+                                     genNoise(rowStairParameter / 5)
+                                   else 0),
+              shift + regShift,
+              if (randomSign) Random.nextBoolean() else sign,
               i * delta
             )
           )
         case DecreaseTimeDiff =>
-          Seq.fill(number * stairShape._2)(
+          Seq.fill(
+            number * colStairParameter - (if (withNoise)
+                                            genNoise(rowStairParameter / 5)
+                                          else 0)
+          )(
             ArithInfo(
-              (if (withNoise) genNoise(stairShape._1 / 5)
-               else 0) + stairShape._1,
-              shift,
-              sign,
-              (width / stairShape._1 - i) * delta
+              rowStairParameter - (if (withNoise)
+                                     genNoise(rowStairParameter / 5)
+                                   else 0),
+              shift + regShift,
+              if (randomSign) Random.nextBoolean() else sign,
+              (fixedWidth / rowStairParameter - i) * delta
             )
           )
         case RandomTimeDiff =>
-          Seq.fill(number * stairShape._2)(
+          Seq.fill(
+            number * colStairParameter - (if (withNoise)
+                                            genNoise(rowStairParameter / 5)
+                                          else 0)
+          )(
             ArithInfo(
-              (if (withNoise) genNoise(stairShape._1 / 5)
-               else 0) + stairShape._1,
-              shift,
-              sign,
-              Random.nextInt(upBound + 1)
+              rowStairParameter - (if (withNoise)
+                                     genNoise(rowStairParameter / 5)
+                                   else 0),
+              shift + regShift,
+              if (randomSign) Random.nextBoolean() else sign,
+              Random.nextInt(timeUpBound + 1)
             )
           )
       }
     }
 
-    if (truncate != null)
+    if (fixedTruncate != null)
       infos
-        .filter(info => info.high >= truncate.head && info.low <= truncate.last)
+        .filter(info => info.high >= fixedTruncate.head && info.low <= fixedTruncate.last)
         .map { info =>
           var newLow  = info.low
           var newHigh = info.high
-          if (info.low < truncate.head) newLow   = truncate.head
-          if (info.high > truncate.last) newHigh = truncate.last
+          if (info.low < fixedTruncate.head) newLow   = fixedTruncate.head
+          if (info.high > fixedTruncate.last) newHigh = fixedTruncate.last
           ArithInfo(newHigh - newLow + 1, newLow, info.isPositive, info.time)
         }
     else infos
@@ -287,49 +349,55 @@ object ArithInfoGenerator {
       height: Int,
       shift: Int,
       sign: Boolean,
+      randomSign: Boolean,
       withNoise: Boolean,
-      mixSign: Boolean,
       timeStrategy: TimeDiffStrategy,
-      upBound: Int
+      timeUpBound: Int
   ) extends InfosShape {
     override def toString =
-      s"Rectangular : width:$width height:$height shift:$shift sign:$sign withNoise:$withNoise mixSign:$mixSign timeStrategy:${timeStrategy.getClass.getSimpleName.init} upBound:$upBound"
+      s"Rectangular : width:$width height:$height shift:$shift sign:$sign randomSign:$randomSign withNoise:$withNoise timeStrategy:${timeStrategy.getClass.getSimpleName.init} timeUpBound:$timeUpBound"
 
     override def getConfig = Seq(
       ("width", width),
       ("height", height),
       ("shift", shift),
       ("sign", sign),
+      ("randomSign", randomSign),
       ("withNoise", withNoise),
-      ("mixSign", mixSign),
       ("timeStrategy", timeStrategy),
-      ("upBound", upBound)
+      ("timeUpBound", timeUpBound)
     )
   }
 
   case class Triangle(
       width: Int,
       stairShape: (Int, Int),
-      sign: Boolean,
-      mixSign: Boolean,
+      shift: Int,
       withNoise: Boolean,
       truncate: Range,
+      randomTruncate: Boolean,
+      sign: Boolean,
+      randomSign: Boolean,
       timeStrategy: Strategy,
-      upBound: Int
+      timeUpBound: Int
   ) extends InfosShape {
     override def toString =
-      s"Triangle : width:$width stairShape:$stairShape sign:$sign mixSign:$mixSign withNoise:$withNoise " +
-        s"truncate:${if (truncate == null) "All"
-        else s"${truncate.head} to ${truncate.last}"} timeStrategy:${timeStrategy.getClass.getSimpleName.init} upBound:$upBound"
+      s"Triangle : width:$width stairShape:$stairShape shift:$shift withNoise:$withNoise truncate:${if (truncate == null) "All"
+      else s"[${truncate.head}:${truncate.last}]"} randomTruncate:$randomTruncate sign:$sign randomSign:$randomSign " +
+        s" timeStrategy:${timeStrategy.getClass.getSimpleName.init} timeUpBound:$timeUpBound"
 
     override def getConfig = Seq(
       ("width", width),
       ("stairRowShape", stairShape._1),
       ("stairColShape", stairShape._2),
+      ("shift", shift),
       ("withNoise", withNoise),
       ("truncate", truncate),
+      ("randomTruncate", randomTruncate),
+      ("sign", sign),
+      ("randomSign", randomSign),
       ("timeStrategy", timeStrategy),
-      ("upBound", upBound)
+      ("timeUpBound", timeUpBound)
     )
   }
 
@@ -339,45 +407,38 @@ object ArithInfoGenerator {
         heightRange: Range             = Range.inclusive(128, 256, 32),
         shift: Int                     = 0,
         sign: Boolean                  = true,
+        randomSign: Boolean            = false,
         withNoise: Boolean             = false,
-        mixSign: Boolean               = false,
         timeStrategy: TimeDiffStrategy = NoneTimeDiff,
-        upBound: Int                   = 0
-    ): Seq[(Seq[ArithInfo], InfosShape)] =
+        timeUpBound: Int               = 0
+    ): Seq[(Seq[ArithInfo], InfosShape)] = {
       widthRange.flatMap { w =>
         heightRange.map { h =>
           (
             genRectangularInfos(
               w,
-              h - (if (mixSign) h / (Random.nextInt(3) + 2) else 0),
+              h,
               shift,
               sign,
+              randomSign,
               withNoise,
               timeStrategy,
-              upBound
-            )
-              ++ genRectangularInfos(
-                w,
-                if (mixSign) h / (Random.nextInt(3) + 2) else 0,
-                shift,
-                !sign,
-                withNoise,
-                timeStrategy,
-                upBound
-              ),
+              timeUpBound
+            ),
             Rectangle(
-              width        = w,
-              height       = h,
-              shift        = shift,
-              sign         = sign,
-              withNoise    = withNoise,
-              mixSign      = mixSign,
-              timeStrategy = timeStrategy,
-              upBound      = upBound
+              w,
+              h,
+              shift,
+              sign,
+              randomSign,
+              withNoise,
+              timeStrategy,
+              timeUpBound
             )
           )
         }
       }
+    }
   }
 
   object TriangleInfos {
@@ -385,12 +446,14 @@ object ArithInfoGenerator {
         widthRange: Range              = Range.inclusive(255, 511, 32),
         stairRowShapeRange: Range      = Range.inclusive(1, 1),
         stairColShapeRange: Range      = Range.inclusive(1, 1),
+        shift: Int                     = 0,
         withNoise: Boolean             = false,
         truncate: Range                = null,
+        randomTruncate: Boolean        = false,
         sign: Boolean                  = true,
-        mixSign: Boolean               = false,
+        randomSign: Boolean            = false,
         timeStrategy: TimeDiffStrategy = NoneTimeDiff,
-        upBound: Int                   = 0
+        timeUpBound: Int               = 0
     ): Seq[(Seq[ArithInfo], InfosShape)] = widthRange.flatMap { w =>
       stairRowShapeRange.flatMap { r =>
         stairColShapeRange.map { c =>
@@ -398,32 +461,26 @@ object ArithInfoGenerator {
             genTriangleInfos(
               w,
               (r, c),
+              shift,
               withNoise,
               truncate,
+              randomTruncate,
               sign,
-              timeStrategy = timeStrategy,
-              upBound      = upBound
-            )
-              ++ (if (mixSign)
-                    genTriangleInfos(
-                      w,
-                      (r, c),
-                      withNoise,
-                      truncate,
-                      !sign,
-                      timeStrategy = timeStrategy,
-                      upBound      = upBound
-                    )
-                  else Seq[ArithInfo]()),
+              randomSign,
+              timeStrategy,
+              timeUpBound
+            ),
             Triangle(
               w,
               (r, c),
-              sign,
-              mixSign,
+              shift,
               withNoise,
               truncate,
+              randomTruncate,
+              sign,
+              randomSign,
               timeStrategy,
-              upBound
+              timeUpBound
             )
           )
         }

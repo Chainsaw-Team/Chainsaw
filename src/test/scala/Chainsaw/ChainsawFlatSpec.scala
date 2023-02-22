@@ -61,7 +61,7 @@ abstract class ChainsawFlatSpec extends AnyFlatSpec {
     behavior of gen.name
 
     if (full) {
-      it should "work correctly" in {
+      it should s"work correctly on testCase$testCaseIndex" in {
         ChainsawSimBox(testConfig.naiveList) {
           gen.doSelfTest()
         }
@@ -69,7 +69,7 @@ abstract class ChainsawFlatSpec extends AnyFlatSpec {
     }
 
     if (naive) {
-      it should "has a correct naive implementation" in {
+      it should s"has a correct naive implementation on testCase$testCaseIndex" in {
         gen.setAsNaive()
         assert(gen.useNaive)
         gen.doSelfTest()
@@ -78,14 +78,15 @@ abstract class ChainsawFlatSpec extends AnyFlatSpec {
     }
 
     if (synth && allowSynth) { // when impl is set, synth is not necessary
-      it should "meet the util & fmax requirement after synth" in
+      it should s"meet the util & fmax requirement after synth on testCase$testCaseIndex" in
         ChainsawSynth(gen, testConfig.utilRequirementStrategy)
     }
 
     if (impl && allowImpl) {
-      it should "meet the util & fmax requirement after impl" in
+      it should s"meet the util & fmax requirement after impl on testCase$testCaseIndex" in
         ChainsawImpl(gen, testConfig.utilRequirementStrategy)
     }
+    testCaseIndex += 1
   }
 
   def testFlopocoOperator(

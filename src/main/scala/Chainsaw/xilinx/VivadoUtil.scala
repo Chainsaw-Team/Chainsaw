@@ -57,12 +57,12 @@ case class VivadoUtil(
   def >=(that: VivadoUtil): Boolean = that <= this
 
   // regard resources in CLB as one
-  def clbCost(considerFF: Boolean): Double = {
+  def clbCost(isPipeline: Boolean): Double = {
     val considerTable = Seq(lut, carry8 * 8, ff / 2)
     if (considerTable.forall(_ == 0.0))
       throw new IllegalArgumentException("no estimation exist!")
     // TODO: /8 for clb?
-    if (considerFF) considerTable.max else considerTable.init.max
+    if (isPipeline) considerTable.max else considerTable.init.max
   }
 
   override def toString = {
@@ -95,9 +95,7 @@ case class VivadoUtil(
       }
 
     val weights =
-      solveVars.map(i =>
-        schemes.map(scheme => scheme.getValues(i).toInt).toArray
-      )
+      solveVars.map(i => schemes.map(scheme => scheme.getValues(i).toInt).toArray)
     val budgets = solveVars.map(i => this.getValues(i))
 
     val variables: Array[IloIntVar] =

@@ -110,7 +110,10 @@ object IMPL extends EdaFlowType
 
 sealed trait CompressionStrategy extends ChainsawEnum
 object ReFirst extends CompressionStrategy // ReductionEfficiency First
-object HrFirst extends CompressionStrategy // HeightReduction First
+object HrFirst extends CompressionStrategy // HeightReduction(Latency) First
+object BrFirst extends CompressionStrategy // BitReduction First
+object RrFirst extends CompressionStrategy // ReductionRatio First
+object MinCost extends CompressionStrategy // Cost First
 
 sealed trait UtilRequirementStrategy extends ChainsawEnum
 object DefaultRequirement

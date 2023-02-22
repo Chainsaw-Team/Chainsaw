@@ -123,6 +123,7 @@ class ArithmeticIpTests extends ChainsawFlatSpec {
                   widthOut = widthIn,
                   useCsd   = useCsd
                 )
+              case _ => ???
             }
             if (multType == MsbMultiplier)
               logger.info(
@@ -158,6 +159,7 @@ class ArithmeticIpTests extends ChainsawFlatSpec {
             )
           case LsbMultiplier =>
             LsbBcm(constant = constant, widthIn = widthIn, widthOut = widthIn)
+          case _ => ???
         }
         testOperator(gen, generatorConfigTable("Bcm"))
       }

@@ -3,6 +3,7 @@ package Chainsaw.arithmetic.bitheap
 import Chainsaw.{ChainsawFlatSpec, _}
 import Chainsaw.arithmetic._
 import Chainsaw.xilinx._
+import breeze.numerics.constants.c
 import spinal.core._
 import spinal.core.sim._
 
@@ -19,26 +20,55 @@ class BitHeapTests extends ChainsawFlatSpec {
   //     1. mixed signedness
   //     2. diff time
   //     3. different weightLows and weightHighs
-  def getRandomInfos = ArithInfoGenerator.genRectangularInfos(
-    width        = 10,
-    height       = 10,
-    withNoise    = true,
-    timeStrategy = RandomTimeDiff
-  )
+  def getRandomInfos(timeDiffStrategy: TimeDiffStrategy = NoneTimeDiff) =
+    if (Random.nextBoolean()) {
+      ArithInfoGenerator.genTriangleInfos(
+        width          = 20,
+        stairShape     = (1, 1),
+        shift          = 1,
+        withNoise      = true,
+        truncate       = null,
+        randomTruncate = false,
+        sign           = true,
+        randomSign     = true,
+        timeStrategy   = timeDiffStrategy,
+        timeUpBound    = 10
+      )
+    } else {
+      ArithInfoGenerator.genRectangularInfos(
+        width        = 10,
+        height       = 10,
+        withNoise    = true,
+        randomSign   = true,
+        timeStrategy = timeDiffStrategy,
+        timeUpBound  = 10
+      )
+    }
 
-  def getRandomOperands =
-    getRandomInfos.map(info => WeightedBigInt(BigInt(info.width, Random), info))
+  def getRandomOperands(timeDiffStrategy: TimeDiffStrategy = NoneTimeDiff) =
+    getRandomInfos(timeDiffStrategy).map(info => WeightedBigInt(BigInt(info.width, Random), info))
 
-  def getRandomBitHeap = BitHeap.fromBigInts(getRandomOperands)
+  def getRandomBitHeap =
+    BitHeap.fromBigInts(
+      getRandomOperands(NoneTimeDiff)
+        .groupBy(_.arithInfo.time)
+        .toSeq
+        .head
+        ._2
+    )
+
+  def getRandomBitHeaps(timeDiffStrategy: TimeDiffStrategy = RandomTimeDiff) =
+    BitHeapGroup.fromBigInts(getRandomOperands(timeDiffStrategy))
 
   def getEmptyBitHeap = BitHeap.fromHeights(Seq[Int](), 0, 0)
 
   it should "work" in {
     (0 until 1000).foreach { _ =>
-      val weightedBigInts = getRandomOperands
+      val weightedBigInts = getRandomOperands()
       val bitHeap         = BitHeap.fromBigInts(weightedBigInts)
-      val expected        = weightedBigInts.map(_.eval).sum
-      val actual          = bitHeap.evalBigInt
+      logger.info(s"$bitHeap")
+      val expected = weightedBigInts.map(_.eval).sum
+      val actual   = bitHeap.evalBigInt
       assert(
         actual == expected,
         s"\noperands:\n${weightedBigInts.mkString("\n")}\n " +
@@ -57,7 +87,9 @@ class BitHeapTests extends ChainsawFlatSpec {
       val sumsBefore = bitHeap0.evalBigInt + bitHeap1.evalBigInt
       bitHeap0.contributeHeapTo(bitHeap1)
       val sumsAfter = bitHeap0.evalBigInt + bitHeap1.evalBigInt
-      assert(bitHeap0.evalBigInt == 0) // bitHeap0 should be empty after move
+      assert(
+        bitHeap0.evalBigInt == bitHeap0.constant
+      ) // bitHeap0 should be empty after move
       assert(
         sumsBefore == sumsAfter,
         s"before: $sumsBefore, after: $sumsAfter"
@@ -83,7 +115,7 @@ class BitHeapTests extends ChainsawFlatSpec {
         "Compressor4to2",
         8,
         0,
-        CompressorScores(0, 0, 0, 0)
+        ScoreIndicator(0, 0, 0, 0, 0)
       )
       val bitHeap = getRandomBitHeap
       val small =
@@ -99,11 +131,16 @@ class BitHeapTests extends ChainsawFlatSpec {
   it should "allocate" in {
     (0 until 1000).foreach { _ =>
       val bitHeap = getRandomBitHeap
-      val randomValue = Random.nextInt(
-        (bitHeap.maxValue >> bitHeap.weightLow).toInt
-      ) << bitHeap.weightLow
+      val randomValue =
+        if (bitHeap.maxValue == 0) 0
+        else
+          Random.nextInt(
+            (bitHeap.maxValue >> bitHeap.weightLow).toInt
+          ) << bitHeap.weightLow
       bitHeap.allocate(randomValue)
-      assert(bitHeap.evalBigInt == randomValue)
+      assert(
+        bitHeap.evalBigInt == randomValue + bitHeap.constant
+      )
     }
   }
 
@@ -121,7 +158,7 @@ class BitHeapTests extends ChainsawFlatSpec {
       val constant1 = Random.nextInt(bitHeap.maxValue.toInt)
       bitHeap.addConstant(-constant1)
       bitHeap.absorbConstant()
-      val validLength   = bitHeap.positiveLength
+      val validLength   = bitHeap.maxLength
       val valueAfterSub = bitHeap.evalBigInt
       val golden        = valueAfterAdd - constant1
       //      println(s"valueAfterAdd = $valueAfterAdd, valueAfterSub = $valueAfterSub, golden = $golden, constant = $constant1")
@@ -140,9 +177,10 @@ class BitHeapTests extends ChainsawFlatSpec {
             compressorName   = "Compressor6to3",
             width            = 1,
             columnIndex      = i,
-            compressorScores = CompressorScores(0, 0, 0, 0)
+            compressorScores = ScoreIndicator(0, 0, 0, 0, 0)
           )
         ),
+        -1,
         -1,
         pipelined = true
       ),
@@ -152,9 +190,10 @@ class BitHeapTests extends ChainsawFlatSpec {
             "Compressor3to1",
             96,
             96 * i,
-            CompressorScores(0, 0, 0, 0)
+            ScoreIndicator(0, 0, 0, 0, 0)
           )
         ),
+        -1,
         -1,
         pipelined = true
       )
@@ -205,49 +244,34 @@ class BitHeapTests extends ChainsawFlatSpec {
 
   behavior of "BitHeaps"
 
-  // FIXME: complement implementation is not suitable for implSoft
-//  it should "init from mixed operands correctly" in {
-//    val infos = Seq(
-//      ArithInfo(64, 128),
-//      ArithInfo(64, 192),
-//      ArithInfo(64, 160),
-//      ArithInfo(64, 160, isPositive = false),
-//      ArithInfo(64, 160, isPositive = false),
-//      ArithInfo(32, 192),
-//      ArithInfo(32, 192),
-//      ArithInfo(1, 224)
-//    )
-//
-//    (0 until 100).foreach { i =>
-//
-//      val bitHeaps = BitHeapGroup.fromInfos(infos)
-//      println(bitHeaps)
-//      println(s"constant = ${bitHeaps.constant}")
-//      val valueBefore = bitHeaps.evalBigInt
-//      println(s"value = $valueBefore")
-//
-//      bitHeaps.absorbConstant()
-//      println(bitHeaps)
-//      println(s"constant = ${bitHeaps.constant}")
-//      val valueAfter = bitHeaps.evalBigInt
-//      println(s"value = $valueAfter")
-//
-//      assert(
-//        valueBefore == valueAfter,
-//        s"failed at $i-th case, before = $valueBefore, after = $valueAfter"
-//      )
-//
-//      val solution  = GreedSolver.solveAll(bitHeaps)
-//      println(bitHeaps)
-//      val compressed = bitHeaps.bitHeaps.head.implAllSoft(solution)
-//      println(compressed)
-//      val valueEval = compressed.evalBigInt
-//      assert(
-//        valueBefore == valueEval,
-//        s"values: before = $valueBefore, after = $valueAfter, eval = $valueEval"
-//      )
-//    }
-//  }
+  it should "init from mixed operands correctly" in {
+    val infos = Seq(
+      ArithInfo(64, 128),
+      ArithInfo(64, 192),
+      ArithInfo(64, 160),
+      ArithInfo(64, 160, isPositive = false),
+      ArithInfo(64, 160, isPositive = false),
+      ArithInfo(32, 192),
+      ArithInfo(32, 192),
+      ArithInfo(1, 224)
+    )
+    (0 until 1).foreach { _ =>
+      val bitHeaps = BitHeapGroup.fromInfos(infos)
+      searchBestSolver(bitHeaps)
+      val bitHeaps2 = bitHeaps.copy
+      bitHeaps2.absorbConstant()
+      val valueBefore = bitHeaps.evalBigInt
+      bitHeaps.absorbConstant()
+      val valueAfter = bitHeaps.evalBigInt
+      assert(valueBefore == valueAfter)
+      val solution  = GreedSolver.solveAll(bitHeaps)
+      val valueEval = bitHeaps2.bitHeaps.head.implAllSoft(solution).evalBigInt
+      assert(
+        valueBefore == valueEval,
+        s"values: before = $valueBefore, after = $valueAfter, eval = $valueEval"
+      )
+    }
+  }
 
   behavior of "CompressorFullSolution"
 
@@ -260,27 +284,28 @@ class BitHeapTests extends ChainsawFlatSpec {
               "Compressor2117",
               1,
               0,
-              CompressorScores(0, 0, 0, 0)
+              ScoreIndicator(0, 0, 0, 0, 4)
             ),
             CompressorStepSolution(
               "Compressor2117",
               1,
               2,
-              CompressorScores(0, 0, 0, 0)
+              ScoreIndicator(0, 0, 0, 0, 4)
             ),
             CompressorStepSolution(
               "Compressor2117",
               1,
               4,
-              CompressorScores(0, 0, 0, 0)
+              ScoreIndicator(0, 0, 0, 0, 4)
             ),
             CompressorStepSolution(
               "Compressor2117",
               1,
               6,
-              CompressorScores(0, 0, 0, 0)
+              ScoreIndicator(0, 0, 0, 0, 4)
             )
           ),
+          -1,
           -1,
           pipelined = true
         ),
@@ -290,27 +315,28 @@ class BitHeapTests extends ChainsawFlatSpec {
               "Compressor2117",
               1,
               0,
-              CompressorScores(0, 0, 0, 0)
+              ScoreIndicator(0, 0, 0, 0, 4)
             ),
             CompressorStepSolution(
               "Compressor2117",
               1,
               2,
-              CompressorScores(0, 0, 0, 0)
+              ScoreIndicator(0, 0, 0, 0, 4)
             ),
             CompressorStepSolution(
               "Compressor2117",
               1,
               4,
-              CompressorScores(0, 0, 0, 0)
+              ScoreIndicator(0, 0, 0, 0, 4)
             ),
             CompressorStepSolution(
               "Compressor2117",
               1,
               6,
-              CompressorScores(0, 0, 0, 0)
+              ScoreIndicator(0, 0, 0, 0, 4)
             )
           ),
+          -1,
           -1,
           pipelined = true
         )

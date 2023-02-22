@@ -83,6 +83,8 @@ package object Chainsaw {
   var testFlopoco = false
   var testVhdl    = false
 
+  var testCaseIndex = 0
+
   // TODO: better dots
   val positiveDot   = "+"
   val complementDot = "-"
@@ -152,6 +154,8 @@ package object Chainsaw {
       s.reverse.padTo(len, elem).reverse
 
     def repeat(times: Int) = Seq.fill(times)(s).reduce(_ + _)
+
+    def firstBeforeChar(char: Char): String = s.split(char).head
   }
 
   implicit class seqUtil[T: ClassTag](seq: Seq[T]) {

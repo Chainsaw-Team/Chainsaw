@@ -27,6 +27,8 @@ case class BitHeapGroup[T](bitHeaps: ArrayBuffer[BitHeap[T]]) {
 
   def evalBigInt = bitHeaps.map(_.evalBigInt).sum
 
+  def reachLastStage = bitHeaps.forall(_.reachLastStage)
+
   /** -------- modifications
     * --------
     */
@@ -42,7 +44,7 @@ case class BitHeapGroup[T](bitHeaps: ArrayBuffer[BitHeap[T]]) {
       val valueToAdd =
         if (constantToAdd >= 0) constant else pow2(maxLength) + constantToAdd
       if (constantToAdd >= 0) bitHeaps.head.constant = 0
-      else bitHeaps.head.constant = -pow2(positiveLength) // clear constant
+      else bitHeaps.head.constant                    = -pow2(maxLength) // clear constant
       bitHeaps.head.absorbPositiveConstant(valueToAdd)
       // making sure the negative prefix won't influence the final result
       if (constantToAdd < 0)
@@ -70,10 +72,9 @@ case class BitHeapGroup[T](bitHeaps: ArrayBuffer[BitHeap[T]]) {
       if (currentStageSolution.pipelined) {
         timeAndHeaps.get(currentTime + 1) match {
           case Some(heapNext) =>
-            heapNext.absorbHeapFrom(currentHeap.dSoft())
+            heapNext.absorbHeapFrom(currentHeap)
             currentHeap = heapNext
           case None =>
-            currentHeap = currentHeap.dSoft()
         }
         currentTime += 1
       } // else, nothing, as the implStageHard method is in-place
@@ -86,8 +87,13 @@ case class BitHeapGroup[T](bitHeaps: ArrayBuffer[BitHeap[T]]) {
   }
 
   override def toString = {
-    bitHeaps.map(_.toString).mkString("\n--------next time step--------\n")
+    bitHeaps
+      .sortBy(_.time)
+      .map(_.toString)
+      .mkString("\n--------next time step--------\n")
   }
+
+  def copy = BitHeapGroup(bitHeaps.map(_.copy))
 }
 
 object BitHeapGroup {
@@ -106,9 +112,8 @@ object BitHeapGroup {
       weightedBigInts: Seq[WeightedBigInt]
   ): BitHeapGroup[BigInt] = {
     val bitHeaps = ArrayBuffer[BitHeap[BigInt]]()
-    weightedBigInts.groupBy(_.arithInfo.time).foreach {
-      case (_, weightedBigInts) =>
-        bitHeaps += BitHeap.fromBigInts(weightedBigInts)
+    weightedBigInts.groupBy(_.arithInfo.time).foreach { case (_, weightedBigInts) =>
+      bitHeaps += BitHeap.fromBigInts(weightedBigInts)
     }
     BitHeapGroup(bitHeaps)
   }
@@ -118,7 +123,9 @@ object BitHeapGroup {
     infos.groupBy(_.time).map { case (_, info) =>
       bitHeaps += BitHeap.fromInfos(info)
     }
-    BitHeapGroup(bitHeaps)
+    val ret = BitHeapGroup(bitHeaps)
+    ret.absorbConstant()
+    ret
   }
 
   def apply[T](

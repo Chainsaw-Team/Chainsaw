@@ -9,7 +9,7 @@ import spinal.lib._
 import scala.collection.mutable.ArrayBuffer
 import scala.math.{BigInt, log}
 
-abstract class RowAdder extends CompressorGenerator  {
+abstract class RowAdder extends CompressorGenerator {
 
   def width: Int
 
@@ -62,21 +62,29 @@ case class Compressor4to2(
   override def outputFormat = 1 +: Seq.fill(width)(2)
 
   override def implH = new ChainsawOperatorModule(this) {
-    val Seq(w, x, y, z, cIn) = dataIn.map(_.asUInt())
+    val Seq(x, y, z, w, cIn) = dataIn.map(_.asUInt())
 
-    val lutGen = LUT5to2(
-      (
-          i0,
-          i1,
-          i2,
-          i3,
-          i4
-      ) => (i0.toInt + i1.toInt + i2.toInt) >= 2, // carryout bit of FA
-      (i0, i1, i2, i3, i4) => i0 ^ i1 ^ i2 ^ i3 ^ i4 // sum bit of FA
-    )
+    def lutGen(inverseList: Seq[Boolean]) = {
+      type lut5_2ExpressionFormat =
+        (Boolean, Boolean, Boolean, Boolean, Boolean) => Boolean
+      LUT5to2(
+        LUT6_2
+          .getExpressionWithInverse(
+            table => (table(0).toInt + table(1).toInt + table(2).toInt) >= 2,
+            inverseList
+          )
+          .asInstanceOf[lut5_2ExpressionFormat], // carryout bit of FA
+        LUT6_2
+          .getExpressionWithInverse(
+            table => table(0) ^ table(1) ^ table(2) ^ table(3) ^ table(4),
+            inverseList
+          )
+          .asInstanceOf[lut5_2ExpressionFormat] // sum bit of FA
+      )
+    }
 
     val lutOuts = (0 until width)
-      .map(i => lutGen.process(x(i), y(i), z(i), w(i), False))
+      .map(i => lutGen(getComplementHeap(i)).process(x(i), y(i), z(i), w(i), False))
       .map(seq => (seq(0), seq(1)))
 
     val carryCount  = (width + 7) / 8
@@ -133,6 +141,13 @@ case class Compressor3to1(
     mode: Int,
     override val complementHeap: Seq[Seq[Boolean]] = null
 ) extends RowAdder {
+  private def extra =
+    getComplementHeap.head
+      .padTo(5, true)
+      .map(!_)
+      .drop(3)
+      .count(_ == true) // every LUT can take care of 3 complement bit
+
   override def widthMax = cpaWidthMax
 
   override def widthMin = 8
@@ -143,7 +158,7 @@ case class Compressor3to1(
 
   override def vivadoUtilEstimation =
     VivadoUtil(
-      lut    = width,
+      lut    = width + extra,
       carry8 = width.divideAndCeil(8),
       ff     = outputFormat.sum
     )
@@ -166,9 +181,6 @@ case class Compressor3to1(
       if (i == 0) {
         val candidates  = Seq(x(i), y(i), z(i), cIn1.asBool, cIn0.asBool)
         val inverseList = getComplementHeap.head.padTo(5, true).map(!_)
-        val extra = inverseList
-          .drop(3)
-          .count(_ == true) // every LUT can take care of 3 complement bit
         if (extra > 0) logger.info(s"$extra extra not gate for complement bits")
         require(
           inverseList.length == candidates.length,

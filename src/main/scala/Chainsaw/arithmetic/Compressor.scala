@@ -1,7 +1,7 @@
 package Chainsaw.arithmetic
 
 import Chainsaw._
-import Chainsaw.arithmetic.bitheap.CompressorScores
+import Chainsaw.arithmetic.bitheap.ScoreIndicator
 import Chainsaw.xilinx._
 import spinal.core._
 import spinal.lib._
@@ -16,6 +16,8 @@ trait Compressor {
 
   /** -------- definition --------
     */
+  var isPipeline = false
+
   def inputFormat: Seq[Int]
 
   def outputFormat: Seq[Int]
@@ -43,8 +45,7 @@ trait Compressor {
 
   def outputBitsCount = outputFormat.sum
 
-  def clbCost(shouldPipeline: Boolean = true) =
-    vivadoUtilEstimation.clbCost(shouldPipeline)
+  def clbCost = vivadoUtilEstimation.clbCost(isPipeline)
 
   def bitReduction: Int = inputBitsCount - outputBitsCount
 
@@ -52,21 +53,26 @@ trait Compressor {
 
   def reductionRatio: Double = inputBitsCount.toDouble / outputBitsCount
 
-  def reductionEfficiency(considerFF: Boolean = true): Double =
-    bitReduction / clbCost(considerFF)
+  def reductionEfficiency: Double = bitReduction / clbCost
 
-  def compressorScores(considerFF: Boolean) =
-    CompressorScores(
+  def compressorScores =
+    ScoreIndicator(
       bitReduction,
       heightReduction,
-      reductionEfficiency(considerFF),
-      reductionRatio
+      reductionEfficiency,
+      reductionRatio,
+      clbCost
     )
 
   // hardware requirement
   def fmaxEstimation: HertzNumber = 600 MHz // target for all compressors
 
   def latency = 0
+
+  // set pipeline state
+  def setPipelineState(pipeline: Boolean) = isPipeline = pipeline
+
+  def resetPipelineState() = isPipeline = false
 
   override def toString = {
     val title =
@@ -81,10 +87,7 @@ trait Compressor {
   }
 }
 
-trait CompressorGenerator
-    extends ChainsawOperatorGenerator
-    with Compressor
-    with FixedLatency {
+trait CompressorGenerator extends ChainsawOperatorGenerator with Compressor with FixedLatency {
 
   override def latency: Int = 0
 
@@ -162,15 +165,16 @@ trait CompressorGenerator
       case _: Compressor1to1 => bitsIn
       case _ =>
         val paddedBitsIn = bitsIn.zip(inputFormat).map { case (bits, h) =>
-          bits.map(_.value).padTo(h, False)
+          bits.padTo(h, Bit(False))
         }
         val operands = this match {
-          case _: Gpc      => paddedBitsIn.map(_.asBits().asUInt.toAFix)
+          case _: Gpc =>
+            paddedBitsIn.map(_.map(_.value)).map(_.asBits().asUInt.toAFix)
           case _: RowAdder => columns2Operands(paddedBitsIn)
         }
         val core = getImplH
         core.dataIn := operands
-        operands2Columns(core.dataOut, outputFormat, false)
+        operands2Columns(core.dataOut, outputFormat, complement = false)
 //        val complementOut = bitsIn.forall(_.forall(!_.notComplement)) // only if all bits are complement, the output is complement
 //        operands2Columns(core.dataOut, outputFormat, complementOut)
     }
@@ -180,8 +184,9 @@ trait CompressorGenerator
     bitsIn.heap.zip(inputFormat).foreach { case (col, h) =>
       col.padTo(h, False)
     }
-    val retHeap = compress(bitsIn.heap)
-    BitHeap(retHeap, bitsIn.weightLow, bitsIn.time)
+    val retHeap = BitHeap(compress(bitsIn.heap), bitsIn.weightLow, bitsIn.time)
+    retHeap.addConstant(bitsIn.constant)
+    retHeap
   }
 
   def compressSoft(bitsIn: BitHeap[BigInt]): BitHeap[BigInt] = {
@@ -200,12 +205,12 @@ trait CompressorGenerator
     )
   }
 
-  def columns2Operands(columns: Seq[Seq[Bool]]): Seq[AFix] = {
+  def columns2Operands(columns: Seq[Seq[Bit[Bool]]]): Seq[AFix] = {
     val intColumns = columns.map(col => col.map(_ => 1).sum)
     (0 until intColumns.max).map { i =>
       (columns
         .filter(_.length > i)
-        .map(col => col(i))
+        .map(col => col(i).value)
         .asBits()
         .asUInt << intColumns.indexWhere(_ > i)).toAFix
     }

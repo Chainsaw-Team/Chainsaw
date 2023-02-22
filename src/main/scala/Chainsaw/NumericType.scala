@@ -16,8 +16,7 @@ class NumericType(val maxRaw: BigInt, val minRaw: BigInt, val exp: Int) {
 
   val afixType = HardType(new AFix(maxRaw, minRaw, exp))
 
-  /** -------- get core attributes from AFix in virtual global data, to assure
-    * the consistency with SpinalHDL
+  /** -------- get core attributes from AFix in virtual global data, to assure the consistency with SpinalHDL
     * --------
     */
 
@@ -60,9 +59,10 @@ class NumericType(val maxRaw: BigInt, val minRaw: BigInt, val exp: Int) {
       constant >= ret.minValue,
       s"Literal $constant is too negative to be assigned in this $this"
     )
-    val intValue =
+    val intValue = {
       if (constant >= 0.0) (constant / step).toBigInt()
       else (constant / step).toBigInt().toBitValue(bitWidth).to2sComplement
+    }
     ret.raw := intValue
     ret
   }
