@@ -150,61 +150,41 @@ case class Cordic(
   }
 
   override def testCases: Seq[TestCase] = {
-    def halfAmplitude = (amplitudeType.maxValue/2).toDouble
-    def randRange(min: Double, max: Double): Double =
-      min + (max - min) * Random.nextDouble() // [min, max)
+    def randAmplitudeRange: Double = randRange(amplitudeType.minValue.toDouble, amplitudeType.maxValue.toDouble)
+    def randPhaseRange: Double = randRange(phaseType.minValue.toDouble, phaseType.maxValue.toDouble)
+    def randRange(min: Double, max: Double): Double = min + (max - min) * Random.nextDouble() // [min, max)
     def randSign(): Int = if (Random.nextInt(2).toBoolean) 1 else -1
-    def getOne: Double  = Random.nextDouble() * 2 - 1 // [-1,1]
-    def getCircularGroup = {
+    def getCircularGroup: Seq[Double] = {
       rotationMode match {
-        case ROTATION => Seq(
-          randRange(-halfAmplitude, halfAmplitude),
-          randRange(-halfAmplitude, halfAmplitude),
-          randRange(phaseType.minValue.doubleValue(), phaseType.maxValue.doubleValue())
-        )
-        case VECTORING => Seq(
-          randRange(-halfAmplitude, halfAmplitude),
-          randRange(-halfAmplitude, halfAmplitude),
-          randRange(-Pi/4, Pi/4)
-        )
+        case ROTATION => Seq(randAmplitudeRange, randAmplitudeRange, randPhaseRange)
+        case VECTORING => Seq(randAmplitudeRange, randAmplitudeRange, randRange(-Pi/4, Pi/4))
       }
     }
-    def getLinearGroup = {
+    def getLinearGroup: Seq[Double] = {
       rotationMode match {
-        case ROTATION =>
-          Seq(
-            randRange(-halfAmplitude, halfAmplitude),
-            randRange(-halfAmplitude, halfAmplitude),
-            randRange(-1, 1)
-          )
+        case ROTATION => Seq(randAmplitudeRange, randAmplitudeRange, randRange(-1, 1))
         case VECTORING =>
-          val x = randRange(-halfAmplitude, halfAmplitude)
+          val x = randAmplitudeRange
           val y = randRange(0, x.abs) * randSign()
           val z = randRange((phaseType.minValue+1).toDouble, (phaseType.maxValue-1).toDouble)
           Seq(x, y, z)
       }
     }
-    def getHyperbolicGroup = {
+    def getHyperbolicGroup: Seq[Double] = {
       rotationMode match {
-        case ROTATION =>
-          Seq(
-            randRange(-halfAmplitude, halfAmplitude),
-            randRange(-halfAmplitude, halfAmplitude),
-            randRange(-1.1181, 1.1181)
-          )
+        case ROTATION => Seq(Random.nextInt(2), Random.nextInt(2), randRange(-1.1181, 1.1181))
         case VECTORING =>
-          val x = randRange(-halfAmplitude, halfAmplitude)
+          val x = randAmplitudeRange
           val y = randRange(0, x.abs*0.8069) * randSign()
           val z = randRange(-0.8069, 0.8069)
           Seq(x, y, z)
       }
     }
-    def getGroup = (algebraicMode match {
+    def getGroup: Seq[BigDecimal] = (algebraicMode match {
       case CIRCULAR => getCircularGroup
       case LINEAR => getLinearGroup
       case HYPERBOLIC => getHyperbolicGroup
     }).zip(initValues).filter(_._2.isEmpty).map(_._1).map(BigDecimal(_))
-
     Seq.fill(1000)(getGroup).map(TestCase(_))
   }
 
@@ -217,9 +197,30 @@ case class Cordic(
       }
   logger.info(s"inputTypes: ${inputTypes.mkString(", ")}")
 
-  override def outputTypes = Seq(amplitudeType, amplitudeType, phaseType)
+  override def outputTypes = algebraicMode match {
+    case CIRCULAR => Seq(
+      NumericType(amplitudeType.maxValue*Math.sqrt(2), amplitudeType.minValue*Math.sqrt(2), -fractional),
+      NumericType(amplitudeType.maxValue*Math.sqrt(2), amplitudeType.minValue*Math.sqrt(2), -fractional),
+      phaseType
+    )
+    case LINEAR => rotationMode match {
+      case ROTATION => Seq(amplitudeType, NumericType(amplitudeType.maxValue*2, amplitudeType.minValue*2, -fractional), phaseType)
+      case VECTORING => Seq(amplitudeType, amplitudeType, phaseType)
+    }
+    case HYPERBOLIC => rotationMode match {
+      case ROTATION => Seq(amplitudeType, amplitudeType, phaseType)
+      case VECTORING => Seq(amplitudeType, amplitudeType, phaseType)
+    }
+  }
 
-  override def vivadoUtilEstimation = VivadoUtil()
+  override def vivadoUtilEstimation = VivadoUtil(
+    lut = 1000.0,
+    ff = 1000.0,
+    dsp = 100.0,
+    bram36 = 100.0,
+    uram288 = 100.0,
+    carry8 = 1000.0
+  )
 
   override def fmaxEstimation = if (speedLevel == 1) 400 MHz else 600 MHz
 
@@ -228,20 +229,14 @@ case class Cordic(
   def inputAssert(dataIn: Seq[AFix]) = {
     val Seq(x, y, z) = dataIn
     def stringPrefix = s"In ${className(algebraicMode)} with ${className(rotationMode)} mode,"
-    def amplitudeAbsAssert(data: AFix, num: Double) = {
-      assert(data<=amplitudeType.fromConstant(num) && data>=amplitudeType.fromConstant(-num),
-        message = s"${stringPrefix} input amplitude error")
-    }
     def phaseAbsAssert(data: AFix, num:Double) = {
       assert(data<=phaseType.fromConstant(num) && data>=phaseType.fromConstant(-num),
         message = s"${stringPrefix} input phase error")
     }
-    amplitudeAbsAssert(x, (x.maxValue/2).toDouble)
-    amplitudeAbsAssert(y, (y.maxValue/2).toDouble)
     algebraicMode match {
       case CIRCULAR =>
         rotationMode match {
-          case ROTATION => phaseAbsAssert(z, z.maxValue.toDouble)
+          case ROTATION => ""
           case VECTORING => phaseAbsAssert(z, (z.maxValue-Pi/4).toDouble)
         }
       case LINEAR =>
@@ -304,7 +299,10 @@ class CordicModule(cordic: Cordic) extends ChainsawOperatorModule(cordic) {
   // input data assertion
   when(validIn)(inputAssert(Seq(x, y, z)))
 
-  val xyzPrev, xyz = Vec(dataInUse.map(cloneOf(_)))
+  // extend input range
+  val xyzPrev = Vec(dataInUse.map(cloneOf(_)))
+  def doubleAmplituType = AFix(amplitudeType.maxRaw*2, amplitudeType.minRaw*2, -fractional exp)
+  val xyz = Vec(doubleAmplituType, doubleAmplituType, phaseType.apply())
 
   val quadrant = phaseType.fromConstant(Pi / 2)
   // stage 0, add/sub
@@ -343,7 +341,7 @@ class CordicModule(cordic: Cordic) extends ChainsawOperatorModule(cordic) {
       }
     case LINEAR => xyzPrev := dataInUse // need not do anything
   }
-  xyz := xyzPrev.d(speedLevel - 1)
+  xyz := xyzPrev.d(speedLevel-1)
 
   /** -------- iteration datapath, latency = iteration - 1
     * --------
@@ -469,6 +467,6 @@ object CordicHyperFunction {
 
 object CordicTest {
   def main(args: Array[String]): Unit = {
-    SpinalVerilog(new CordicModule(new Cordic(CIRCULAR, ROTATION, 10, 18, Seq(None, None, None), NumericType(2.1, -2.1, -18))))
+    SpinalVerilog(new CordicModule(new Cordic(CIRCULAR, ROTATION, 10, 18, Seq(None, None, None), NumericType(10.0, -10.0, -18))))
   }
 }
