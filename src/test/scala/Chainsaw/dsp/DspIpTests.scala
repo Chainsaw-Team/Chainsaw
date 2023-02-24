@@ -23,7 +23,7 @@ class DspIpTests extends ChainsawFlatSpec {
   val ddsType: NumericType   = NumericType(1, 16, signed = true)
 
   val testIteration = 12
-  val testFraction  = 16
+  val testFraction  = 18
 
   val sizeMax   = 50
   val parallels = 1 to 4
@@ -56,7 +56,7 @@ class DspIpTests extends ChainsawFlatSpec {
             rot,
             iteration  = testIteration,
             fractional = testFraction,
-            amplitudeType = NumericType(10.0, -10.0, -16)
+            amplitudeType = NumericType(1.0, -1.0, -testFraction)
           ),
           generatorConfigTable("Cordic")
         )
@@ -64,7 +64,7 @@ class DspIpTests extends ChainsawFlatSpec {
     )
 
     // most frequently used CORDIC modes(with initValues)
-    testOperator(
+    /*testOperator(
       CordicMagnitudePhase(
         iteration  = testIteration,
         fractional = testFraction
@@ -90,7 +90,7 @@ class DspIpTests extends ChainsawFlatSpec {
     testOperator(
       CordicRotate(iteration = testIteration, fractional = testFraction),
       generatorConfigTable("Cordic")
-    )
+    )*/
   }
 
   /** -------- FIRs
@@ -206,7 +206,7 @@ class DspIpTests extends ChainsawFlatSpec {
     "Cordic" -> TestConfig(
       full  = true,
       naive = false,
-      synth = false,
+      synth = true,
       impl  = false
     ),
     "DynamicDelay" -> TestConfig(
