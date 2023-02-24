@@ -33,6 +33,9 @@ case class Cordic(
 ) extends ChainsawOperatorGenerator
     with FixedLatency {
 
+  assert(fractional>=iteration, s"fractional should great than iteration")
+  require(Seq(1, 2).contains(speedLevel))
+
   override def name = s"Cordic_" +
     s"${className(algebraicMode)}_${className(rotationMode)}_" +
     s"${iteration}_${fractional}_${initValues
@@ -42,16 +45,28 @@ case class Cordic(
   val phaseType     = NumericType(Pi, -Pi, -fractional)
 
   logger.info(s"phaseType: $phaseType, amplitudeType: $amplitudeType")
-  /** -------- get coefficients
-    * --------
-    */
 
+
+  /**
+    * @param iteration
+    *   the number of iterations of Cordic
+    * @return
+    *   iterate sequence in Hyperbolic mode
+    */
   def getHyperbolicSequence(iteration: Int): Seq[Int] = {
     require(iteration < 54, "iteration times should be less than 54")
     val sequence = (1 to 4) ++ (4 to 13) ++ (13 to 40) ++ (40 to 50)
     sequence.slice(0, iteration)
   }
 
+  /**
+    * @param iter
+    *   iterate index
+    * @param algebraicMode
+    *   a specific mode in Cordic. e.g. CIRCULAR
+    * @return
+    *   phase offset for each iteration
+    */
   def getPhaseCoeff(iter: Int)(implicit algebraicMode: AlgebraicMode) = {
     algebraicMode match {
       case CIRCULAR => atan(pow(2.0, -iter))
@@ -63,6 +78,14 @@ case class Cordic(
     }
   }
 
+  /**
+    * @param iter
+    *   total number of iterations
+    * @param algebraicMode
+    *   a specific mode in Cordic. e.g. CIRCULAR
+    * @return
+    *   amplitude compensation factor
+    */
   def getScaleComplement(iter: Int)(implicit algebraicMode: AlgebraicMode) = {
     require(iter >= 1)
     algebraicMode match {
@@ -84,7 +107,9 @@ case class Cordic(
 
   override def implNaiveH = None
 
-  require(Seq(1, 2).contains(speedLevel))
+  /**
+    * quadrant transition latency in different mode
+    */
   val quadrantShiftLatency = algebraicMode match {
     case CIRCULAR =>
       rotationMode match {
@@ -98,15 +123,26 @@ case class Cordic(
         case VECTORING => speedLevel
       }
   }
+
+  /**
+    * iteration latency
+    */
   val iterationLatency = iteration * speedLevel
+
+  /**
+    * scale compensate latency
+    */
   val scalingLatency   = speedLevel
 
+  /**
+    * @return
+    *   total latency of Cordic
+    */
   override def latency() = {
     quadrantShiftLatency + iterationLatency + scalingLatency
   }
 
-  /** -------- model
-    * --------
+  /** Cordic algorithm prototype implementation
     */
   override def impl(testCase: TestCase) = {
     val data    = testCase.data
@@ -141,6 +177,8 @@ case class Cordic(
     ret.map(BigDecimal(_))
   }
 
+  /** define the error between software and hardware
+    */
   override def metric(yours: Seq[BigDecimal], golden: Seq[BigDecimal]) = {
     val Seq(x, y, z)    = yours
     val Seq(x1, y1, z1) = golden
@@ -149,6 +187,10 @@ case class Cordic(
     phaseType.same(z, z1, zTolerance, 1e-2)
   }
 
+  /**
+    * @return
+    *   test cases
+    */
   override def testCases: Seq[TestCase] = {
     def randAmplitudeRange: Double = randRange(amplitudeType.minValue.toDouble, amplitudeType.maxValue.toDouble)
     def randPhaseRange: Double = randRange(phaseType.minValue.toDouble, phaseType.maxValue.toDouble)
@@ -208,51 +250,76 @@ case class Cordic(
       case VECTORING => Seq(amplitudeType, amplitudeType, phaseType)
     }
     case HYPERBOLIC => rotationMode match {
-      case ROTATION => Seq(amplitudeType, amplitudeType, phaseType)
+      case ROTATION => Seq(
+        NumericType(amplitudeType.maxValue*2, amplitudeType.minValue*2, -fractional),
+        NumericType(amplitudeType.maxValue*2, amplitudeType.minValue*2, -fractional),
+        phaseType
+      )
       case VECTORING => Seq(amplitudeType, amplitudeType, phaseType)
     }
   }
 
+  /**
+    *estimate cordic area consume(include lut, ff, dsp, bram36, uram288, carry8)
+    */
   override def vivadoUtilEstimation = VivadoUtil(
-    lut = 1000.0,
-    ff = 1000.0,
-    dsp = 100.0,
-    bram36 = 100.0,
-    uram288 = 100.0,
-    carry8 = 1000.0
+    lut = algebraicMode match {
+      case CIRCULAR => -1100 + 141 * iteration + 86 * fractional
+      case LINEAR => -517 + 85 * iteration + 28 * fractional
+      case HYPERBOLIC => -1000 + 137 * iteration + 71 * fractional
+    },
+    ff = algebraicMode match {
+      case CIRCULAR => -1220 + 160 * iteration + 96 * fractional
+      case LINEAR => -874 + 117 * iteration + 73 * fractional
+      case HYPERBOLIC => -1196 + 159 * iteration + 86 * fractional
+    },
+    dsp = 3,
+    bram36 = 0,
+    uram288 = 0,
+    carry8 = 0
   )
 
+  /**
+    * estimate max frequency under speed level(1 or 2)
+    */
   override def fmaxEstimation = if (speedLevel == 1) 400 MHz else 600 MHz
 
-  override def implH = new CordicModule(this)
-
+  /** input data range detection
+    *
+    */
   def inputAssert(dataIn: Seq[AFix]) = {
     val Seq(x, y, z) = dataIn
-    def stringPrefix = s"In ${className(algebraicMode)} with ${className(rotationMode)} mode,"
-    def phaseAbsAssert(data: AFix, num:Double) = {
+    def stringPrefix = s"In ${className(algebraicMode)} with ${className(rotationMode)} mode"
+    def phaseAbsAssert(data: AFix, num: Double, message: String) = {
       assert(data<=phaseType.fromConstant(num) && data>=phaseType.fromConstant(-num),
-        message = s"${stringPrefix} input phase error")
+        message = s"${stringPrefix}, ${message}")
     }
     algebraicMode match {
       case CIRCULAR =>
         rotationMode match {
           case ROTATION => ""
-          case VECTORING => phaseAbsAssert(z, (z.maxValue-Pi/4).toDouble)
+          case VECTORING => phaseAbsAssert(z, (z.maxValue-Pi/4).toDouble, "|z| should less than 3/4*Pi, otherwise it would overflow in some amplitude")
         }
       case LINEAR =>
         rotationMode match {
-          case ROTATION => phaseAbsAssert(z, 1)
+          case ROTATION => phaseAbsAssert(z, 1, "|z| should less than 1 for convergence")
           case VECTORING =>
-            assert((y/x).asAlwaysPositive()<=amplitudeType.fromConstant(1))
-            phaseAbsAssert(z, (z.maxValue-1).toDouble)
-      }
+            assert((y/x).asAlwaysPositive()<=amplitudeType.fromConstant(1), "|y/x| should less than 1 for convergence")
+            phaseAbsAssert(z, (z.maxValue-1).toDouble, "|z| should less than Pi-1, otherwise it would overflow in some amplitude")
+        }
       case HYPERBOLIC =>
         rotationMode match {
-          case ROTATION => phaseAbsAssert(z, 1.1181)
-          case VECTORING => assert((y/x).asAlwaysPositive()<=amplitudeType.fromConstant(0.8069))
-      }
+          case ROTATION => phaseAbsAssert(z, 1.1181, "|z| should less than 1.1181 for convergence")
+          case VECTORING => assert((y/x).asAlwaysPositive()<=amplitudeType.fromConstant(0.8069), "|y/x| should less than 0.8069 for convergence")
+        }
     }
   }
+
+
+  /** -------- hardware implementation of the cordic
+    * --------
+    */
+  override def implH = new CordicModule(this)
 
 }
 
@@ -263,7 +330,10 @@ class CordicModule(cordic: Cordic) extends ChainsawOperatorModule(cordic) {
 
   implicit val mode: AlgebraicMode = algebraicMode
 
-  val shiftingCoeffs = { // shift value at each stage
+  /**
+    * shift coeffcient in different mode
+    */
+  val shiftingCoeffs = {
     algebraicMode match {
       case CIRCULAR => 0 until iteration
       case LINEAR => 1 until iteration+1
@@ -271,8 +341,15 @@ class CordicModule(cordic: Cordic) extends ChainsawOperatorModule(cordic) {
     }
   }
 
+  /**
+    * compensation factor hardware type
+    */
   val scaleType =
     NumericType(1, 16, signed = false) // for 17 bit multiplier
+
+  /**
+    * compensation factor
+    */
   val scaleComplement =
     scaleType.fromConstant(getScaleComplement(iteration))
   logger.info(s"compensation = ${getScaleComplement(iteration)}")
@@ -395,21 +472,62 @@ class CordicModule(cordic: Cordic) extends ChainsawOperatorModule(cordic) {
   dataOut(1) := (yOut * scaleComplement).d(speedLevel).truncated
   dataOut(2) := zOut.d(speedLevel)
 
+  /**
+    * get cos(z) from output port
+    */
   val cosOut = dataOut(0)
-  val sinOut = dataOut(1)
 
+  /**
+    * get sin(z) from output port
+    */
+  val sinOut = dataOut(2)
+
+  /**
+    * get (x^2^ + y^2^)^1/2^ from output port
+    */
+  val sqrtSquareSum = dataOut(0)
+
+  /**
+    * get arctan(y/x) from output port
+    */
+  val arctan = dataOut(2)
+
+  /**
+    * get y + xz from output port
+    */
+  val multilyAdd = dataOut(1)
+
+  /**
+    * get z + y/x from output port
+    */
+  val divideAdd = dataOut(2)
+
+  /**
+    * get cosh(z) from output port
+    */
   val coshOut = dataOut(0)
+
+  /**
+    * get sinh(z) from output port
+    */
   val sinhOut = dataOut(1)
 
-  val amplitudeOut = dataOut(0)
-  val phaseOut     = dataOut(2)
+  /**
+    * get (x^2^-y^2^)^1/2^ from output port
+    */
+  val standardDeviation = dataOut(0)
+
+  /**
+    * get arctanh(y/x) from output port
+    */
+  val arctanh = dataOut(2)
 }
 
 /** get magnitude and angle of (x,y)
   */
 object CordicMagnitudePhase {
   def apply(iteration: Int, fractional: Int): Cordic = {
-    new Cordic(CIRCULAR, VECTORING, iteration, fractional, Seq(None, None, Some(0.0)), NumericType(2.1, -2.1, -fractional)) {
+    new Cordic(CIRCULAR, VECTORING, iteration, fractional, Seq(None, None, Some(0.0)), NumericType(1.0, -1.0, -fractional)) {
       override def name = s"ComplexToMagnitudeAngle_${iteration}_$fractional"
     }
   }
@@ -419,37 +537,41 @@ object CordicMagnitudePhase {
   */
 object CordicRotate {
   def apply(iteration: Int, fractional: Int): Cordic = {
-    new Cordic(CIRCULAR, ROTATION, iteration, fractional, Seq(None, None, None), NumericType(2.1, -2.1, -fractional)) {
+    new Cordic(CIRCULAR, ROTATION, iteration, fractional, Seq(None, None, None), NumericType(1.0, -1.0, -fractional)) {
       override def name = s"CordicRotate_${iteration}_$fractional"
     }
   }
 }
 
 /** get sin(z) and cos(z)
+  * @return
+  *   first port is cos, second port is sin
   */
 object CordicCosSin {
-  // first port is cos, second port is sin
   def apply(iteration: Int, fractional: Int): Cordic = {
-    new Cordic(CIRCULAR, ROTATION, iteration, fractional, Seq(Some(1.0), Some(0.0), None), NumericType(2.1, -2.1, -fractional)) {
+    new Cordic(CIRCULAR, ROTATION, iteration, fractional, Seq(Some(1.0), Some(0.0), None), NumericType(1.0, -1.0, -fractional)) {
       override def name = s"CordicCosSin_${iteration}_$fractional"
     }
   }
 }
 
 
+/**
+  * get y' = y + xz
+  */
 object CordicMultiplication {
   def apply(iteration: Int, fractional: Int): Cordic = {
-    new Cordic(LINEAR, ROTATION, iteration, fractional, Seq(None, Some(0.0), None), NumericType(2.1, -2.1, -fractional)) {
+    new Cordic(LINEAR, ROTATION, iteration, fractional, Seq(None, Some(0.0), None), NumericType(1.0, -1.0, -fractional)) {
       override def name = s"CordicMulti_${iteration}_$fractional"
     }
   }
 }
 
-/** get x/y
+/** get z' = z + x/y
   */
 object CordicDivision {
   def apply(iteration: Int, fractional: Int): Cordic = {
-    new Cordic(LINEAR, VECTORING, iteration, fractional, Seq(None, None, Some(0.0)), NumericType(2.1, -2.1, -fractional)) {
+    new Cordic(LINEAR, VECTORING, iteration, fractional, Seq(None, None, Some(0.0)), NumericType(1.0, -1.0, -fractional)) {
       override def name = s"CordicDiv_${iteration}_$fractional"
     }
   }
@@ -459,14 +581,8 @@ object CordicDivision {
   */
 object CordicHyperFunction {
   def apply(iteration: Int, fractional: Int): Cordic = {
-    new Cordic(HYPERBOLIC, ROTATION, iteration, fractional, Seq(Some(1.0), Some(0.0), None), NumericType(2.1, -2.1, -fractional)) {
+    new Cordic(HYPERBOLIC, ROTATION, iteration, fractional, Seq(Some(1.0), Some(0.0), None), NumericType(1.0, -1.0, -fractional)) {
       override def name = s"CordicHyperFun_${iteration}_$fractional"
     }
-  }
-}
-
-object CordicTest {
-  def main(args: Array[String]): Unit = {
-    SpinalVerilog(new CordicModule(new Cordic(CIRCULAR, ROTATION, 10, 18, Seq(None, None, None), NumericType(10.0, -10.0, -18))))
   }
 }
