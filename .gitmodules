@@ -1,0 +1,3 @@
+[submodule "RapidWright"]
+	path = RapidWright
+	url = git@github.com:Chainsaw-Team/RapidWright.git
