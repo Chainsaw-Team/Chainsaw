@@ -64,33 +64,44 @@ case class Compressor4to2(
   override def implH = new ChainsawOperatorModule(this) {
     val Seq(x, y, z, w, cIn) = dataIn.map(_.asUInt())
 
+    def toLUT5_2Format(func: Seq[Boolean] => Boolean): (Boolean, Boolean, Boolean, Boolean, Boolean) => Boolean = {
+      (i0, i1, i2, i3, i4) => func(Seq(i0, i1, i2, i3, i4))
+    }
     def lutGen(inverseList: Seq[Boolean]) = {
-      type lut5_2ExpressionFormat =
-        (Boolean, Boolean, Boolean, Boolean, Boolean) => Boolean
       LUT5to2(
-        LUT6_2
-          .getExpressionWithInverse(
-            table => (table(0).toInt + table(1).toInt + table(2).toInt) >= 2,
-            inverseList
-          )
-          .asInstanceOf[lut5_2ExpressionFormat], // carryout bit of FA
-        LUT6_2
-          .getExpressionWithInverse(
-            table => table(0) ^ table(1) ^ table(2) ^ table(3) ^ table(4),
-            inverseList
-          )
-          .asInstanceOf[lut5_2ExpressionFormat] // sum bit of FA
+        toLUT5_2Format(
+          LUT6_2
+            .getExpressionWithInverse(
+              table => (table(0).toInt + table(1).toInt + table(2).toInt) >= 2,
+              inverseList
+            )
+        ), // carryout bit of FA
+        toLUT5_2Format(
+          LUT6_2
+            .getExpressionWithInverse(
+              table => table(0) ^ table(1) ^ table(2) ^ table(3) ^ table(4),
+              inverseList
+            )
+        ) // sum bit of FA
       )
     }
 
     val lutOuts = (0 until width)
-      .map(i => lutGen(getComplementHeap(i)).process(x(i), y(i), z(i), w(i), False))
+      .map(i => lutGen(getComplementHeap(i).take(4).padTo(5, true).map(!_)).process(x(i), y(i), z(i), w(i), False))
       .map(seq => (seq(0), seq(1)))
 
     val carryCount  = (width + 7) / 8
     val carryChains = Seq.fill(carryCount)(CARRY8())
     val selects     = lutOuts.map(_._2)
-    val data        = w.asBits
+    val data = w.asBools
+      .zip {
+        getComplementHeap.map { colCHeap =>
+          val paddedCHeap = colCHeap.padTo(4, true)
+          paddedCHeap(3)
+        }
+      }
+      .map { case (bit, cHeap) => if (cHeap) bit else ~bit }
+      .asBits
 
     carryChains.zipWithIndex.foreach { case (carryChain, i) =>
       (0 until 8).foreach { j =>
@@ -103,7 +114,7 @@ case class Compressor4to2(
           carryChain.S(j)  := False
         }
       }
-      if (i == 0) carryChain.CI := cIn.asBool
+      if (i == 0) carryChain.CI := (if (getComplementHeap.head.last) cIn.asBool else ~cIn.asBool)
       else carryChain.CI        := carryChains(i - 1).CO(7)
       carryChain.CI_TOP         := False
     }
@@ -266,7 +277,7 @@ case class Compressor1to1(
 
   override def outputFormat = Seq.fill(width)(1)
 
-  override def vivadoUtilEstimation = VivadoUtil(lut = 0, ff = outputFormat.sum)
+  override def vivadoUtilEstimation = VivadoUtil(lut = 0.0, ff = outputFormat.sum)
 
   override def implH = new ChainsawOperatorModule(this) {
     dataOut := dataIn
@@ -280,5 +291,5 @@ case class Compressor1to1(
 object RowAdders {
   //  def apply(): Seq[RowAdder] = Seq(Compressor1to1(1), Compressor3to1(cpaWidthMax), Compressor4to2(cpaWidthMax))
   def apply(): Seq[RowAdder] =
-    Seq(Compressor1to1(1), Compressor3to1(cpaWidthMax))
+    Seq(Compressor1to1(1), Compressor3to1(cpaWidthMax), Compressor4to2(cpaWidthMax))
 }

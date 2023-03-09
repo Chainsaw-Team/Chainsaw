@@ -37,14 +37,16 @@ case class BitHeapGroup[T](bitHeaps: ArrayBuffer[BitHeap[T]]) {
 
   def absorbConstant(): Unit = {
     val exception0 = constant == 0
-    val exception1 = constant < 0 && -constant >= pow2(maxLength)
+    val exception1 = constant < 0 && (-constant).mod(pow2(maxLength)) == 0
     if (!exception0 && !exception1) {
       val constantToAdd = constant // fix the value
       bitHeaps.tail.foreach(_.constant = 0)
       val valueToAdd =
-        if (constantToAdd >= 0) constant else pow2(maxLength) + constantToAdd
+        if (constantToAdd >= 0) constantToAdd else pow2(maxLength) - (-constantToAdd).mod(pow2(maxLength))
       if (constantToAdd >= 0) bitHeaps.head.constant = 0
-      else bitHeaps.head.constant                    = -pow2(maxLength) // clear constant
+      else
+        bitHeaps.head.constant =
+          constantToAdd - pow2(maxLength) + (-constantToAdd).mod(pow2(maxLength)) // clear constant
       bitHeaps.head.absorbPositiveConstant(valueToAdd)
       // making sure the negative prefix won't influence the final result
       if (constantToAdd < 0)
@@ -123,9 +125,7 @@ object BitHeapGroup {
     infos.groupBy(_.time).map { case (_, info) =>
       bitHeaps += BitHeap.fromInfos(info)
     }
-    val ret = BitHeapGroup(bitHeaps)
-    ret.absorbConstant()
-    ret
+    BitHeapGroup(bitHeaps)
   }
 
   def apply[T](

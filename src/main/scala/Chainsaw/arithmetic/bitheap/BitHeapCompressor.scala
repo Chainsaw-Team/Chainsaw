@@ -18,16 +18,17 @@ case class BitHeapCompressor(
     s"BitHeapCompressor_${hashName(arithInfos)}_${if (solver != null) className(solver)
     else "inferred"}"
 
-  val bitHeapGroup            = BitHeapGroup.fromInfos(arithInfos)
+  val bitHeapGroup = BitHeapGroup.fromInfos(arithInfos)
+  val shape1       = bitHeapGroup.bitHeaps.map(_.heights)
+  logger.info(s"--------initial softType bitHeap[${hashName(arithInfos)}]--------\n$bitHeapGroup")
   override val positiveLength = bitHeapGroup.positiveLength
-
-  val solutionFile = new File(compressorSolutionOutputDir, s"$name")
+  val solutionFile            = new File(compressorSolutionOutputDir, s"$name")
   val solution = if (solutionFile.exists()) {
     logger.info(s"take existing solution from $solutionFile")
     CompressorFullSolution.load(solutionFile)
   } else {
     val solution =
-      if (solver == null) searchBestSolver(bitHeapGroup)
+      if (solver == null) searchBestSolver(bitHeapGroup, detailReport = true)
       else solver.solveAll(bitHeapGroup)
     solution.save(solutionFile)
     solution
@@ -61,19 +62,26 @@ case class BitHeapCompressor(
       WeightedUInt(int, info)
     }
     val bitHeapGroup = BitHeapGroup.fromUInts(weightedUInts)
-    if (verbose >= 1)
-      logger.info(s"--------initial bitHeap--------\n$bitHeapGroup")
+    val shape2       = bitHeapGroup.bitHeaps.map(_.heights)
+    require(shape1.equals(shape2), s"input conflict")
+    if (verbose >= 1) logger.info(s"--------initial hardType bitHeap--------\n$bitHeapGroup")
+    logger.info(s"--------initial hardType bitHeap[${hashName(arithInfos)}]--------\n$bitHeapGroup")
     val heapOut = bitHeapGroup.implAllHard(solution)
     if (doFinal3to2) { // TODO: skip 3:2 compressor for columns with height = 2 / 1
       val finalStage = CompressorStageSolution(
         (0 until heapOut.width).map(i => CompressorStepSolution("Compressor3to2", 1, i)),
         stageInHeight  = 3,
         stageOutHeight = 2,
-        pipelined      = true
+        pipelined      = true,
+        solution.stageSolutions.length + 1
       )
       heapOut.implStageHard(finalStage)
     }
-    logger.info(s"constant = ${heapOut.constant.mod(pow2(positiveLength))}")
+    logger.info(s"constant = ${heapOut.constant}")
+    logger.info(s"mod constant = ${heapOut.constant.mod(pow2(positiveLength + weightLow))}")
+    heapOut.absorbConstant()
+    logger.info(s"after absorb constant = ${heapOut.constant}")
+    logger.info(s"after absorb mod constant = ${heapOut.constant.mod(pow2(positiveLength + weightLow))}")
     dataOut := heapOut.toUInts
       .map(_.resize(positiveLength))
       .map(_.toAFix)

@@ -16,11 +16,9 @@ object ChainsawSpinalConfig {
     if (gen.isInstanceOf[OverwriteLatency] && !gen.useNaive)
       base.addTransformationPhase(new Retiming)
     if (gen.isInstanceOf[Unaligned])
-      base.addTransformationPhase(
-        new IoAlign
-      ) // for unaligned generator, pad the input and output
+      base.addTransformationPhase(new IoAlign) // for unaligned generator, pad the input and output
     //    if (!atSimTime) base.addTransformationPhase(new phases.FfIo) // TODO: subtract the additional FFs from synth/impl result?
-    base.addTransformationPhase(new AreaEstimation)
+    if (verbose >= 1) base.addTransformationPhase(new AreaEstimation)
     base
   }
 

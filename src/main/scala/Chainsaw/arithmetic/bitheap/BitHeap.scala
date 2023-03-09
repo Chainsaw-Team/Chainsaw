@@ -98,13 +98,12 @@ case class BitHeap[T](
           heights.drop(columnIndex)
         )                                   // zip with height of columns in this heap
         .map { case (h0, h1) => h0 min h1 } // overlap
-    val bits = bitsCoveredShape.sum
-    val cost = compressor.clbCost
-    val reductionEfficiency =
-      if (cost != 0.0) (bits - compressor.outputBitsCount) / cost
-      else 0.0 // (bitsIn - bitsOut) / cost
-    val reductionRatio = bits.toDouble / compressor.outputBitsCount
-    val bitReduction   = bits - compressor.outputBitsCount
+    val bits                = bitsCoveredShape.sum
+    val cost                = compressor.clbCost
+    val reductionEfficiency = (bits - compressor.outputBitsCount) / cost // (bitsIn - bitsOut) / cost
+    val reductionRatio      = bits.toDouble / compressor.outputBitsCount
+    val bitReduction        = bits - compressor.outputBitsCount
+    if (bitsCoveredShape.isEmpty) logger.info(s"$this")
     val heightReduction =
       bitsCoveredShape.max - compressor.outputFormat.max
     compressor.resetPipelineState()
@@ -174,12 +173,12 @@ case class BitHeap[T](
 
   def absorbConstant(): Unit = {
     val exception0 = constant == 0
-    val exception1 = constant < 0 && -constant >= pow2(maxLength)
+    val exception1 = constant < 0 && (-constant).mod(pow2(maxLength)) == 0
     if (!exception0 && !exception1) {
       val valueToAdd =
-        if (constant >= 0) constant else pow2(maxLength) + constant
+        if (constant >= 0) constant else pow2(maxLength) - (-constant).mod(pow2(maxLength))
       if (constant >= 0) constant = 0
-      else constant               = -pow2(maxLength) // clear constant
+      else constant               = constant - pow2(maxLength) + (-constant).mod(pow2(maxLength)) // clear constant
       absorbPositiveConstant(valueToAdd)
     }
   }
@@ -210,6 +209,7 @@ case class BitHeap[T](
     val start = weightLow - des.weightLow
     moveHeapTo(des.heap, start)
     des.constant += constant
+    des.absorbConstant()
     constant = 0
   }
 
@@ -270,7 +270,6 @@ case class BitHeap[T](
   }
 
   private[bitheap] def implStepSoft(stepSolution: CompressorStepSolution) = {
-    absorbConstant()
     val columnIdx = stepSolution.columnIndex
     val format    = stepSolution.getCompressor().inputFormat
     val heapIn    = asSoft.getSub(format, columnIdx)
@@ -280,12 +279,11 @@ case class BitHeap[T](
   }
 
   private[bitheap] def implStageSoft(stageSolution: CompressorStageSolution) = {
-    absorbConstant()
     val heapOuts: Seq[BitHeap[BigInt]] = stageSolution.compressorSolutions
       .map(implStepSoft)
     val heapNext: BitHeap[BigInt] = heapOuts.reduce(_ + _)
     asSoft.absorbHeapFrom(heapNext)
-    if (stageSolution.pipelined) this.dSoft()
+    if (stageSolution.pipelined) dSoft()
     if (verbose >= 1)
       logger.info(s"--------soft impl stage output--------\n${this}")
     this
@@ -312,7 +310,6 @@ case class BitHeap[T](
   }
 
   private[bitheap] def implStepHard(stepSolution: CompressorStepSolution) = {
-    absorbConstant()
     val columnIdx = stepSolution.columnIndex
     val format    = stepSolution.getCompressor().inputFormat
     val heapIn    = asHard.getSub(format, columnIdx)
@@ -322,15 +319,14 @@ case class BitHeap[T](
   }
 
   private[bitheap] def implStageHard(stageSolution: CompressorStageSolution) = {
-    absorbConstant()
+    logger.info(s"hard solve heap\n$this")
     val heapOuts: Seq[BitHeap[Bool]] =
       stageSolution.compressorSolutions.map(implStepHard)
     val heapNext: BitHeap[Bool] =
       heapOuts.reduce(_ + _) // combine all heaps generated
-    asHard.absorbHeapFrom(
-      heapNext
-    ) // merge the heap generated and the heap remained
-    if (stageSolution.pipelined) this.dHard()
+    require(isEmpty, s"Incomplete hard impl in stage ${stageSolution.stageIndex}\n$this")
+    asHard.absorbHeapFrom(heapNext) // merge the heap generated and the heap remained
+    if (stageSolution.pipelined) dHard()
     if (verbose >= 1)
       logger.info(s"--------hard impl stage output--------\n${this}")
     this
@@ -354,11 +350,18 @@ case class BitHeap[T](
     require(value.mod(pow2(weightLow)) == 0)
     var current = value >> weightLow
     asSoft.heap.zipWithIndex.reverse.foreach { case (column, weight) =>
-      column.indices.foreach { i =>
+      if (column.isEmpty) {
         if (current >= pow2(weight)) {
-          column(i) = Bit(BigInt(1))
+          column.prepend(Bit(BigInt(1)))
           current -= pow2(weight)
-        } else column(i) = Bit(BigInt(0))
+        }
+      } else {
+        column.indices.foreach { i =>
+          if (current >= pow2(weight)) {
+            column(i) = Bit(BigInt(1))
+            current -= pow2(weight)
+          } else column(i) = Bit(BigInt(0))
+        }
       }
     }
   }
@@ -415,13 +418,12 @@ case class BitHeap[T](
   }
 
   def copy = {
-    absorbConstant()
     val ret = BitHeap.fromTable(
       heap.map(_.map(bit => bit)).asInstanceOf[Seq[Seq[Bit[BigInt]]]],
       weightLow,
       time
     )
-    ret.addConstant(constant)
+    ret.constant = constant
     ret
   }
 }
@@ -482,7 +484,6 @@ object BitHeap {
     }
     val ret = BitHeap(heap, low, time)
     ret.addConstant(constant)
-    ret.absorbConstant()
     ret
   }
 
