@@ -223,10 +223,10 @@ object ArithInfoGenerator {
       timeUpBound: Int               = 0
   ): Seq[ArithInfo] = {
     val (rowStairParameter, colStairParameter) = stairShape
-    logger.info(
-      s"the width / rowStairParameter must be odd number ! your width is $width\t rowStairParameter is $rowStairParameter, now expand width to ${width + rowStairParameter}",
-      (width / rowStairParameter) % 2 == 1
-    )
+    if ((width / rowStairParameter) % 2 == 1)
+      logger.info(
+        s"the width / rowStairParameter must be odd number ! your width is $width\t rowStairParameter is $rowStairParameter, now expand width to ${width + rowStairParameter}"
+      )
     val fixedWidth =
       if ((width / rowStairParameter) % 2 == 1) width
       else width + rowStairParameter

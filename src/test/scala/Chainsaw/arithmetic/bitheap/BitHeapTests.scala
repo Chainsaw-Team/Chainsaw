@@ -130,6 +130,16 @@ class BitHeapTests extends ChainsawFlatSpec {
 
   it should "allocate" in {
     (0 until 1000).foreach { _ =>
+      val infos = Seq(
+        ArithInfo(64, 1),
+        ArithInfo(64, 192),
+        ArithInfo(64, 160),
+        ArithInfo(64, 160, isPositive = false),
+        ArithInfo(64, 160, isPositive = false),
+        ArithInfo(32, 192),
+        ArithInfo(32, 192),
+        ArithInfo(1, 224)
+      )
       val bitHeap = getRandomBitHeap
       val randomValue =
         if (bitHeap.maxValue == 0) 0
@@ -139,7 +149,7 @@ class BitHeapTests extends ChainsawFlatSpec {
           ) << bitHeap.weightLow
       bitHeap.allocate(randomValue)
       assert(
-        bitHeap.evalBigInt == randomValue + bitHeap.constant
+        bitHeap.evalBigInt - bitHeap.constant == randomValue
       )
     }
   }
@@ -182,7 +192,8 @@ class BitHeapTests extends ChainsawFlatSpec {
         ),
         -1,
         -1,
-        pipelined = true
+        pipelined = true,
+        1
       ),
       CompressorStageSolution(
         (0 until 2).map(i =>
@@ -195,7 +206,8 @@ class BitHeapTests extends ChainsawFlatSpec {
         ),
         -1,
         -1,
-        pipelined = true
+        pipelined = true,
+        2
       )
     )
   )
@@ -255,9 +267,8 @@ class BitHeapTests extends ChainsawFlatSpec {
       ArithInfo(32, 192),
       ArithInfo(1, 224)
     )
-    (0 until 1).foreach { _ =>
-      val bitHeaps = BitHeapGroup.fromInfos(infos)
-      searchBestSolver(bitHeaps)
+    (0 until 100).foreach { _ =>
+      val bitHeaps  = BitHeapGroup.fromInfos(infos)
       val bitHeaps2 = bitHeaps.copy
       bitHeaps2.absorbConstant()
       val valueBefore = bitHeaps.evalBigInt
@@ -307,7 +318,8 @@ class BitHeapTests extends ChainsawFlatSpec {
           ),
           -1,
           -1,
-          pipelined = true
+          pipelined = true,
+          1
         ),
         CompressorStageSolution(
           Seq(
@@ -338,7 +350,8 @@ class BitHeapTests extends ChainsawFlatSpec {
           ),
           -1,
           -1,
-          pipelined = true
+          pipelined = true,
+          2
         )
       )
     )

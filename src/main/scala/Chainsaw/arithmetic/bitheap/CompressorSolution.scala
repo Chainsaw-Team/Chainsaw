@@ -177,7 +177,8 @@ case class CompressorStageSolution(
     compressorSolutions: Seq[CompressorStepSolution],
     stageInHeight: Int,
     stageOutHeight: Int,
-    pipelined: Boolean
+    pipelined: Boolean,
+    stageIndex: Int
 ) {
 
   def vivadoUtilEstimation =

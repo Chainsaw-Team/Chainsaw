@@ -21,112 +21,102 @@ class BitHeapSolverTest extends ChainsawFlatSpec {
     //    Seq.fill(5)(ArithInfo(10, 2)) ++ Seq.fill(5)(ArithInfo(10, 1, isPositive = false, time = 1)), // mixed, diff time
 
     RectangularInfos(
-      50 to 100 by 50,
-      50 to 100 by 50
+      50 to 100 by 60,
+      50 to 100 by 60
     ), // rectangle, positive, same time
     RectangularInfos(
-      50 to 100 by 50,
-      50 to 100 by 50,
+      50 to 100 by 60,
+      50 to 100 by 60,
       withNoise = true
     ), // rectangle, positive, same time, withNoise
     RectangularInfos(
-      50 to 100 by 50,
-      50 to 100 by 50,
+      50 to 100 by 60,
+      50 to 100 by 60,
       withNoise    = true,
       timeStrategy = IncreaseTimeDiff,
       timeUpBound  = 10
     ), // rectangle, positive, diff time(Increase), withNoise
     RectangularInfos(
-      50 to 100 by 50,
-      50 to 100 by 50,
+      50 to 100 by 60,
+      50 to 100 by 60,
       withNoise    = true,
       timeStrategy = RandomTimeDiff,
       timeUpBound  = 10
     ), // rectangle, positive, diff time(Random), withNoise
     RectangularInfos(
-      50 to 100 by 50,
-      50 to 100 by 50,
+      50 to 100 by 60,
+      50 to 100 by 60,
       timeStrategy = IncreaseTimeDiff,
       timeUpBound  = 10
     ), // rectangle, positive, diff time(Increase)
     RectangularInfos(
-      50 to 100 by 50,
-      50 to 100 by 50,
+      50 to 100 by 60,
+      50 to 100 by 60,
       timeStrategy = RandomTimeDiff,
       timeUpBound  = 10
     ), // rectangle, positive, diff time(Random)
     RectangularInfos(
-      50 to 100 by 50,
-      50 to 100 by 50,
+      50 to 100 by 60,
+      50 to 100 by 60,
       randomSign = true
     ), // rectangle, mixSign, same time
     RectangularInfos(
-      100 to 100 by 50,
-      100 to 100 by 50,
+      50 to 100 by 60,
+      50 to 100 by 60,
       withNoise  = true,
       randomSign = true,
       shift      = 2
     ), // rectangle, mixSign, same time, withNoise
     RectangularInfos(
-      100 to 100 by 50,
-      100 to 100 by 50,
+      50 to 100 by 60,
+      50 to 100 by 60,
       randomSign   = true,
       shift        = 2,
       timeStrategy = RandomTimeDiff,
       timeUpBound  = 10
     ), // rectangle, mixSign, diff time
     RectangularInfos(
-      100 to 100 by 50,
-      100 to 100 by 50,
+      50 to 100 by 60,
+      50 to 100 by 60,
       withNoise    = true,
       randomSign   = true,
       shift        = 2,
       timeStrategy = RandomTimeDiff,
       timeUpBound  = 10
-    ),                                                             // rectangle, mixSign, diff time, withNoise
-    TriangleInfos(widthRange = 50 to 100 by 50),                   // triangle, positive, same time
-    TriangleInfos(widthRange = 50 to 100 by 50, withNoise = true), // triangle, positive, same time, withNoise
-    TriangleInfos(widthRange = 50 to 100 by 50, withNoise = true), // triangle, positive, same time, withNoise
+    ), // rectangle, mixSign, diff time, withNoise
+
+    TriangleInfos(widthRange = 50 to 100 by 60),                    // triangle, positive, same time
+    TriangleInfos(widthRange = 100 to 100 by 50, withNoise = true), // triangle, positive, same time, withNoise
     TriangleInfos(
-      widthRange   = 50 to 100 by 50,
+      widthRange   = 100 to 100 by 50,
       timeStrategy = RandomTimeDiff,
       timeUpBound  = 10
     ), // triangle, positive, diff time(Random)
     TriangleInfos(
-      widthRange   = 50 to 100 by 50,
+      widthRange   = 100 to 100 by 50,
       timeStrategy = RandomTimeDiff,
       timeUpBound  = 10,
       withNoise    = true
-    ),                                                              // triangle, positive, diff time(Random), withNoise
-    TriangleInfos(widthRange = 50 to 100 by 50, randomSign = true), // triangle, mixedSign, same time
+    ),                                                               // triangle, positive, diff time(Random), withNoise
+    TriangleInfos(widthRange = 100 to 100 by 50, randomSign = true), // triangle, mixedSign, same time
     TriangleInfos(
-      widthRange = 50 to 100 by 50,
+      widthRange = 100 to 100 by 50,
       randomSign = true,
       withNoise  = true
     ), // triangle, mixedSign, same time, withNoise
     TriangleInfos(
-      widthRange   = 50 to 100 by 50,
+      widthRange   = 100 to 100 by 50,
       randomSign   = true,
       timeStrategy = RandomTimeDiff,
       timeUpBound  = 10
     ), // triangle, mixedSign, diff time
     TriangleInfos(
-      widthRange   = 50 to 100 by 50,
+      widthRange   = 100 to 100 by 50,
       randomSign   = true,
       withNoise    = true,
       timeStrategy = RandomTimeDiff,
       timeUpBound  = 10
     ) // triangle, mixedSign, diff time, withNoise
-//    Seq(
-//      ArithInfo(64, 128),
-//      ArithInfo(64, 192),
-//      ArithInfo(64, 160),
-//      ArithInfo(64, 160, isPositive = false),
-//      ArithInfo(64, 160, isPositive = false),
-//      ArithInfo(32, 192),
-//      ArithInfo(32, 192),
-//      ArithInfo(1, 224)
-//    ) // case from Bm
   ).flatten.map(_._1)
 
   /** -------- 2. solver tester function

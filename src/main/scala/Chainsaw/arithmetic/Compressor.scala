@@ -45,7 +45,7 @@ trait Compressor {
 
   def outputBitsCount = outputFormat.sum
 
-  def clbCost = vivadoUtilEstimation.clbCost(isPipeline)
+  def clbCost = if (vivadoUtilEstimation.clbCost(isPipeline) == 0.0) 0.5 else vivadoUtilEstimation.clbCost(isPipeline)
 
   def bitReduction: Int = inputBitsCount - outputBitsCount
 
