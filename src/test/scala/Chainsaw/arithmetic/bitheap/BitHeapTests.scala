@@ -196,7 +196,7 @@ class BitHeapTests extends ChainsawFlatSpec {
         1
       ),
       CompressorStageSolution(
-        (0 until 2).map(i =>
+        (0 until 3).map(i =>
           CompressorStepSolution(
             "Compressor3to1",
             96,
