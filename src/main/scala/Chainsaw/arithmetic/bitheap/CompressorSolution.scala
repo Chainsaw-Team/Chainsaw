@@ -130,6 +130,10 @@ case class CompressorFullSolution(stageSolutions: Seq[CompressorStageSolution]) 
   }
 
   override def toString = {
+    s"CompressorFullSolution:\n${stageSolutions.map(_.toString).mkString("\n")}"
+  }
+
+  def tableReport = {
     val rows = stageSolutions.map(_.scores)
     val tail = scores
     toTable(rows, tail)
@@ -210,6 +214,9 @@ case class CompressorStageSolution(
     }
   }
 
+  override def toString: String =
+    s"CompressorStageSolution:\n${compressorSolutions.map(_.toString).mkString("\n")}\nstageInHeight: $stageInHeight, stageOutHeight: $stageInHeight, pipelined: $pipelined, stageIndex: $stageIndex"
+
 }
 
 case class CompressorStepSolution(
@@ -228,4 +235,7 @@ case class CompressorStepSolution(
     )
 
   def vivadoUtilEstimation = getCompressor().vivadoUtilEstimation
+
+  override def toString: String =
+    s"CompressorStepSolution -> compressor: $compressorName, width: $width, columnIndex: $columnIndex, compressorScores: $compressorScores"
 }

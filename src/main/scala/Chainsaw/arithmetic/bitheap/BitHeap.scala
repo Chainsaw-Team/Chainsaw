@@ -210,6 +210,12 @@ case class BitHeap[T](
     moveHeapTo(des.heap, start)
     des.constant += constant
     des.absorbConstant()
+    val emptyColIndex = des.heap.lastIndexWhere(_.isEmpty)
+    if (emptyColIndex != -1) des.heap.remove(emptyColIndex)
+    require(
+      des.heap.forall(_.nonEmpty),
+      s"existing empty column!, the column index is ${des.heap.indexWhere(_.isEmpty)}"
+    )
     constant = 0
   }
 
@@ -244,7 +250,7 @@ case class BitHeap[T](
   // the result may not fill the whole heap, the compressor is in charge of padding
 
   private[bitheap] def getSub(format: Seq[Int], columnIdx: Int) = {
-    require(heap(columnIdx).nonEmpty)
+    require(heap(columnIdx).nonEmpty, s"src:\n$this\nformat: $format, columnIdx: $columnIdx")
     val newHeap = ArrayBuffer.fill(format.length)(ArrayBuffer[Bit[T]]())
     heap.drop(columnIdx).zip(newHeap).zip(format).foreach { case ((column, newColumn), height) =>
       (0 until height).foreach { _ =>
@@ -319,7 +325,8 @@ case class BitHeap[T](
   }
 
   private[bitheap] def implStageHard(stageSolution: CompressorStageSolution) = {
-    logger.info(s"hard solve heap\n$this")
+//    logger.info(s"hard solve heap\n$this")
+//    logger.info(s"hard stage solution:$stageSolution")
     val heapOuts: Seq[BitHeap[Bool]] =
       stageSolution.compressorSolutions.map(implStepHard)
     val heapNext: BitHeap[Bool] =

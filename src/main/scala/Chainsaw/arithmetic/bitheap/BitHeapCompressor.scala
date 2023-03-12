@@ -20,7 +20,7 @@ case class BitHeapCompressor(
 
   val bitHeapGroup = BitHeapGroup.fromInfos(arithInfos)
   val shape1       = bitHeapGroup.bitHeaps.map(_.heights)
-  logger.info(s"--------initial softType bitHeap[${hashName(arithInfos)}]--------\n$bitHeapGroup")
+//  logger.info(s"--------initial softType bitHeap[${hashName(arithInfos)}]--------\n$bitHeapGroup")
   override val positiveLength = bitHeapGroup.positiveLength
   val solutionFile            = new File(compressorSolutionOutputDir, s"$name")
   val solution = if (solutionFile.exists()) {
@@ -65,8 +65,14 @@ case class BitHeapCompressor(
     val shape2       = bitHeapGroup.bitHeaps.map(_.heights)
     require(shape1.equals(shape2), s"input conflict")
     if (verbose >= 1) logger.info(s"--------initial hardType bitHeap--------\n$bitHeapGroup")
-    logger.info(s"--------initial hardType bitHeap[${hashName(arithInfos)}]--------\n$bitHeapGroup")
+//    logger.info(s"--------initial hardType bitHeap[${hashName(arithInfos)}]--------\n$bitHeapGroup")
     val heapOut = bitHeapGroup.implAllHard(solution)
+    logger.info(s"hard output: $heapOut")
+    require(
+      heapOut.heap.forall(_.nonEmpty),
+      s"existing empty column!, the column index is ${heapOut.heap.indexWhere(_.isEmpty)}"
+    )
+    logger.info(s"heapOut width: ${heapOut.width}, nonEmpty width: ${heapOut.heap.count(_.nonEmpty)}")
     if (doFinal3to2) { // TODO: skip 3:2 compressor for columns with height = 2 / 1
       val finalStage = CompressorStageSolution(
         (0 until heapOut.width).map(i => CompressorStepSolution("Compressor3to2", 1, i)),
@@ -77,19 +83,13 @@ case class BitHeapCompressor(
       )
       heapOut.implStageHard(finalStage)
     }
-    logger.info(s"constant = ${heapOut.constant}")
-    logger.info(s"mod constant = ${heapOut.constant.mod(pow2(positiveLength + weightLow))}")
-    heapOut.absorbConstant()
-    logger.info(s"after absorb constant = ${heapOut.constant}")
-    logger.info(s"after absorb mod constant = ${heapOut.constant.mod(pow2(positiveLength + weightLow))}")
     dataOut := heapOut.toUInts
       .map(_.resize(positiveLength))
       .map(_.toAFix)
   }
 
   override def doSelfTest(): ChainsawTest = {
-//    logger.info(s"Solver: $")
-    logger.info(s"solution information table: \n$solution")
+    logger.info(s"solution information table: \n${solution.tableReport}")
     logger.info(s"solution vivadoUtils: \n${solution.vivadoUtilEstimation}")
     super.doSelfTest()
   }
