@@ -92,7 +92,7 @@ package object bitheap {
       val searchResult = s"\n2.Search result(The best Solver) is :$result\n"
       val body = s"\n3.Search report are as follows:\n\n" + solverSolutions
         .map { case (solver, solution) =>
-          s"${solver.solverName}:\n$solution\n"
+          s"${solver.solverName}:\n${solution.tableReport}\n"
         }
         .mkString("\n")
       logger.info(

@@ -87,10 +87,9 @@ abstract class BitHeapSolver {
       if (stages.last.pipelined) {
         timeAndHeaps.get(currentTime + 1) match {
           case Some(heapNext) =>
-            heapNext.absorbHeapFrom(currentHeap.dSoft())
+            heapNext.absorbHeapFrom(currentHeap)
             currentHeap = heapNext
           case None =>
-            currentHeap = currentHeap.dSoft()
         }
         currentTime += 1
       }
@@ -108,7 +107,7 @@ abstract class BitHeapSolver {
 
   def solveStage(bitHeap: BitHeap[BigInt]): CompressorStageSolution = {
     import bitHeap._
-    logger.info(s"soft solve heap\n$bitHeap")
+//    logger.info(s"soft solve heap\n$bitHeap")
     nextHeapCarry.clear()
     val initialBitCount    = bitsCount
     val initialHeightMax   = heightMax
@@ -127,14 +126,13 @@ abstract class BitHeapSolver {
 
     val heapNext: BitHeap[BigInt] = heapOuts.reduce(_ + _)
     asSoft.absorbHeapFrom(heapNext)
-
     if (verbose >= 1)
       logger.info(
         s"----------------Solve stage $solveStageIndex by $this----------------"
       )
     solveStageIndex += 1
     if (heightMax <= 3 || reachLastStage) stagePipelineState = true
-
+    if (stagePipelineState) dSoft()
     CompressorStageSolution(
       steps,
       initialHeightMax,
