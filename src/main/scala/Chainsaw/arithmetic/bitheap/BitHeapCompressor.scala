@@ -68,14 +68,12 @@ case class BitHeapCompressor(
 //    logger.info(s"--------initial hardType bitHeap[${hashName(arithInfos)}]--------\n$bitHeapGroup")
     val heapOut = bitHeapGroup.implAllHard(solution)
     logger.info(s"hard output: $heapOut")
-    require(
-      heapOut.heap.forall(_.nonEmpty),
-      s"existing empty column!, the column index is ${heapOut.heap.indexWhere(_.isEmpty)}"
-    )
     logger.info(s"heapOut width: ${heapOut.width}, nonEmpty width: ${heapOut.heap.count(_.nonEmpty)}")
+    logger.info(s"cols : ${heapOut.heights.mkString(",")}")
     if (doFinal3to2) { // TODO: skip 3:2 compressor for columns with height = 2 / 1
+      val nonEmptyCols = heapOut.heights.zipWithIndex.filter { case (h, _) => h > 0 }.map(_._2)
       val finalStage = CompressorStageSolution(
-        (0 until heapOut.width).map(i => CompressorStepSolution("Compressor3to2", 1, i)),
+        nonEmptyCols.map(i => CompressorStepSolution("Compressor3to2", 1, i)),
         stageInHeight  = 3,
         stageOutHeight = 2,
         pipelined      = true,
