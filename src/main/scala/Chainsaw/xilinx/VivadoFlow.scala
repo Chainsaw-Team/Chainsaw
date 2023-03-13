@@ -24,7 +24,10 @@ class VivadoFlow[T <: Component](
     customizedConfig: Option[SpinalConfig] = None
 ) {
 
-  require(hasVivado, "to use VivadoFlow, please set the environment variable 'VIVADO' to the vivado executable, e.g. /tools/Xilinx/Vivado/2022.1/bin/vivado")
+  require(
+    hasVivado,
+    "to use VivadoFlow, please set the environment variable 'VIVADO' to the vivado executable, e.g. /tools/Xilinx/Vivado/2022.1/bin/vivado"
+  )
 
   // TODO: for windows
   val isWindows = System.getProperty("os.name").toLowerCase().contains("win")
@@ -50,12 +53,12 @@ class VivadoFlow[T <: Component](
     val config = customizedConfig match {
       case Some(value) => value
       case None => // for general Component
-        val config = SpinalConfig(
+        SpinalConfig(
           defaultConfigForClockDomains = xilinxCDConfig,
           targetDirectory              = workspaceDir.getAbsolutePath + "/",
           oneFilePerComponent          = true
         )
-        config.addTransformationPhase(new phases.FfIo)
+//        config.addTransformationPhase(new phases.FfIo)
     }
 
     val rtlResources: Seq[String] = netlistDir match {
@@ -125,6 +128,11 @@ class VivadoFlow[T <: Component](
   def getTcl(dutRtlSources: Seq[String], xdcFile: File): String = {
     var script = ""
 
+    val rapidWrightPrerequisite = Source.fromFile("src/main/resources/tcl/rapidwright.tcl")
+    script += rapidWrightPrerequisite.getLines().mkString("\n")
+    script += "\n"
+    rapidWrightPrerequisite.close()
+
     /** rtl file path -> read command
       */
     def getReadCommand(sourcePath: File): String = {
@@ -149,7 +157,8 @@ class VivadoFlow[T <: Component](
     // do flow
     def addSynth(): Unit = {
       //      script += s"synth_design -part ${xilinxDevice.part} -top $topModuleName -mode out_of_context -retiming\n"
-      script += s"synth_design -part ${xilinxDevice.part} -top $topModuleName -mode out_of_context\n"
+      script += s"synth_design -part ${xilinxDevice.part} -top $topModuleName ${if (taskType == BIN) ""
+      else "-mode out_of_context"}\n"
       script += s"write_checkpoint -force ${topModuleName}_after_synth.dcp\n"
       script += s"report_timing\n"
     }
@@ -158,16 +167,20 @@ class VivadoFlow[T <: Component](
       script += "opt_design\n"
       script += "place_design -directive Explore\n"
       script += "report_timing\n"
-      script += s"write_checkpoint -force ${topModuleName}_after_place.dcp\n"
+      script += s"write_rw_checkpoint ${topModuleName}_after_place.dcp\n"
       script += "phys_opt_design\n"
       script += "report_timing\n"
       script += s"write_checkpoint -force ${topModuleName}_after_place_phys_opt.dcp\n"
       script += "route_design\n"
-      script += s"write_checkpoint -force ${topModuleName}_after_route.dcp\n"
+      script += s"write_rw_checkpoint ${topModuleName}_after_route.dcp\n"
       script += "report_timing\n"
       script += "phys_opt_design\n"
       script += "report_timing\n"
       script += s"write_checkpoint -force ${topModuleName}_after_route_phys_opt.dcp\n"
+    }
+
+    def addBitstream() = {
+      script += s"write_bitstream -force ${topModuleName}.bit\n"
     }
 
     taskType match {
@@ -176,6 +189,10 @@ class VivadoFlow[T <: Component](
       case IMPL =>
         addSynth()
         addImpl()
+      case BIN =>
+        addSynth()
+        addImpl()
+        addBitstream()
     }
     // util & timing can't be reported after synth/impl
     script += s"report_utilization -hierarchical -hierarchical_depth 10\n"
@@ -256,4 +273,10 @@ object VivadoImpl {
       Some(netlistFile),
       None
     )
+}
+
+object VivadoBin {
+  def apply[T <: Module](design: => T, name: String, device: XilinxDevice, xdcFile: File) = {
+    VivadoFlow(design, BIN, device, name, new File(synthWorkspace, name), Some(xdcFile)).doFlow()
+  }
 }
