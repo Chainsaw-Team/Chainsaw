@@ -210,12 +210,14 @@ case class BitHeap[T](
     moveHeapTo(des.heap, start)
     des.constant += constant
     des.absorbConstant()
-    val emptyColIndex = des.heap.lastIndexWhere(_.isEmpty)
-    if (emptyColIndex != -1) des.heap.remove(emptyColIndex)
-    require(
-      des.heap.forall(_.nonEmpty),
-      s"existing empty column!, the column index is ${des.heap.indexWhere(_.isEmpty)}"
-    )
+    val lastEmptyColIndex    = des.heap.lastIndexWhere(_.isEmpty)
+    val lastNonEmptyColIndex = des.heap.lastIndexWhere(_.nonEmpty)
+    if (lastEmptyColIndex > lastNonEmptyColIndex) {
+      logger.info(
+        s"existing empty column in leftmost column!, the column indices is [$lastNonEmptyColIndex : $lastEmptyColIndex]"
+      )
+      (lastNonEmptyColIndex + 1 to lastNonEmptyColIndex).foreach(des.heap.remove)
+    }
     constant = 0
   }
 
