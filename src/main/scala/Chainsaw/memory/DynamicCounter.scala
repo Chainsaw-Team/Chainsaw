@@ -9,7 +9,7 @@ import spinal.lib.fsm._
 case class DynamicCounter(end: UInt) extends ImplicitArea[UInt] {
 
   val willIncrement = False.allowOverride
-  val willClear = False.allowOverride
+  val willClear     = False.allowOverride
 
   def clear(): Unit = willClear := True
 
@@ -19,10 +19,10 @@ case class DynamicCounter(end: UInt) extends ImplicitArea[UInt] {
 
   val width = end.getBitsWidth
 
-  val valueNext = cloneOf(end)
-  val value = RegNext(valueNext) init valueNext.getZero
+  val valueNext         = cloneOf(end)
+  val value             = RegNext(valueNext) init valueNext.getZero
   val willOverflowIfInc = value === end - U(1)
-  val willOverflow = willOverflowIfInc && willIncrement
+  val willOverflow      = willOverflowIfInc && willIncrement
 
   when(willOverflow) {
     valueNext := U(0)
@@ -39,11 +39,18 @@ case class DynamicCounter(end: UInt) extends ImplicitArea[UInt] {
   override def implicitValue = value
 }
 
-
 object DynamicCounter {
   def apply(end: UInt, inc: Bool): DynamicCounter = {
     val ret = DynamicCounter(end)
     when(inc)(ret.increment())
+    ret
+  }
+}
+
+object DynamicCounterFreeRun {
+  def apply(end: UInt): DynamicCounter = {
+    val ret = DynamicCounter(end)
+    when(True)(ret.increment())
     ret
   }
 }
