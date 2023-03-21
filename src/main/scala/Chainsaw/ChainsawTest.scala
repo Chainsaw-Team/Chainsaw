@@ -19,7 +19,8 @@ case class ChainsawTest(
     golden: Option[Seq[Seq[BigDecimal]]] = None,
     terminateAfter: Int                  = 10000,
     errorSegmentsShown: Int              = 10,
-    doInterruptInsertion: Boolean        = true
+    doInterruptInsertion: Boolean        = true,
+    withWave: Boolean                    = true
 ) {
 
   import gen._
@@ -28,11 +29,10 @@ case class ChainsawTest(
     val spinalConfig = ChainsawSpinalConfig(gen)
     val ret = SimConfig
       .workspaceName(testName)
-      .withFstWave
-//      .allOptimisation
+      .allOptimisation
       .withConfig(spinalConfig)
     ret._backend = gen.simBackEnd
-    ret
+    if (withWave) ret.withFstWave else ret
   }
 
   /** -------- get input segments
