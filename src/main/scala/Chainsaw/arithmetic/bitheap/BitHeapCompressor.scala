@@ -7,7 +7,12 @@ import spinal.core._
 import java.io.File
 import scala.language.postfixOps
 
-/** enhanced multi-operand adder implemented by compressors
+/** enhanced multi-operand adder implemented by compress tree using [[BitHeap]] model
+  * @param arithInfos
+  *   the sequence of [[ArithInfo]] which describe operands information contain weight, width, sign and time
+  * @param solver
+  *   the [[BitHeapSolver]] which this multi-operand adder will use, if its null, will search all solver to find a best
+  *   solver to use
   */
 case class BitHeapCompressor(
     arithInfos: Seq[ArithInfo],
@@ -18,11 +23,10 @@ case class BitHeapCompressor(
     s"BitHeapCompressor_${hashName(arithInfos)}_${if (solver != null) className(solver)
     else "inferred"}"
 
-  val bitHeapGroup = BitHeapGroup.fromInfos(arithInfos)
-  val shape1       = bitHeapGroup.bitHeaps.map(_.heights)
-//  logger.info(s"--------initial softType bitHeap[${hashName(arithInfos)}]--------\n$bitHeapGroup")
+  val bitHeapGroup            = BitHeapGroup.fromInfos(arithInfos)
   override val positiveLength = bitHeapGroup.positiveLength
-  val solutionFile            = new File(compressorSolutionOutputDir, s"$name")
+
+  val solutionFile = new File(compressorSolutionOutputDir, s"$name")
   val solution = if (solutionFile.exists()) {
     logger.info(s"take existing solution from $solutionFile")
     CompressorFullSolution.load(solutionFile)
@@ -62,14 +66,9 @@ case class BitHeapCompressor(
       WeightedUInt(int, info)
     }
     val bitHeapGroup = BitHeapGroup.fromUInts(weightedUInts)
-    val shape2       = bitHeapGroup.bitHeaps.map(_.heights)
-    require(shape1.equals(shape2), s"input conflict")
     if (verbose >= 1) logger.info(s"--------initial hardType bitHeap--------\n$bitHeapGroup")
-//    logger.info(s"--------initial hardType bitHeap[${hashName(arithInfos)}]--------\n$bitHeapGroup")
+
     val heapOut = bitHeapGroup.implAllHard(solution)
-    logger.info(s"hard output: $heapOut")
-    logger.info(s"heapOut width: ${heapOut.width}, nonEmpty width: ${heapOut.heap.count(_.nonEmpty)}")
-    logger.info(s"cols : ${heapOut.heights.mkString(",")}")
     if (doFinal3to2) { // TODO: skip 3:2 compressor for columns with height = 2 / 1
       val nonEmptyCols = heapOut.heights.zipWithIndex.filter { case (h, _) => h > 0 }.map(_._2)
       val finalStage = CompressorStageSolution(

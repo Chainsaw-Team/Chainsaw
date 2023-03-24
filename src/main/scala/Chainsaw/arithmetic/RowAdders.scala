@@ -6,15 +6,31 @@ import Chainsaw.xilinx.VivadoUtil
 import spinal.core._
 import spinal.lib._
 
+import scala.collection.immutable
 import scala.collection.mutable.ArrayBuffer
 import scala.math.{BigInt, log}
 
+/** the abstract class of row adder compressor which define almost all information need, but some information needs to
+  * be defined in the subclass according to the specific compressor
+  */
 abstract class RowAdder extends CompressorGenerator {
 
+  /** this method is used to get the width of row adder
+    * @return
+    *   the width of row adder
+    */
   def width: Int
 
+  /** this method is used to get the maximum width of this row adder(for compressor search and frequency)
+    * @return
+    *   the maximum width of this row adder
+    */
   def widthMax: Int
 
+  /** this method is used to get the minimum width of this row adder(for compressor search)
+    * @return
+    *   the minimum width of this row adder
+    */
   def widthMin: Int
 
   require(
@@ -22,13 +38,25 @@ abstract class RowAdder extends CompressorGenerator {
     s"compressor width out of range, require: [$widthMin, $widthMax], actual: $width"
   )
 
+  /** this method is used to get the name of row adder
+    * @return
+    *   the name of row adder
+    */
   def name =
     s"${className(this)}_${width}_${if (shouldDoComplement) hashName(getComplementHeap)
     else "noComplement"}"
 
-  def inputInfos = columns2Infos(inputFormat)
+  /** this method is used to get the sequence of the [[ArithInfo]] parsing from [[inputFormat]]
+    * @return
+    *   a sequence of the [[ArithInfo]] parsing from [[inputFormat]]
+    */
+  def inputInfos: Seq[ArithInfo] = columns2Infos(inputFormat)
 
-  def outputInfos = columns2Infos(outputFormat)
+  /** this method is used to get the sequence of the [[ArithInfo]] parsing from [[outputFormat]]
+    * @return
+    *   a sequence of the [[ArithInfo]] parsing from [[outputFormat]]
+    */
+  def outputInfos: immutable.Seq[ArithInfo] = columns2Infos(outputFormat)
 
   override def inputTypes: Seq[NumericType] =
     inputInfos.map(_.width).map(NumericType.U)
@@ -152,7 +180,12 @@ case class Compressor3to1(
     mode: Int,
     override val complementHeap: Seq[Seq[Boolean]] = null
 ) extends RowAdder {
-  private def extra =
+
+  /** this method is used to get the extra cost for addressing negative operand
+    * @return
+    *   the extra cost for addressing negative operand
+    */
+  private def extra: Int =
     getComplementHeap.head
       .padTo(5, true)
       .map(!_)

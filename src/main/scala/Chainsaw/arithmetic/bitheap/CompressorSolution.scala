@@ -5,6 +5,19 @@ import Chainsaw.arithmetic.{CompressorGenerator, bitheap}
 
 import java.io._
 
+/** this class is used to store the scores(evaluation indicators) about compressor applying to [[BitHeap]] or
+  * [[BitHeapGroup]]
+  * @param bitReduction
+  *   the total number of bit reduction
+  * @param heightReduction
+  *   the total number of height reduction
+  * @param reductionEfficiency
+  *   the total reduction efficiency
+  * @param reductionRatio
+  *   the total reduction ratio
+  * @param cost
+  *   the total CLB cost
+  */
 case class ScoreIndicator(
     bitReduction: Int,
     heightReduction: Int,
@@ -13,7 +26,13 @@ case class ScoreIndicator(
     cost: Double
 ) {
 
-  /** compare two compressor according to current strategy
+  /** compare two compressor according to current strategy, if this [[ScoreIndicator]] is greater than or equal to that
+    * [[ScoreIndicator]], will return true
+    * @param that
+    *   the [[ScoreIndicator]] will be compared with this [[ScoreIndicator]]
+    * @return
+    *   the compare result, if this [[ScoreIndicator]] is greater than or equal to that [[ScoreIndicator]], it should
+    *   return true
     */
   def >(
       that: ScoreIndicator
@@ -36,10 +55,16 @@ case class ScoreIndicator(
     det(priority)
   }
 
+  /** the inverse operate of [[>]]
+    */
   def <=(that: ScoreIndicator)(implicit strategy: CompressionStrategy) =
     !(this > that)
 
-  def toMap = Map(
+  /** this method is used to transform the scores to a Map for making table
+    * @return
+    *   a Map contain the scores and its name
+    */
+  def toMap: Map[String, Double] = Map(
     "br"   -> bitReduction.toDouble,
     "cost" -> cost,
     "re"   -> reductionEfficiency,
@@ -47,23 +72,51 @@ case class ScoreIndicator(
     "hr"   -> heightReduction.toDouble
   )
 
+  /** this method is used to get the string for [[ScoreIndicator]]'s visualization
+    * @return
+    *   the string for [[ScoreIndicator]]'s visualization
+    */
   override def toString =
     s"ScoresIndicator(br = $bitReduction, hr = $heightReduction, re = $reductionEfficiency, rr = $reductionRatio)"
 }
 
+/** this class is used to store the solution of the [[BitHeap]] compress tree solver
+  * @param stageSolutions
+  *   the solutions of all stage solve in a compress tree solver
+  */
 @SerialVersionUID(42L)
 case class CompressorFullSolution(stageSolutions: Seq[CompressorStageSolution]) extends Serializable with HardAlgo {
 
+  /** this method is used to get the latency of this solution
+    * @return
+    *   the latency of this solution
+    */
   def latency = stageSolutions.count(_.pipelined)
 
+  /** this method is used to get the output height of final stage
+    * @return
+    *   the output height of final stage
+    */
   def outHeight = if (stageSolutions.last.stageOutHeight == -1) 3
   else stageSolutions.last.stageOutHeight
 
+  /** this method is used to get the clb utilization of this solution
+    * @return
+    *   the clb utilization of this solution
+    */
   override def vivadoUtilEstimation =
     stageSolutions.map(_.vivadoUtilEstimation).reduce(_ + _)
 
+  /** this method is used to get the bit reduction of this solution
+    * @return
+    *   the bit reduction of this solution
+    */
   def bitReduction = stageSolutions.map(_.bitReduction).sum
 
+  /** this method is used to store this solution to the given file directory, it will overwrite old file
+    * @param file
+    *   file directory which this solution will be stored
+    */
   def save(file: File): Unit = {
     file.getParentFile.mkdir()
     val oos = new ObjectOutputStream(new FileOutputStream(file))
@@ -71,6 +124,10 @@ case class CompressorFullSolution(stageSolutions: Seq[CompressorStageSolution]) 
     oos.close()
   }
 
+  /** this method is used to count the scores of this solution and return the result Map contain the name and scores
+    * @return
+    *   the Map contain statistical scores according to this solution
+    */
   def scores: Map[String, Double] = {
     val scoreSum = stageSolutions
       .flatMap(_.scores)
@@ -93,6 +150,16 @@ case class CompressorFullSolution(stageSolutions: Seq[CompressorStageSolution]) 
     }
   }
 
+  /** this method is used to transform this solution to the table string, it's the visualization method of solution
+    * using table format
+    * @param rows
+    *   the input raw data will be regarded as rows in the table string
+    * @param tail
+    *   the input raw data will be regarded as final row in the table string, Usually used to summarize the previous
+    *   rows, it can be missing
+    * @return
+    *   the visualized table string of this solution using table format
+    */
   def toTable(
       rows: Seq[Map[String, Double]],
       tail: Map[String, Double] = null
@@ -129,16 +196,28 @@ case class CompressorFullSolution(stageSolutions: Seq[CompressorStageSolution]) 
     s"$header$separator$body"
   }
 
+  /** override the toString method, it is used to visualize this solution, will list all compressor solution information
+    * @return
+    *   the visualized String of this solution
+    */
   override def toString = {
     s"CompressorFullSolution:\n${stageSolutions.map(_.toString).mkString("\n")}"
   }
 
+  /** this method is used to get the table format visualization string of this solution
+    * @return
+    *   the table format visualization string of this solution
+    */
   def tableReport = {
     val rows = stageSolutions.map(_.scores)
     val tail = scores
     toTable(rows, tail)
   }
 
+  /** this method is used to get the report string of this solution
+    * @return
+    *   the report string of this solution
+    */
   def report = {
     val classReport = stageSolutions
       .flatMap(_.compressorSolutions)
@@ -160,8 +239,8 @@ case class CompressorFullSolution(stageSolutions: Seq[CompressorStageSolution]) 
     s"\n----bitheap compressor solution report:----" +
       s"\n--------performance--------" +
       s"\n$briefReport" +
-      //      s"\n$classReport" +
-      //      s"\n$subReport" +
+      s"\n$classReport" +
+      s"\n$subReport" +
       s"\n$vivadoUtilEstimation" +
       s"\n--------output status--------" +
       s"\nheight = $outHeight, width = ???"
@@ -169,7 +248,14 @@ case class CompressorFullSolution(stageSolutions: Seq[CompressorStageSolution]) 
 }
 
 object CompressorFullSolution {
-  def load(file: java.io.File) = {
+
+  /** this method is used to load a solution from the given file directory
+    * @param file
+    *   the given file directory which will load a solution from
+    * @return
+    *   a CompressorFullSolution from the given file directory
+    */
+  def load(file: java.io.File): CompressorFullSolution = {
     val ois = new ObjectInputStream(new FileInputStream(file))
     val ret = ois.readObject().asInstanceOf[CompressorFullSolution]
     ois.close()
@@ -177,6 +263,18 @@ object CompressorFullSolution {
   }
 }
 
+/** this class is used to store the one stage solution of the [[BitHeap]] compress tree solver
+  * @param compressorSolutions
+  *   the step solutions of the stage solution in a compress tree solver
+  * @param stageInHeight
+  *   the input [[BitHeap]] height of this stage
+  * @param stageOutHeight
+  *   the output [[BitHeap]] height of this stage
+  * @param pipelined
+  *   this is used indicate whether this stage solve is pipelined
+  * @param stageIndex
+  *   the stage index for generating solution log information
+  */
 case class CompressorStageSolution(
     compressorSolutions: Seq[CompressorStepSolution],
     stageInHeight: Int,
@@ -185,12 +283,25 @@ case class CompressorStageSolution(
     stageIndex: Int
 ) {
 
+  /** this method is used to get the clb utilization of this stage solution
+    * @return
+    *   the clb utilization of this stage solution
+    */
   def vivadoUtilEstimation =
     compressorSolutions.map(_.vivadoUtilEstimation).reduce(_ + _)
 
+  /** this method is used to get the bit reduction of this stage solution
+    * @return
+    *   the bit reduction of this stage solution
+    */
   def bitReduction =
     compressorSolutions.map(_.compressorScores.bitReduction).sum
 
+  /** this method is used to count the scores of this stage solution and return the result Map contain the name and
+    * scores
+    * @return
+    *   the Map contain statistical scores according to this stage solution
+    */
   def scores = {
     val scoreMerge = compressorSolutions
       .flatMap(_.compressorScores.toMap)
@@ -214,17 +325,39 @@ case class CompressorStageSolution(
     }
   }
 
+  /** override the toString method, it is used to visualize this stage solution, will list all compressor solution
+    * information
+    * @return
+    *   the visualized String of this stage solution
+    */
   override def toString: String =
     s"CompressorStageSolution:\n${compressorSolutions.map(_.toString).mkString("\n")}\nstageInHeight: $stageInHeight, stageOutHeight: $stageInHeight, pipelined: $pipelined, stageIndex: $stageIndex"
 
 }
 
+/** this class is used to store the one step solution of the [[BitHeap]] compress tree solver
+  * @param compressorName
+  *   the name of compressor in this step solution
+  * @param width
+  *   the width of compressor solution
+  * @param columnIndex
+  *   the start index covered by the compressor in this step solution
+  * @param compressorScores
+  *   the scores of a step solution
+  */
 case class CompressorStepSolution(
     compressorName: String,
     width: Int,
     columnIndex: Int,
     compressorScores: ScoreIndicator = ScoreIndicator(0, 0, 0, 0, 0)
 ) {
+
+  /** this method is used to get [[CompressorGenerator]] by the complement information
+    * @param complementHeap
+    *   the complement information for getting correct compressor
+    * @return
+    *   the correct compressor according to this step solution and complement information
+    */
   def getCompressor(
       complementHeap: Seq[Seq[Boolean]] = null
   ): CompressorGenerator =
@@ -234,8 +367,16 @@ case class CompressorStepSolution(
       complementHeap
     )
 
+  /** this method is used to get the clb utilization of this step solution
+    * @return
+    *   the clb utilization of this step solution
+    */
   def vivadoUtilEstimation = getCompressor().vivadoUtilEstimation
 
+  /** override the toString method, it is used to visualize this step solution
+    * @return
+    *   the visualized String of this step solution
+    */
   override def toString: String =
     s"CompressorStepSolution -> compressor: $compressorName, width: $width, columnIndex: $columnIndex, compressorScores: $compressorScores"
 }

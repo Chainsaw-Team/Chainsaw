@@ -8,8 +8,16 @@ import scala.math._
 import scala.collection.mutable.ArrayBuffer
 import scala.collection._
 
+/** the base class of BitHeap solver, it define all the method which solver need
+  * @note
+  *   it has some method should implement by sub-class
+  */
 abstract class BitHeapSolver {
 
+  /** this method is used to get this solver's name
+    * @return
+    *   this solver's name
+    */
   def solverName = className(this)
 
   // for solver logger
@@ -36,6 +44,12 @@ abstract class BitHeapSolver {
   private var recordHeadGap = headFlipPipelineGap
   private var recordTailGap = tailFlipPipelineGap
 
+  /** this method is used to auto refresh this solver's pipelineState
+    * @param bitHeap
+    *   the BitHeap which this refresh method will use
+    * @return
+    *   the new pipelineState
+    */
   def refreshPipelineState(bitHeap: BitHeap[BigInt]): Boolean = {
     (bitHeap.reachLastStage, inferPipelineMode && startInferPipeline) match {
       case (true, true) =>
@@ -57,7 +71,12 @@ abstract class BitHeapSolver {
     pipelineState
   }
 
-  // for Solver Reuse
+  /** this method is used to copy the solver configuration information
+    * @param solver
+    *   the solver which provides configuration information
+    * @return
+    *   this solver with new configuration information
+    */
   def absorbMetaInfosFrom(solver: BitHeapSolver): BitHeapSolver = {
     searchThreshold     = solver.searchThreshold
     inferPipelineMode   = solver.inferPipelineMode
@@ -69,7 +88,13 @@ abstract class BitHeapSolver {
     this
   }
 
-  /** core method which must be kept
+  /* ----- core method which must be kept ----- */
+
+  /** this method is used to solve a [[BitHeapGroup]] by existing compressor list
+    * @param bitHeapGroup
+    *   the [[BitHeapGroup]] will be solved
+    * @return
+    *   the [[CompressorFullSolution]] after solving
     */
   def solveAll(bitHeapGroup: BitHeapGroup[BigInt]): CompressorFullSolution = {
     bitHeapGroup.absorbConstant()
@@ -105,6 +130,12 @@ abstract class BitHeapSolver {
     CompressorFullSolution(stages)
   }
 
+  /** this method is used to solve a [[BitHeap]] one stage by existing compressor list
+    * @param bitHeap
+    *   the [[BitHeap]] will be solved
+    * @return
+    *   the [[CompressorStageSolution]] after solving
+    */
   def solveStage(bitHeap: BitHeap[BigInt]): CompressorStageSolution = {
     import bitHeap._
 //    logger.info(s"soft solve heap\n$bitHeap")
@@ -142,22 +173,48 @@ abstract class BitHeapSolver {
     )
   }
 
+  /** this method is used to solve a [[BitHeap]] one step by existing compressor list
+    * @param bitHeap
+    *   the [[BitHeap]] will be solved
+    * @return
+    *   the [[CompressorStepSolution]] after solving
+    */
   def solveStep(bitHeap: BitHeap[BigInt]): CompressorStepSolution
+
+  /** This method is used to simplify the way the solver is called
+    * @param bitHeapGroup
+    *   the [[BitHeapGroup]] will be solved
+    * @return
+    *   the [[CompressorFullSolution]] after solving
+    */
+  def apply(bitHeapGroup: BitHeapGroup[BigInt]): CompressorFullSolution =
+    solveAll(bitHeapGroup)
+
+  /** This method is used to simplify the way the solver is called when solve a BitHeap
+    * @param bitHeap
+    *   the [[BitHeap]] will be solved
+    * @return
+    *   the [[CompressorFullSolution]] after solving
+    */
+  def apply(bitHeap: BitHeap[BigInt]): CompressorFullSolution = solveAll(
+    BitHeapGroup(ArrayBuffer(bitHeap))
+  )
 
   type TestCase = Seq[ArithInfo]
 
+  /** override the toString method, it is used to get solver's name
+    * @return
+    *   the name of solver
+    */
   override def toString: String = solverName
 
 }
 
+/** the naive solver which use fixed compressor at different compress stage
+  * @note
+  *   In the head stage, use Compressor3to1. In the tail stage, use Compressor6to3
+  */
 object NaiveSolver extends BitHeapSolver {
-
-  def apply(bitHeapGroup: BitHeapGroup[BigInt]): CompressorFullSolution =
-    solveAll(bitHeapGroup)
-
-  def apply(bitHeap: BitHeap[BigInt]): CompressorFullSolution = solveAll(
-    BitHeapGroup(ArrayBuffer(bitHeap))
-  )
 
   override def solveStep(bitHeap: BitHeap[BigInt]): CompressorStepSolution = {
 
@@ -195,13 +252,9 @@ object NaiveSolver extends BitHeapSolver {
   }
 }
 
+/** the greed solver which search the compressor with best reduction efficiency in every step solve
+  */
 object GreedSolver extends BitHeapSolver {
-  def apply(bitHeapGroup: BitHeapGroup[BigInt]): CompressorFullSolution =
-    solveAll(bitHeapGroup)
-
-  def apply(bitHeap: BitHeap[BigInt]): CompressorFullSolution = solveAll(
-    BitHeapGroup(ArrayBuffer(bitHeap))
-  )
 
   override def solveStep(bitHeap: BitHeap[BigInt]): CompressorStepSolution = {
 
@@ -310,6 +363,14 @@ object GreedSolver extends BitHeapSolver {
   }
 }
 
+/** the base class which contain two strategy for compressor search(headStrategy, tailStrategy)
+  * @param headBound
+  *   the efficiency bound in headStrategy search, it means that if the compressor's reduction efficiency is less than
+  *   this bound, it will be skipped
+  * @param tailBound
+  *   the efficiency bound in tailStrategy search, it means that if the compressor's reduction efficiency is less than
+  *   this bound, it will be skipped
+  */
 abstract class ConditionalStrategySolver(
     val headBound: Double,
     val tailBound: Double
@@ -318,8 +379,20 @@ abstract class ConditionalStrategySolver(
   private var useHeadStrategy = true
   inferPipelineMode = true
 
+  /** this method is used to solve given [[BitHeap]] using headStrategy
+    * @param bitHeap
+    *   the [[BitHeap]] will be solved
+    * @return
+    *   the [[CompressorStepSolution]] after solving
+    */
   def headStrategy(bitHeap: BitHeap[BigInt]): CompressorStepSolution
 
+  /** this method is used to solve given [[BitHeap]] using tailStrategy
+    * @param bitHeap
+    *   the [[BitHeap]] will be solved
+    * @return
+    *   the [[CompressorStepSolution]] after solving
+    */
   def tailStrategy(bitHeap: BitHeap[BigInt]): CompressorStepSolution
 
   override def solveStep(bitHeap: BitHeap[BigInt]): CompressorStepSolution =
@@ -336,13 +409,12 @@ abstract class ConditionalStrategySolver(
   }
 }
 
+/** the strategy separation solver which use different strategy in head stage and tail stage
+  * @note
+  *   In head stage, use reduction efficiency first strategy. In tail stage, use height reduction first strategy and
+  *   only search gpc
+  */
 object StrategySeparationSolver extends ConditionalStrategySolver(headBound = 1.0, tailBound = 0.2) {
-  def apply(bitHeapGroup: BitHeapGroup[BigInt]): CompressorFullSolution =
-    solveAll(bitHeapGroup)
-
-  def apply(bitHeap: BitHeap[BigInt]): CompressorFullSolution = solveAll(
-    BitHeapGroup(ArrayBuffer(bitHeap))
-  )
 
   val greedSolver = GreedSolver
 
@@ -460,14 +532,21 @@ object StrategySeparationSolver extends ConditionalStrategySolver(headBound = 1.
   }
 }
 
+/** the optimization of strategy separation solver
+  * @note
+  *   In head stage, use reduction efficiency first strategy and height control. In tail stage, use height reduction
+  *   first strategy and height control.
+  * @note
+  *   In stage solve, it will consider all carry in from right column and the [[BitHeap]] which arrive next time
+  */
 object StrategySeparationOptimizedSolver extends ConditionalStrategySolver(headBound = 1.0, tailBound = 0.2) {
-  def apply(bitHeapGroup: BitHeapGroup[BigInt]): CompressorFullSolution =
-    solveAll(bitHeapGroup)
 
-  def apply(bitHeap: BitHeap[BigInt]): CompressorFullSolution = solveAll(
-    BitHeapGroup(ArrayBuffer(bitHeap))
-  )
-
+  /** this method is used to decide whether can skip search, it means that use [[Compressor1to1]] is best in this solve
+    * @param heap
+    *   the [[BitHeap]] will be solved
+    * @return
+    *   the result which indicate whether can skip, true means that it can skip
+    */
   def isNeedSkipSearch(heap: BitHeap[BigInt]): Boolean = {
     import heap._
 
@@ -492,9 +571,19 @@ object StrategySeparationOptimizedSolver extends ConditionalStrategySolver(headB
     }
 
     var skipCompressorSearch = heights(maxHeightColumnIndex) == 1
+
+    /** this method is used to indicate whether current column need to keep bits, don't need compress
+      * @return
+      *   the result which indicate whether current column need to keep bits, don't need compress
+      */
     def currentColumnNeedKeep = heights(maxHeightColumnIndex) +
       nextHeapCarry.getOrElse(maxHeightColumnIndex, 0) +
       nextHeapHeightInCurrentPosition == 3
+
+    /** this method is used to indicate whether current column need to accept bits
+      * @return
+      *   the result which indicate whether current column need to accept bits
+      */
     def nextColumnNeedCarry = heights(maxHeightColumnIndex + 1) +
       nextHeapCarry.getOrElse(maxHeightColumnIndex + 1, 0) +
       nextHeapHeightInNextPosition == 2
@@ -517,6 +606,18 @@ object StrategySeparationOptimizedSolver extends ConditionalStrategySolver(headB
     skipCompressorSearch
   }
 
+  /** this method is used to compare two local optimal compressor and give a result to indicate which compressor is best
+    * @param heap
+    *   the [[BitHeap]] will be solved
+    * @param bestRowAdder
+    *   one of the two local optimal compressor
+    * @param candidateRowAdder
+    *   one of the two local optimal compressor
+    * @param startColumnIndex
+    *   the start index which bits be covered
+    * @return
+    *   the compare result, if true, means that the [[bestRowAdder]] better than the [[candidateRowAdder]]
+    */
   def compareRowAdder(
       heap: BitHeap[BigInt],
       bestRowAdder: RowAdder,
@@ -935,13 +1036,9 @@ object StrategySeparationOptimizedSolver extends ConditionalStrategySolver(headB
 
 }
 
+/** the ternaryTree solver which use [[Compressor3to1]] to complete the bits compress
+  */
 object TernaryTreeSolver extends BitHeapSolver {
-  def apply(bitHeapGroup: BitHeapGroup[BigInt]): CompressorFullSolution =
-    solveAll(bitHeapGroup)
-
-  def apply(bitHeap: BitHeap[BigInt]): CompressorFullSolution = solveAll(
-    BitHeapGroup(ArrayBuffer(bitHeap))
-  )
 
   override def solveStep(bitHeap: BitHeap[BigInt]): CompressorStepSolution = {
     import bitHeap._
@@ -961,13 +1058,9 @@ object TernaryTreeSolver extends BitHeapSolver {
   }
 }
 
+/** the gpc solver which only use [[Gpc]] to complete the bits compress
+  */
 object GpcSolver extends BitHeapSolver {
-  def apply(bitHeapGroup: BitHeapGroup[BigInt]): CompressorFullSolution =
-    solveAll(bitHeapGroup)
-
-  def apply(bitHeap: BitHeap[BigInt]): CompressorFullSolution = solveAll(
-    BitHeapGroup(ArrayBuffer(bitHeap))
-  )
 
   override def solveStep(bitHeap: BitHeap[BigInt]): CompressorStepSolution = {
     import bitHeap._

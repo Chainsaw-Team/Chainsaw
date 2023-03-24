@@ -8,20 +8,54 @@ import spinal.lib._
 import scala.collection.mutable.ArrayBuffer
 import scala.util.Random
 
+/** this class is used to correctly parse bit data based on complement information
+  * @param value
+  *   the raw data, it can be HardType or SoftType
+  * @param notComplement
+  *   the complement information, if it's true, it means that the raw data already complement, so parse this bit data
+  *   will return raw data, vice versa
+  * @tparam T
+  *   the raw data type, it can be HardType or SoftType
+  */
 case class Bit[T](value: T, notComplement: Boolean = true) {
 
+  /** @return
+    *   the HardType data
+    */
   def hardValue = value.asInstanceOf[Bool]
 
+  /** @return
+    *   the SoftType data
+    */
   def softValue = value.asInstanceOf[BigInt]
 
+  /** @return
+    *   the Bit after delay
+    */
   def d(): Bit[Bool] = Bit(hardValue.d(), notComplement)
 
+  /** @return
+    *   the real SoftType data after parsing
+    */
   def evalBigInt: BigInt =
     if (notComplement) softValue else BigInt(1) - softValue
 
+  /** @return
+    *   the real HardType data after parsing
+    */
   def evalBool: Bool = if (notComplement) hardValue else ~hardValue
 }
 
+/** this class is used to construct the [[BitHeap]] model
+  * @param heap
+  *   the raw data, it should be a two-dimensional ArrayBuffer of Bit type
+  * @param weightLow
+  *   the minimum Bit weight of [[BitHeap]]
+  * @param time
+  *   the arrive time of this [[BitHeap]]
+  * @tparam T
+  *   the data type of Bit, it should be HardType or SoftType
+  */
 case class BitHeap[T](
     heap: ArrayBuffer[ArrayBuffer[Bit[T]]],
     var weightLow: Int,
@@ -32,14 +66,22 @@ case class BitHeap[T](
 
   type Heap = ArrayBuffer[ArrayBuffer[Bit[T]]]
 
-  /** -------- type hint
-    * --------
-    */
+  /* -------- type hint--------*/
 
+  /** @return
+    *   the SoftType BitHeap
+    */
   def asSoft: BitHeap[BigInt] = this.asInstanceOf[BitHeap[BigInt]]
 
+  /** @return
+    *   the HardType BitHeap
+    */
   def asHard: BitHeap[Bool] = this.asInstanceOf[BitHeap[Bool]]
 
+  /** this method is used to pattern matching
+    * @return
+    *   the data(Bit) type of this [[BitHeap]]
+    */
   def mark = heap
     .find(_.nonEmpty)
     .getOrElse(
@@ -47,48 +89,115 @@ case class BitHeap[T](
     )
     .head
 
-  /** -------- attributes
-    * --------
-    */
+  /* -------- attributes --------*/
 
+  /** this method is used to get the complement state of this [[BitHeap]]
+    * @return
+    *   the two-dimensional sequence which indicate all Bit's complement state
+    */
   def complementHeap: Seq[Seq[Boolean]] = heap.map(_.map(_.notComplement))
 
+  /** get the [[BitHeap]] complement state, if all Bit is already complement, it will return true
+    * @return
+    *   the Boolean which indicate whether all Bit in this [[BitHeap]] are complemented
+    */
   def isComplement = heap.forall(_.forall(!_.notComplement))
 
-  def weightHigh = weightLow + heap.length - 1 // weight of the last column
+  /** the method is used to get the maximum bit weight in this [[BitHeap]]
+    * @return
+    *   the maximum bit weight of this [[BitHeap]]
+    */
+  def weightHigh: Int = weightLow + heap.length - 1 // weight of the last column
 
+  /** the method is used to get the bit width of this [[BitHeap]]
+    * @return
+    *   the bit width of this [[BitHeap]]
+    */
   def width = heap.length
 
-  def heights = heap.map(_.length)
+  /** the method is used to get all height of column of this [[BitHeap]]
+    * @return
+    *   a ArrayBuffer which represent all height of column of this [[BitHeap]], The first element represents the first
+    *   column's height, and so on
+    */
+  def heights: ArrayBuffer[Int] = heap.map(_.length)
 
-  def heightMax = heights.max
+  /** the method is used to get maximum height of this [[BitHeap]]
+    * @return
+    *   the maximum height in this [[BitHeap]]
+    */
+  def heightMax: Int = heights.max
 
-  def bitsCount = heights.sum
+  /** the method is used to get the total amount of Bit in this [[BitHeap]]
+    * @return
+    *   the total amount of Bit in this [[BitHeap]]
+    */
+  def bitsCount: Int = heights.sum
 
-  def bitMaxValue = (heights.zipWithIndex.map { case (h, weight) =>
+  /** the method is used to get the maximum value which all Bit in this [[BitHeap]] can represent(does not include
+    * stored constant)
+    * @return
+    *   the maximum value which all Bit in this [[BitHeap]] can represent
+    */
+  def bitMaxValue: BigInt = (heights.zipWithIndex.map { case (h, weight) =>
     BigInt(h) << weight
   }.sum << weightLow)
 
+  /** the method is used to get the maximum value which this [[BitHeap]] can represent(include stored constant)
+    * @return
+    *   the maximum value which this [[BitHeap]] can represent
+    */
   def maxValue: BigInt =
     (heights.zipWithIndex.map { case (h, weight) =>
       BigInt(h) << weight
     }.sum << weightLow) + constant
 
-  def maxLength = maxValue.bitLength
+  /** the method is used to get the bitLength of the maxValue of this [[BitHeap]]
+    * @return
+    *   the bitLength of the maxValue of this [[BitHeap]]
+    */
+  def maxLength: Int = maxValue.bitLength
 
+  /** the method is used to get the bitLength of the maximum value which the nonEmpty Bit in this BitHeap(exclude the
+    * weightLow) can represent
+    * @return
+    *   the bitLength of nonEmpty Bit in this [[BitHeap]](exclude the weightLow)
+    */
   def positiveLength = maxValue.bitLength - weightLow
 
+  /** the method is used to get the minimum value which this [[BitHeap]] can represent
+    * @return
+    *   the minimum value which this [[BitHeap]] can represent
+    */
   def minValue: BigInt = BigInt(0)
 
-  def isEmpty = heap.forall(_.isEmpty)
+  /** the method is used to indicate whether this [[BitHeap]] is empty(does not contain any Bit)
+    * @return
+    *   the Boolean which indicate whether this [[BitHeap]] is empty
+    */
+  def isEmpty: Boolean = heap.forall(_.isEmpty)
 
-  def nonEmpty = !isEmpty
+  /** the method is used to indicate whether this [[BitHeap]] is nonEmpty(contain Bit)
+    * @return
+    *   the Boolean which indicate whether this [[BitHeap]] is nonEmpty
+    */
+  def nonEmpty: Boolean = !isEmpty
 
+  /** the method is used to get the scores(evaluation indicators) about compressor applying to this BitHeap
+    * @param compressor
+    *   the compressor apply to this [[BitHeap]]
+    * @param columnIndex
+    *   the start column index which this [[BitHeap]] will be cover by compressor
+    * @param shouldPipeline
+    *   indicate whether this evaluation is in pipeline state
+    * @return
+    *   the [[ScoreIndicator]] which contain the scores(evaluation indicators) about compressor applying to this BitHeap
+    */
   def getExactScores(
       compressor: CompressorGenerator,
       columnIndex: Int,
       shouldPipeline: Boolean
-  ) = {
+  ): ScoreIndicator = {
     //set compressor pipeline state for get correct scores
     compressor.setPipelineState(shouldPipeline)
     // to get the actual bitIn and its shape
@@ -116,15 +225,27 @@ case class BitHeap[T](
     )
   }
 
-  def reachLastStage = heights.count(_ > 3) < width / 2 && heightMax <= 6
-
-  /** -------- modification methods
-    * --------
+  /** the method is used to indicate whether this [[BitHeap]] already satisfy the final stage condition
+    * @return
+    *   the Boolean which indicate whether this [[BitHeap]] already satisfy the final stage condition
     */
+  def reachLastStage: Boolean = heights.count(_ > 3) < width / 2 && heightMax <= 6
 
+  /* -------- modification methods --------*/
+
+  /** the method is used to get a empty column of this [[BitHeap]]
+    * @return
+    *   a empty column of this [[BitHeap]]
+    */
   def newColumn: ArrayBuffer[Bit[T]] = ArrayBuffer[Bit[T]]()
 
-  // expand the columns according to weight range, this is for the following Bit insertion
+  /** this method is used to expand the columns of this [[BitHeap]] according to weight range, this is for the following
+    * Bit insertion
+    * @param weightLow
+    *   the new weightLow after expanding
+    * @param weightHigh
+    *   the new weightHigh after expanding
+    */
   def expand(weightLow: Int, weightHigh: Int): Unit = {
     heap.appendAll(Seq.fill(weightHigh - this.weightHigh)(newColumn))
     heap.prependAll(Seq.fill(this.weightLow - weightLow)(newColumn))
@@ -133,7 +254,11 @@ case class BitHeap[T](
       logger.warn(s"expand to a lower weight $weightLow")
   }
 
-  /** copy all bits from current heap to des, won't clear the current heap
+  /** copy all bits from this [[BitHeap]] to des [[BitHeap]], won't clear this heap
+    * @param des
+    *   the target [[BitHeap]] which will accept this [[BitHeap]]'s bits
+    * @param startCol
+    *   the start column index, the copy will start in this column
     */
   def copyHeapTo(des: Heap, startCol: Int): Unit = {
     des
@@ -142,6 +267,12 @@ case class BitHeap[T](
       .foreach { case (a, b) => a ++= b } // copy bits
   }
 
+  /** move all bits from this [[BitHeap]] to des [[BitHeap]], will clear this heap
+    * @param des
+    *   the target [[BitHeap]] which will accept this [[BitHeap]]'s bits
+    * @param startCol
+    *   the start column index, the movement will start in this column
+    */
   def moveHeapTo(des: Heap, startCol: Int): Unit = {
     des
       .drop(startCol) // align
@@ -152,9 +283,18 @@ case class BitHeap[T](
       } // copy bits
   }
 
-  def addConstant(constant: BigInt) = this.constant += constant
+  /** this method is used to add a constant to this [[BitHeap]]
+    * @param constant
+    *   the constant which will be added
+    */
+  def addConstant(constant: BigInt): Unit = this.constant += constant
 
-  def absorbPositiveConstant(valueToAdd: BigInt) = {
+  /** this method is used to absorb a positive constant to this [[BitHeap]], the constant will convert to bits and add
+    * to this [[BitHeap]]
+    * @param valueToAdd
+    *   the positive constant which will be absorbed
+    */
+  def absorbPositiveConstant(valueToAdd: BigInt): Unit = {
 
     val bits = valueToAdd.toString(2).reverse // low to high
     val (constantWeightHigh, constantWeightLow) =
@@ -171,6 +311,9 @@ case class BitHeap[T](
     }
   }
 
+  /** this method is used to absorb the constant in this [[BitHeap]], the constant will convert to bits and add to this
+    * [[BitHeap]]
+    */
   def absorbConstant(): Unit = {
     val exception0 = constant == 0
     val exception1 = constant < 0 && (-constant).mod(pow2(maxLength)) == 0
@@ -184,6 +327,10 @@ case class BitHeap[T](
   }
 
   /** return third heap which is the sum of this and that, won't clear the current heap
+    * @param that
+    *   the heap which will sum with this [[BitHeap]]
+    * @return
+    *   the sum of two [[BitHeap]]
     */
   def +(that: BitHeap[T]): BitHeap[T] = {
     require(time == that.time, s"left time = $time, right time = ${that.time}")
@@ -200,7 +347,9 @@ case class BitHeap[T](
     sumHeap
   }
 
-  /** move all bits from current heap to des, will clear the current heap
+  /** move all bits from this [[BitHeap]] to des [[BitHeap]], will clear all bits of this [[BitHeap]]
+    * @param des
+    *   the [[BitHeap]] which will accept bits
     */
   def contributeHeapTo(des: BitHeap[T]): Unit = {
     require(time == des.time, s"src time = $time, des time = ${des.time}")
@@ -222,11 +371,14 @@ case class BitHeap[T](
   }
 
   /** inverse operation of contributeHeapTo
+    * @param src
+    *   the [[BitHeap]] which will contribute bits
     */
   def absorbHeapFrom(src: BitHeap[T]): Unit = src.contributeHeapTo(this)
 
-  /** all bits with weight >= upper will be dropped
-    *
+  /** take low bits of this [[BitHeap]], all bits with weight >= upper will be dropped
+    * @param upper
+    *   the maximum index which will be remained
     * @example
     *   weightLow = 2, heights = (1,2,3) -> takeLow(3) -> weightLow = 2, heights
     * = (1)
@@ -238,20 +390,23 @@ case class BitHeap[T](
     lowerPart.copyToBuffer(heap)
   }
 
+  /** this method is used to resize the width of this [[BitHeap]]
+    * @param width
+    *   the new width after resizing
+    */
   def resize(width: Int): Unit = keepLow(width + weightLow)
 
-  /** -------- implementation(compression) methods
-    * --------
-    */
+  /* -------- implementation(compression) methods-------- */
 
-  /** take a sub-heap from current heap, according to the given format
-    *
+  /** this method is used to take a sub-[[BitHeap]] from this heap, according to the given format
+    * @param format
+    *   the sub-[[BitHeap]] format
+    * @param columnIdx
+    *   the start column index which this method take bits begin at
     * @return
-    *   the sub-heap
+    *   the sub-[[BitHeap]]
     */
-  // the result may not fill the whole heap, the compressor is in charge of padding
-
-  private[bitheap] def getSub(format: Seq[Int], columnIdx: Int) = {
+  private[bitheap] def getSub(format: Seq[Int], columnIdx: Int): BitHeap[T] = {
     require(heap(columnIdx).nonEmpty, s"src:\n$this\nformat: $format, columnIdx: $columnIdx")
     val newHeap = ArrayBuffer.fill(format.length)(ArrayBuffer[Bit[T]]())
     heap.drop(columnIdx).zip(newHeap).zip(format).foreach { case ((column, newColumn), height) =>
@@ -262,22 +417,35 @@ case class BitHeap[T](
     BitHeap(newHeap, weightLow + columnIdx, time)
   }
 
-  /** -------- impl soft methods
-    * --------
-    */
+  /* -------- impl soft methods -------- */
 
+  /** this method is used to get the real softType value which this [[BitHeap]] represent
+    * @return
+    *   the real SoftType value of this [[BitHeap]]
+    */
   def evalBigInt: BigInt = (asSoft.heap
     .map(col => col.map(_.evalBigInt).sum)
     .zipWithIndex
     .map { case (sum, weight) => sum << weight }
     .sum << weightLow) + constant
 
+  /** this method is used to add delay to this SoftType BitHeap
+    * @return
+    *   the delayed SoftType BitHeap
+    */
   def dSoft(): BitHeap[T] = {
     time += 1
     this
   }
 
-  private[bitheap] def implStepSoft(stepSolution: CompressorStepSolution) = {
+  /** this method is used to compress this SoftType [[BitHeap]] once by a compressor which parsing from
+    * [[CompressorStepSolution]]
+    * @param stepSolution
+    *   a [[CompressorStepSolution]] to guide this compress
+    * @return
+    *   the output SoftType [[BitHeap]] of the compressor, its the sub-[[BitHeap]] of stage compress result
+    */
+  private[bitheap] def implStepSoft(stepSolution: CompressorStepSolution): BitHeap[BigInt] = {
     val columnIdx = stepSolution.columnIndex
     val format    = stepSolution.getCompressor().inputFormat
     val heapIn    = asSoft.getSub(format, columnIdx)
@@ -286,6 +454,13 @@ case class BitHeap[T](
     heapOut
   }
 
+  /** this method is used to compress this SoftType [[BitHeap]] one stage by a certain number of compressor which
+    * parsing from [[CompressorStageSolution]]
+    * @param stageSolution
+    *   a [[CompressorStageSolution]] to guide this compress
+    * @return
+    *   the SoftType [[BitHeap]] output of this stage compress
+    */
   private[bitheap] def implStageSoft(stageSolution: CompressorStageSolution) = {
     val heapOuts: Seq[BitHeap[BigInt]] = stageSolution.compressorSolutions
       .map(implStepSoft)
@@ -298,6 +473,13 @@ case class BitHeap[T](
   }
 
   // TODO: remove this and leave the interface in BitHeapGroup only
+  /** this method is used to compress this SoftType [[BitHeap]] by all compressors which parsing from
+    * [[CompressorFullSolution]]
+    * @param solution
+    *   a [[CompressorFullSolution]] to guide this compress
+    * @return
+    *   the SoftType [[BitHeap]] output of final stage compress
+    */
   def implAllSoft(solution: CompressorFullSolution): BitHeap[T] = {
     absorbConstant()
     solution.stageSolutions.foreach { StageSolution =>
@@ -306,9 +488,11 @@ case class BitHeap[T](
     this
   }
 
-  /** -------- impl hard methods, all these methods are in-place --------
+  /** -------- impl hard methods, all these methods are in-place -------- */
+  /** this method is used to add delay to this HardType [[BitHeap]]
+    * @return
+    *   the delayed HardType [[BitHeap]]
     */
-
   def dHard(): BitHeap[T] = {
     asHard.heap.foreach { column =>
       column.indices.foreach(i => column(i) = column(i).d())
@@ -317,6 +501,13 @@ case class BitHeap[T](
     this
   }
 
+  /** this method is used to compress this HardType [[BitHeap]] once by a compressor which parsing from
+    * [[CompressorStepSolution]]
+    * @param stepSolution
+    *   a [[CompressorStepSolution]] to guide this compress
+    * @return
+    *   the output HardType [[BitHeap]] of the compressor, its the sub-[[BitHeap]] of stage compress result
+    */
   private[bitheap] def implStepHard(stepSolution: CompressorStepSolution) = {
     val columnIdx = stepSolution.columnIndex
     val format    = stepSolution.getCompressor().inputFormat
@@ -326,9 +517,14 @@ case class BitHeap[T](
     heapOut
   }
 
+  /** this method is used to compress this HardType [[BitHeap]] one stage by a certain number of compressor which
+    * parsing from [[CompressorStageSolution]]
+    * @param stageSolution
+    *   a [[CompressorStageSolution]] to guide this compress
+    * @return
+    *   the HardType [[BitHeap]] output of this stage compress
+    */
   private[bitheap] def implStageHard(stageSolution: CompressorStageSolution) = {
-//    logger.info(s"hard solve heap\n$this")
-//    logger.info(s"hard stage solution:$stageSolution")
     val heapOuts: Seq[BitHeap[Bool]] =
       stageSolution.compressorSolutions.map(implStepHard)
     val heapNext: BitHeap[Bool] =
@@ -342,6 +538,13 @@ case class BitHeap[T](
   }
 
   // TODO: remove this and leave the interface in BitHeapGroup only
+  /** this method is used to compress this HardType [[BitHeap]] by all compressors which parsing from
+    * [[CompressorFullSolution]]
+    * @param solution
+    *   a [[CompressorFullSolution]] to guide this compress
+    * @return
+    *   the HardType [[BitHeap]] output of final stage compress
+    */
   def implAllHard(solution: CompressorFullSolution): BitHeap[T] = {
     absorbConstant()
     solution.stageSolutions.foreach { StageSolution =>
@@ -350,10 +553,12 @@ case class BitHeap[T](
     this
   }
 
-  /** -------- other utils --------
-    */
+  /** -------- other utils -------- */
 
-  /** allocate a given value to the current heap, old values will be overwritten, for convenience of verification
+  /** this method is used to allocate a given value to this heap, old values will be overwritten, for convenience of
+    * verification
+    * @param value
+    *   the given value will be allocate to this [[BitHeap]]
     */
   def allocate(value: BigInt): Unit = {
     require(value.mod(pow2(weightLow)) == 0)
@@ -375,7 +580,13 @@ case class BitHeap[T](
     }
   }
 
-  // weightLow is not considered, for full output, weightLow should be used to shift the result
+  //
+
+  /** this method is used to transform this HardType [[BitHeap]] to a sequence of UInt type, weightLow is not
+    * considered, for full output, weightLow should be used to shift the result
+    * @return
+    *   the sequence of UInt type which represent the UInt formed by all bits in every row
+    */
   def toUInts: Seq[UInt] = {
     val ret = ArrayBuffer[UInt]()
     while (heap.exists(_.nonEmpty)) {
@@ -387,7 +598,13 @@ case class BitHeap[T](
     ret
   }
 
-  def toRows[T](zero: T) = {
+  /** this method is used to transform this [[BitHeap]] to a sequence of Tuple[Seq[Bit], [[ArithInfo]] type, it contain
+    * the Seq[Bit] formed by all bits in every row with its [[ArithInfo]] information
+    * @return
+    *   the sequence of Tuple[Seq[Bit], [[ArithInfo]] type which represent the Seq[Bit] formed by all bits in every row
+    *   with its [[ArithInfo]] information
+    */
+  def toRows[T](zero: T): ArrayBuffer[(Seq[T], ArithInfo)] = {
     val ret = ArrayBuffer[(Seq[T], ArithInfo)]()
     while (heap.exists(_.nonEmpty)) {
       val start        = heap.indexWhere(_.nonEmpty)
@@ -400,17 +617,29 @@ case class BitHeap[T](
     ret
   }
 
-  def toWeightedBigInts: Seq[WeightedUInt] = toRows(BigInt(0)).map { case (row, arithInfo) =>
-    WeightedUInt(
+  /** this method is used to transform this SoftType [[BitHeap]] to a sequence of [[WeightedBigInt]] type
+    * @return
+    *   the sequence of [[WeightedBigInt]] type
+    */
+  def toWeightedBigInts: Seq[WeightedBigInt] = toRows(BigInt(0)).map { case (row, arithInfo) =>
+    WeightedBigInt(
       row.zipWithIndex.map { case (int, i) => int << i }.sum,
       arithInfo
     )
   }
 
+  /** this method is used to transform this HardType [[BitHeap]] to a sequence of [[WeightedUInt]] type
+    * @return
+    *   the sequence of [[WeightedUInt]] type
+    */
   def toWeightedUInts: Seq[WeightedUInt] = toRows(False).map { case (row, arithInfo) =>
     WeightedUInt(row.asBits().asUInt, arithInfo)
   }
 
+  /** override the toString method, it is used to visualize this [[BitHeap]]
+    * @return
+    *   the visualized String of this [[BitHeap]]
+    */
   override def toString = {
     val heapInfoVisualization = s"WeightLow: $weightLow, Time: $time\n"
     val bitsVisualization = heap
@@ -426,7 +655,11 @@ case class BitHeap[T](
     heapInfoVisualization + bitsVisualization
   }
 
-  def copy = {
+  /** this method is used to deep copy this [[BitHeap]]
+    * @return
+    *   the deep copy of this [[BitHeap]]
+    */
+  def copy: BitHeap[BigInt] = {
     val ret = BitHeap.fromTable(
       heap.map(_.map(bit => bit)).asInstanceOf[Seq[Seq[Bit[BigInt]]]],
       weightLow,
@@ -439,12 +672,30 @@ case class BitHeap[T](
 
 object BitHeap {
 
+  /** this method is used to transform a two-dimensional seq to a two-dimensional arrayBuffer
+    * @param seq
+    *   the seq will be transformed
+    * @tparam T
+    *   the data type
+    * @return
+    *   the two-dimensional arrayBuffer after transforming
+    */
   private def seq2buffer[T](seq: Seq[Seq[T]]): ArrayBuffer[ArrayBuffer[T]] = {
     val buffer = ArrayBuffer.fill(seq.length)(ArrayBuffer[T]())
     seq.zip(buffer).foreach { case (seq, buf) => seq.copyToBuffer(buf) }
     buffer
   }
 
+  /** this method is used to construct a SoftType [[BitHeap]] according to given table information
+    * @param table
+    *   the table which contain all bits of the result SoftType [[BitHeap]]
+    * @param weightLow
+    *   the weightLow of result SoftType [[BitHeap]]
+    * @param time
+    *   the arrive time of result SoftType [[BitHeap]]
+    * @return
+    *   the SoftType [[BitHeap]] constructed from given information
+    */
   def fromTable(
       table: Seq[Seq[Bit[BigInt]]],
       weightLow: Int,
@@ -452,10 +703,18 @@ object BitHeap {
   ): BitHeap[BigInt] =
     BitHeap(seq2buffer(table), weightLow, time)
 
-  /** -------- for GPCs, from columns
-    * --------
-    */
+  /* -------- for GPCs, from columns -------- */
 
+  /** this method is used to construct a SoftType [[BitHeap]] according to given heights information
+    * @param heights
+    *   the heights which contain all column height of result SoftType [[BitHeap]]
+    * @param weightLow
+    *   the weightLow of result SoftType [[BitHeap]]
+    * @param time
+    *   the arrive time of result SoftType [[BitHeap]]
+    * @return
+    *   the SoftType [[BitHeap]] constructed from given information
+    */
   def fromHeights(
       heights: Seq[Int],
       weightLow: Int,
@@ -466,6 +725,14 @@ object BitHeap {
   }
 
   // for row adders
+  /** this method is used to construct a [[BitHeap]] according to given row information
+    * @param weightedOperands
+    *   the operands(rows) which contain weight information for construct [[BitHeap]]
+    * @param split
+    *   the split method will apply to this construct
+    * @return
+    *   the [[BitHeap]] constructed from given information
+    */
   def fromRows[T, Operand](
       weightedOperands: Seq[(ArithInfo, Operand)],
       split: (ArithInfo, Operand) => Seq[T]
@@ -496,6 +763,12 @@ object BitHeap {
     ret
   }
 
+  /** this method is used to construct a HardType [[BitHeap]] according to given UInt information
+    * @param weightedUInts
+    *   the UInts(rows) which contain weight information for construct HardType [[BitHeap]]
+    * @return
+    *   the HardType [[BitHeap]] constructed from given information
+    */
   def fromUInts(weightedUInts: Seq[WeightedUInt]): BitHeap[Bool] = {
     def split(arithInfo: ArithInfo, operand: UInt) =
       operand.asBools // low to high
@@ -503,6 +776,12 @@ object BitHeap {
     fromRows(weightedUInts.map(wU => (wU.arithInfo, wU.value)), split)
   }
 
+  /** this method is used to construct a SoftType [[BitHeap]] according to given BigInts information
+    * @param weightedBigInts
+    *   the BigInts(rows) which contain weight information for construct SoftType [[BitHeap]]
+    * @return
+    *   the SoftType [[BitHeap]] constructed from given information
+    */
   def fromBigInts(weightedBigInts: Seq[WeightedBigInt]): BitHeap[BigInt] = {
     def split(arithInfo: ArithInfo, operand: BigInt) =
       operand.toBitValue(arithInfo.width).asBools // low to high
@@ -510,6 +789,12 @@ object BitHeap {
     fromRows(weightedBigInts.map(wB => (wB.arithInfo, wB.value)), split)
   }
 
+  /** this method is used to construct a SoftType [[BitHeap]] according to given [[ArithInfo]] information
+    * @param arithInfos
+    *   the arithInfos(rows) which contain weight information for construct SoftType [[BitHeap]]
+    * @return
+    *   the SoftType [[BitHeap]] constructed from given information
+    */
   def fromInfos(arithInfos: Seq[ArithInfo]): BitHeap[BigInt] = fromBigInts(
     arithInfos.map(WeightedBigInt(BigInt(0), _))
   )

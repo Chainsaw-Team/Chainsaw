@@ -20,35 +20,61 @@ class BitHeapTests extends ChainsawFlatSpec {
   //     1. mixed signedness
   //     2. diff time
   //     3. different weightLows and weightHighs
-  def getRandomInfos(timeDiffStrategy: TimeDiffStrategy = NoneTimeDiff) =
-    if (Random.nextBoolean()) {
-      ArithInfoGenerator.genTriangleInfos(
-        width          = 20,
-        stairShape     = (1, 1),
-        shift          = 1,
-        withNoise      = true,
-        truncate       = null,
-        randomTruncate = false,
-        sign           = true,
-        randomSign     = true,
-        timeStrategy   = timeDiffStrategy,
-        timeUpBound    = 10
-      )
-    } else {
-      ArithInfoGenerator.genRectangularInfos(
-        width        = 10,
-        height       = 10,
-        withNoise    = true,
-        randomSign   = true,
-        timeStrategy = timeDiffStrategy,
-        timeUpBound  = 10
-      )
-    }
 
-  def getRandomOperands(timeDiffStrategy: TimeDiffStrategy = NoneTimeDiff) =
+  /** this method is used to generate a sequence of [[ArithInfo]] which represent [[BitHeap]] with random factor. it
+    * contain random shape, random noise, random sign, and so on
+    * @param timeDiffStrategy
+    *   the strategy of generating arrival time of [[BitHeap]]
+    * @return
+    *   a sequence of [[ArithInfo]] which represent [[BitHeap]] with random factor
+    */
+  def getRandomInfos(timeDiffStrategy: TimeDiffStrategy = NoneTimeDiff): Seq[ArithInfo] = {
+    var result = Seq[ArithInfo]()
+    if (Random.nextBoolean()) {
+      while (result.isEmpty) {
+        result = ArithInfoGenerator.genTriangleInfos(
+          width          = 20,
+          stairShape     = (1, 1),
+          shift          = 1,
+          withNoise      = true,
+          truncate       = null,
+          randomTruncate = true,
+          randomSign     = true,
+          timeStrategy   = timeDiffStrategy,
+          timeUpBound    = 10
+        )
+      }
+    } else {
+      while (result.isEmpty) {
+        result = ArithInfoGenerator.genRectangularInfos(
+          width        = 10,
+          height       = 10,
+          withNoise    = true,
+          randomSign   = true,
+          timeStrategy = timeDiffStrategy,
+          timeUpBound  = 10
+        )
+      }
+    }
+    result
+  }
+
+  /** this method is used to generate a sequence of [[WeightedBigInt]](operand with its [[ArithInfo]]) which represent
+    * [[BitHeap]] with random factor. it contain random shape, random noise, random sign, and so on
+    * @param timeDiffStrategy
+    *   the strategy of generating arrival time of [[BitHeap]]
+    * @return
+    *   a sequence of [[WeightedBigInt]] which represent [[BitHeap]] with random factor
+    */
+  def getRandomOperands(timeDiffStrategy: TimeDiffStrategy = NoneTimeDiff): Seq[WeightedBigInt] =
     getRandomInfos(timeDiffStrategy).map(info => WeightedBigInt(BigInt(info.width, Random), info))
 
-  def getRandomBitHeap =
+  /** this method is used to generate a [[BitHeap]] with random factor. it contain random shape, random noise, random
+    * sign, and so on
+    * @return
+    *   the [[BitHeap]] with random factor. it contain random shape, random noise, random sign, and so on
+    */
+  def getRandomBitHeap: BitHeap[BigInt] =
     BitHeap.fromBigInts(
       getRandomOperands(NoneTimeDiff)
         .groupBy(_.arithInfo.time)
@@ -57,10 +83,19 @@ class BitHeapTests extends ChainsawFlatSpec {
         ._2
     )
 
-  def getRandomBitHeaps(timeDiffStrategy: TimeDiffStrategy = RandomTimeDiff) =
+  /** this method is used to generate a [[BitHeapGroup]] with random factor. it contain random shape, random noise,
+    * random sign, and so on
+    * @return
+    *   the [[BitHeapGroup]] with random factor. it contain random shape, random noise, random sign, and so on
+    */
+  def getRandomBitHeaps(timeDiffStrategy: TimeDiffStrategy = RandomTimeDiff): BitHeapGroup[BigInt] =
     BitHeapGroup.fromBigInts(getRandomOperands(timeDiffStrategy))
 
-  def getEmptyBitHeap = BitHeap.fromHeights(Seq[Int](), 0, 0)
+  /** this method is used to generate a empty [[BitHeap]]
+    * @return
+    *   the empty [[BitHeap]]
+    */
+  def getEmptyBitHeap: BitHeap[BigInt] = BitHeap.fromHeights(Seq[Int](), 0, 0)
 
   it should "work" in {
     (0 until 1000).foreach { _ =>
