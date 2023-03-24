@@ -14,8 +14,15 @@ import spinal.lib.fsm._
 
 import scala.math.BigInt
 
+/** the abstract class of general parallel compressor(gpc) which define almost all information need, but some
+  * information needs to be defined in the subclass according to the specific compressor
+  */
 abstract class Gpc extends CompressorGenerator {
 
+  /** this method is used to get the name of gpc
+    * @return
+    *   the name of gpc
+    */
   def name =
     s"${className(this)}_${if (shouldDoComplement) hashName(getComplementHeap)
     else "noComplement"}"
@@ -51,8 +58,7 @@ abstract class Gpc extends CompressorGenerator {
   * --------
   */
 
-case class Compressor6to3(override val complementHeap: Seq[Seq[Boolean]] = null)
-    extends Gpc {
+case class Compressor6to3(override val complementHeap: Seq[Seq[Boolean]] = null) extends Gpc {
 
   override def inputFormat = Seq.fill(1)(6)
 
@@ -75,8 +81,7 @@ case class Compressor6to3(override val complementHeap: Seq[Seq[Boolean]] = null)
   }
 }
 
-case class Compressor3to2(override val complementHeap: Seq[Seq[Boolean]] = null)
-    extends Gpc {
+case class Compressor3to2(override val complementHeap: Seq[Seq[Boolean]] = null) extends Gpc {
 
   override def inputFormat = Seq.fill(1)(3)
 

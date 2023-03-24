@@ -3,7 +3,9 @@ package Chainsaw.arithmetic
 import Chainsaw._
 import spinal.core._
 
+import scala.collection.immutable
 import scala.util.Random
+import bitheap.BitHeap
 
 /** describe the attributes of an UInt Operand needed for merge arithmetic
   *
@@ -23,26 +25,68 @@ case class ArithInfo(
     time: Int           = 0
 ) {
 
+  /** this method is used indicate this operand whether is negative
+    * @return
+    *   the Boolean which indicate this operand whether is negative
+    */
   def isNegative = !isPositive
 
   require(weight >= 0, "weight must be non-negative")
 
-  def low = weight
+  /** this method is used to get the lowest index of this operand
+    * @return
+    *   the lowest index of this operand
+    */
+  def low: Int = weight
 
   // TODO: high = low + width may be more reasonable
-  def high = low + width - 1
+  /** this method is used to get the highest index of this operand
+    * @return
+    *   the highest index of this operand
+    */
+  def high: Int = low + width - 1
 
-  def range = high downto low
+  /** this method is used to get the index range of this operand
+    * @return
+    *   the index range of this operand
+    */
+  def range: Range.Inclusive = high downto low
 
-  def maxValue = if (isPositive) (pow2(width) - 1) << weight else BigInt(0)
+  /** this method is used to get the maximum value which this operand can represent
+    * @return
+    *   the maximum value which this operand can represent
+    */
+  def maxValue: BigInt = if (isPositive) (pow2(width) - 1) << weight else BigInt(0)
 
+  /** this method is used to get a new [[ArithInfo]] which is the shiftLeft version of this [[ArithInfo]]
+    * @param shiftLeft
+    *   the length of shiftLeft
+    * @return
+    *   a new [[ArithInfo]] which is the shiftLeft version of this [[ArithInfo]]
+    */
   def <<(shiftLeft: Int) = ArithInfo(width, weight + shiftLeft, isPositive)
 
+  /** this method is used to get a new [[ArithInfo]] which is the shiftRight version of this [[ArithInfo]]
+    * @param shiftRight
+    *   the length of shiftRight
+    * @return
+    *   a new [[ArithInfo]] which is the shiftRight version of this [[ArithInfo]]
+    */
   def >>(shiftRight: Int): ArithInfo = <<(-shiftRight)
 
+  /** this method is used to get a new [[ArithInfo]] which is the inverted version of this [[ArithInfo]]
+    * @return
+    *   a new [[ArithInfo]] which is the inverted version of this [[ArithInfo]]
+    */
   def unary_- = ArithInfo(width, weight, !isPositive)
 
-  def eval(value: BigInt) = {
+  /** this method is used to parse a value by this [[ArithInfo]]'s information
+    * @param value
+    *   the value which will be parsed
+    * @return
+    *   the new value after parsing
+    */
+  def eval(value: BigInt): BigInt = {
     assert(
       value.bitLength <= width,
       s"yours: ${value.bitLength}, upper: $width"
@@ -50,16 +94,37 @@ case class ArithInfo(
     (value << weight) * (if (isPositive) 1 else -1)
   }
 
-  def withCarry(carry: Int) = ArithInfo(width + carry, weight, isPositive, time)
-
-  def withTime(newTime: Int) = ArithInfo(width, weight, isPositive, newTime)
-
-  def toPositive = ArithInfo(width, weight, isPositive = true, time)
-
-  /** -------- FIXME: following methods are for Bm only
-    * --------
+  /** this method is used to add carry to this operand
+    * @param carry
+    *   the length of carry which will be added
+    * @return
+    *   a new [[ArithInfo]] after adding the carry to this [[ArithInfo]]
     */
-  def splitN(n: Int) = {
+  def withCarry(carry: Int): ArithInfo = ArithInfo(width + carry, weight, isPositive, time)
+
+  /** this method is used to set the operand's arrival time
+    * @param newTime
+    *   the new operand's arrival time
+    * @return
+    *   a new [[ArithInfo]] with new arrival time
+    */
+  def withTime(newTime: Int): ArithInfo = ArithInfo(width, weight, isPositive, newTime)
+
+  /** this method is used to convert this [[ArithInfo]] to a [[ArithInfo]] with positive sign
+    * @return
+    *   the positive sign version of this [[ArithInfo]]
+    */
+  def toPositive: ArithInfo = ArithInfo(width, weight, isPositive = true, time)
+
+  /* -------- FIXME: following methods are for Bm only -------- */
+
+  /** this method can be used to split this [[ArithInfo]] into N segment
+    * @param n
+    *   the number of segment
+    * @return
+    *   a sequence of [[ArithInfo]] which contain all ArithInfo segment of this [[ArithInfo]]
+    */
+  def splitN(n: Int): Seq[ArithInfo] = {
     val segmentWidth = width.divideAndCeil(n)
     (0 until n).map(i =>
       ArithInfo(
@@ -71,7 +136,13 @@ case class ArithInfo(
     )
   }
 
-  def splitMsb = {
+  /** this method can be used to split this [[ArithInfo]] into two segment, first one is the MSB of the operand which
+    * this [[ArithInfo]] represent, second one is the remaining [[ArithInfo]]
+    * @return
+    *   a Tuple which first element is the MSB of the operand which this [[ArithInfo]] represent, second element is the
+    *   remaining [[ArithInfo]]
+    */
+  def splitMsb: (ArithInfo, ArithInfo) = {
     require(isPositive)
     (
       ArithInfo(width = 1, weight, isPositive         = true, time),
@@ -79,7 +150,13 @@ case class ArithInfo(
     )
   }
 
-  def +(that: ArithInfo) = {
+  /** the addition method of [[ArithInfo]]
+    * @param that
+    *   the [[ArithInfo]] will be added to this [[ArithInfo]]
+    * @return
+    *   a new [[ArithInfo]] obtained by adding two [[ArithInfo]] together
+    */
+  def +(that: ArithInfo): ArithInfo = {
     require(this.width == that.width)
     ArithInfo(
       width + 1,
@@ -89,7 +166,13 @@ case class ArithInfo(
     )
   }
 
-  def *(that: ArithInfo) = {
+  /** the multiplication method of [[ArithInfo]]
+    * @param that
+    *   the [[ArithInfo]] will be multiplied with this [[ArithInfo]]
+    * @return
+    *   a new [[ArithInfo]] obtained by multiplying two [[ArithInfo]] together
+    */
+  def *(that: ArithInfo): ArithInfo = {
     ArithInfo(
       this.width + that.width,
       weight + that.weight,
@@ -98,22 +181,44 @@ case class ArithInfo(
     )
   }
 
-  def &(that: ArithInfo) = {
+  /** the and method of [[ArithInfo]]
+    * @param that
+    *   the [[ArithInfo]] will be and with this [[ArithInfo]]
+    * @return
+    *   a new [[ArithInfo]] obtained by and two [[ArithInfo]] together
+    */
+  def &(that: ArithInfo): ArithInfo = {
     require(that.width == 1)
     ArithInfo(width, weight + that.weight, isPositive, time)
   }
 
-  def mergeWith(tail: Seq[ArithInfo], widthOut: Int) = {
+  /** this method is used to merge this [[ArithInfo]] with a sequence of [[ArithInfo]]
+    * @param tail
+    *   the sequence of [[ArithInfo]] will be merge into this [[ArithInfo]]
+    * @param widthOut
+    *   the new [[ArithInfo]]'s width
+    * @return
+    *   a new [[ArithInfo]] obtained by merging this [[ArithInfo]] and other [[ArithInfo]]
+    */
+  def mergeWith(tail: Seq[ArithInfo], widthOut: Int): ArithInfo = {
     val all  = this +: tail
     val base = all.map(_.weight).min
     ArithInfo(widthOut, base, isPositive = true, all.map(_.time).max)
   }
 
+  /** override toString method to get the information we need
+    * @return
+    *   String contain the information about this operand
+    */
   override def toString =
     s"${if (isPositive) "positive" else "negative"} $width-bit<<$weight at $time"
 }
 
-/** BigInt with ArithInfo, used for simulating UInt arithmetic
+/** this class is used to store the BigInt and its arithmetic information, , used for simulating UInt arithmetic *
+  * @param value
+  *   the raw bigInt will be parsed
+  * @param arithInfo
+  *   the data format which the raw data will be parsed by
   */
 case class WeightedBigInt(value: BigInt, arithInfo: ArithInfo) {
   require(
@@ -123,10 +228,26 @@ case class WeightedBigInt(value: BigInt, arithInfo: ArithInfo) {
 
   def eval: BigInt = arithInfo.eval(value)
 
+  /** this method is used to get a new [[WeightedBigInt]] which is the shiftLeft version of this [[WeightedBigInt]]
+    * @param shiftLeft
+    *   the length of shiftLeft
+    * @return
+    *   a new [[WeightedBigInt]] which is the shiftLeft version of this [[WeightedBigInt]]
+    */
   def <<(shiftLeft: Int) = WeightedBigInt(value, arithInfo << shiftLeft)
 
+  /** this method is used to get a new [[WeightedBigInt]] which is the inverted version of this [[WeightedBigInt]]
+    * @return
+    *   a new [[WeightedBigInt]] which is the inverted version of this [[WeightedBigInt]]
+    */
   def unary_- = WeightedBigInt(value, -arithInfo)
 
+  /** this method is used to refresh the weight of this [[WeightedBigInt]]
+    * @param weight
+    *   the new weight of this [[WeightedBigInt]]
+    * @return
+    *   a new [[WeightedBigInt]] with new weight
+    */
   def withWeight(weight: Int) = WeightedBigInt(
     value,
     ArithInfo(arithInfo.width, weight, arithInfo.isPositive, arithInfo.time)
@@ -134,30 +255,81 @@ case class WeightedBigInt(value: BigInt, arithInfo: ArithInfo) {
 
 }
 
+/** this class is used to store the UInt and its arithmetic information, used for generating [[BitHeap]]
+  * @param value
+  *   the raw UInt will be parsed
+  * @param arithInfo
+  *   the data format which the raw data will be parsed by
+  */
 case class WeightedUInt(value: UInt, arithInfo: ArithInfo) {
   require(
     value.getBitsWidth <= arithInfo.width,
     s"the value width ${value.getBitsWidth} is too large for the target width ${arithInfo.width}"
   )
 
+  /** this method is used to get a new [[WeightedUInt]] which is the shiftLeft version of this [[WeightedUInt]]
+    * @param shiftLeft
+    *   the length of shiftLeft
+    * @return
+    *   a new [[WeightedUInt]] which is the shiftLeft version of this [[WeightedUInt]]
+    */
   def <<(shiftLeft: Int) = WeightedUInt(value, arithInfo << shiftLeft)
 
+  /** this method is used to get a new [[WeightedUInt]] which is the inverted version of this [[WeightedUInt]]
+    * @return
+    *   a new [[WeightedUInt]] which is the inverted version of this [[WeightedUInt]]
+    */
   def unary_- = WeightedUInt(value, -arithInfo)
 
+  /** this method is used to refresh the weight of this [[WeightedUInt]]
+    * @param weight
+    *   the new weight of this [[WeightedUInt]]
+    * @return
+    *   a new [[WeightedUInt]] with new weight
+    */
   def withWeight(weight: Int) = WeightedUInt(
     value,
     ArithInfo(arithInfo.width, weight, arithInfo.isPositive, arithInfo.time)
   )
 }
 
+/** the object is used to generate some arithmetic information about operand, it's useful in constructing testCase
+  */
 object ArithInfoGenerator {
 
-  /** -------- random bit heap generators
-    * --------
+  /* -------- random bit heap generators -------- */
+
+  /** this method is used to generate a random number from -bound to bound
+    * @param bound
+    *   the random number's upper bound and lower bound
+    * @return
+    *   the random number in range -bound ~ bound
     */
   def genNoise(bound: Int): Int =
     Random.nextInt(2 * bound + 1) - bound // -bound ~ bound
 
+  /** this method is used to generate a sequence of [[ArithInfo]] which describe a rectangular [[BitHeap]] by the
+    * configuration information, typically generated by a adder.
+    * @param width
+    *   the maximum width of this rectangular [[BitHeap]]
+    * @param height
+    *   the maximum height of this rectangular [[BitHeap]]
+    * @param shift
+    *   the shift length of every [[ArithInfo]]
+    * @param sign
+    *   the sign of every generated [[ArithInfo]]
+    * @param randomSign
+    *   the switch of random sign pattern, if true, the generated [[ArithInfo]] will have random sign
+    * @param withNoise
+    *   the switch of noise pattern, if true, the width or height of rectangular [[BitHeap]] described by generated
+    *   sequence of [[ArithInfo]] will be added noise
+    * @param timeStrategy
+    *   the time generate strategy, it can be NoneTimeDiff, IncreaseTimeDiff, DecreaseTimeDiff and RandomTimeDiff
+    * @param timeUpBound
+    *   the upper bound of the arrival time of different [[ArithInfo]]
+    * @return
+    *   a sequence of [[ArithInfo]] which describe a rectangular [[BitHeap]] according to configuration information
+    */
   def genRectangularInfos(
       width: Int,
       height: Int,
@@ -209,7 +381,34 @@ object ArithInfoGenerator {
     }
   }
 
-  // input bits formed a "triangle", typically generated by a multiplier
+  /** this method is used to generate a sequence of [[ArithInfo]] which describe a inverted triangle [[BitHeap]] by the
+    * configuration information, typically generated by a multiplier.
+    * @param width
+    *   the width of this inverted triangle [[BitHeap]]
+    * @param stairShape
+    *   the tuple define the horizontal and vertical ladder length
+    * @param shift
+    *   the integral shift of this inverted triangle [[BitHeap]]
+    * @param withNoise
+    *   the switch of noise pattern, if true, the width or height of triangle [[BitHeap]] described by generated
+    *   sequence of [[ArithInfo]] will be added noise
+    * @param truncate
+    *   the truncate range, if it's not null, this method will return the truncated version of this inverted triangle
+    *   [[BitHeap]]
+    * @param randomTruncate
+    *   the switch of random truncate pattern, if true, this method will generate a random truncated version of this
+    *   inverted triangle
+    * @param sign
+    *   the sign of every generated [[ArithInfo]]
+    * @param randomSign
+    *   the switch of random sign pattern, if true, the generated [[ArithInfo]] will have random sign
+    * @param timeStrategy
+    *   the time generate strategy, it can be NoneTimeDiff, IncreaseTimeDiff, DecreaseTimeDiff and RandomTimeDiff
+    * @param timeUpBound
+    *   the upper bound of the arrival time of different [[ArithInfo]]
+    * @return
+    *   a sequence of [[ArithInfo]] which describe a triangle [[BitHeap]] according to configuration information
+    */
   def genTriangleInfos(
       width: Int,
       stairShape: (Int, Int)         = (1, 1),
@@ -336,14 +535,38 @@ object ArithInfoGenerator {
     else infos
   }
 
-  /** -------- graph generation utils
-    * --------
-    */
+  /* -------- graph generation utils -------- */
 
+  /** the abstract class which represent the information of [[BitHeap]] shape, used for graph generation
+    */
   abstract class InfosShape {
+
+    /** this method is used to get a sequence of tuple which represent the configuration information of this shape
+      * @return
+      *   a sequence of tuple which represent the configuration information of this shape
+      */
     def getConfig: Seq[(String, Any)]
   }
 
+  /** this class used to represent the information of a rectangle shape BitHeap
+    * @param width
+    *   the maximum width of this rectangular [[BitHeap]]
+    * @param height
+    *   the maximum height of this rectangular [[BitHeap]]
+    * @param shift
+    *   the shift length of every [[ArithInfo]]
+    * @param sign
+    *   the sign of every generated [[ArithInfo]]
+    * @param randomSign
+    *   the switch of random sign pattern, if true, the generated [[ArithInfo]] will have random sign
+    * @param withNoise
+    *   the switch of noise pattern, if true, the width or height of rectangular [[BitHeap]] described by generated
+    *   sequence of [[ArithInfo]] will be added noise
+    * @param timeStrategy
+    *   the time generate strategy, it can be NoneTimeDiff, IncreaseTimeDiff, DecreaseTimeDiff and RandomTimeDiff
+    * @param timeUpBound
+    *   the upper bound of the arrival time of different [[ArithInfo]]
+    */
   case class Rectangle(
       width: Int,
       height: Int,
@@ -369,6 +592,31 @@ object ArithInfoGenerator {
     )
   }
 
+  /** this class used to represent the information of a triangle shape BitHeap
+    * @param width
+    *   the width of this inverted triangle [[BitHeap]]
+    * @param stairShape
+    *   the tuple define the horizontal and vertical ladder length
+    * @param shift
+    *   the integral shift of this inverted triangle [[BitHeap]]
+    * @param withNoise
+    *   the switch of noise pattern, if true, the width or height of triangle [[BitHeap]] described by generated
+    *   sequence of [[ArithInfo]] will be added noise
+    * @param truncate
+    *   the truncate range, if it's not null, this method will return the truncated version of this inverted triangle
+    *   [[BitHeap]]
+    * @param randomTruncate
+    *   the switch of random truncate pattern, if true, this method will generate a random truncated version of this
+    *   inverted triangle
+    * @param sign
+    *   the sign of every generated [[ArithInfo]]
+    * @param randomSign
+    *   the switch of random sign pattern, if true, the generated [[ArithInfo]] will have random sign
+    * @param timeStrategy
+    *   the time generate strategy, it can be NoneTimeDiff, IncreaseTimeDiff, DecreaseTimeDiff and RandomTimeDiff
+    * @param timeUpBound
+    *   the upper bound of the arrival time of different [[ArithInfo]]
+    */
   case class Triangle(
       width: Int,
       stairShape: (Int, Int),
@@ -402,6 +650,28 @@ object ArithInfoGenerator {
   }
 
   object RectangularInfos {
+
+    /** the method of batch invoke [[genRectangularInfos]] to get multiple sequence of [[ArithInfo]] which represent
+      * rectangular [[BitHeap]]
+      * @param widthRange
+      *   the width range of generated rectangular BitHeap
+      * @param heightRange
+      *   the height range of generated rectangular BitHeap
+      * @param shift
+      *   see the shift of [[genTriangleInfos]]
+      * @param sign
+      *   see the sign of [[genTriangleInfos]]
+      * @param randomSign
+      *   see the randomSign of [[genTriangleInfos]]
+      * @param withNoise
+      *   see the withNoise of [[genTriangleInfos]]
+      * @param timeStrategy
+      *   see the timeStrategy of [[genTriangleInfos]]
+      * @param timeUpBound
+      *   see the timeUpBound of [[genTriangleInfos]]
+      * @return
+      *   a two dimensional sequence of [[ArithInfo]] which represent multiple rectangular [[BitHeap]]
+      */
     def apply(
         widthRange: Range              = Range.inclusive(128, 256, 32),
         heightRange: Range             = Range.inclusive(128, 256, 32),
@@ -442,6 +712,33 @@ object ArithInfoGenerator {
   }
 
   object TriangleInfos {
+
+    /** the method of batch invoke [[genRectangularInfos]] to get multiple sequence of [[ArithInfo]] which represent
+      * triangle [[BitHeap]]
+      * @param widthRange
+      *   the width range of generated triangle BitHeap
+      * @param stairRowShapeRange
+      *   the stairRowShape(stairShape._1 in [[genTriangleInfos]]) range of generated triangle BitHeap
+      * @param stairColShapeRange
+      *   the stairColShapeRange(stairShape._2 in [[genTriangleInfos]]) range of generated triangle BitHeap
+      * @param shift
+      *   see the shift in [[genTriangleInfos]]
+      * @param withNoise
+      *   see the withNoise in [[genTriangleInfos]]
+      * @param truncate
+      *   see the truncate in [[genTriangleInfos]]
+      * @param randomTruncate
+      *   see the randomTruncate in [[genTriangleInfos]]
+      * @param sign
+      *   see the sign in [[genTriangleInfos]]
+      * @param randomSign
+      *   see the randomSign in [[genTriangleInfos]]
+      * @param timeStrategy
+      *   see the timeStrategy in [[genTriangleInfos]]
+      * @param timeUpBound
+      *   see the timeUpBound in [[genTriangleInfos]]
+      * @return
+      */
     def apply(
         widthRange: Range              = Range.inclusive(255, 511, 32),
         stairRowShapeRange: Range      = Range.inclusive(1, 1),

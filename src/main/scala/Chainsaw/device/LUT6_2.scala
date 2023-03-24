@@ -52,7 +52,7 @@ case class LUT5to2(
 
   val init =
     (LUT6_2.expression2value(exp1, 5) << 32) + LUT6_2.expression2value(exp0, 5)
-  logger.info(s"LUT value = ${init.toString(16)}")
+//  logger.info(s"LUT value = ${init.toString(16)}")
 
   override def implH = new ChainsawOperatorModule(this) {
     val core = LUT6_2(init)

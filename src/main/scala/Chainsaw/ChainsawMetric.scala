@@ -1,11 +1,6 @@
 package Chainsaw
 
 import Chainsaw.ChainsawMetric.sameMetric
-import ai.djl.ndarray._
-import jdk.jfr.Threshold
-
-import java.io.{BufferedReader, InputStreamReader}
-import java.nio.file.{Files, Paths}
 
 case class ChainsawMetric(
     elementWise: (BigDecimal, BigDecimal) => Boolean = sameMetric,
