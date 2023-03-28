@@ -258,7 +258,10 @@ case class ChainsawTest(
           flowInPointer.last #= last
           if (last) {
             waitStart = true
-            if (verbose >= 1) println(s"$segmentsCounter segment done")
+            if (verbose >= 1) {
+              print(s"\r$segmentsCounter segment done")
+              Console.flush()
+            }
             segmentsCounter += 1
           }
         } else {

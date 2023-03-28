@@ -8,7 +8,7 @@ import scala.collection.mutable.ArrayBuffer
 
 /** print a hierarchy graph with estimated area for each sub component
   */
-class AreaEstimation extends Phase {
+class AreaEstimation extends Phase { // TODO: better area estimation, print estimation as a table
   override def impl(pc: PhaseContext): Unit = {
 
     val lines = ArrayBuffer[String]()

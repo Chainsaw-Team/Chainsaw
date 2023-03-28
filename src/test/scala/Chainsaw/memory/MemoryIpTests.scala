@@ -1,5 +1,6 @@
 package Chainsaw.memory
 
+import Chainsaw.dsp.DynamicDelay
 import Chainsaw.{ChainsawFlatSpec, NumericType, TestConfig}
 
 class MemoryIpTests extends ChainsawFlatSpec {
@@ -39,6 +40,7 @@ class MemoryIpTests extends ChainsawFlatSpec {
       generatorConfigTable("DynamicDownSample")
     )
   }
+
 
   override def generatorConfigTable = Map(
     "P2S" -> TestConfig(full = true, naive = false, synth = true, impl = false),

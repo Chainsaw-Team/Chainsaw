@@ -3,21 +3,16 @@ import com.mathworks.engine.MatlabEngine
 import org.slf4j.{Logger, LoggerFactory}
 import spinal.core._
 import spinal.core.internals.PhaseContext
+import spinal.core.sim._
 import spinal.lib._
 
 import java.io.File
 import scala.annotation.tailrec
 import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 import scala.language.implicitConversions
-import scala.math.BigInt
-import scala.reflect.ClassTag
-import spinal.core._
-import spinal.lib._
-import spinal.lib.fsm._       // for finite state machine dialect
-import spinal.lib.bus._       // for all kinds of bus and regIf
-import spinal.lib.bus.regif._ // for regIf
-import spinal.sim._           // for simulation
-import spinal.core.sim._      // for more simulation
+import scala.reflect.ClassTag // for more simulation
+import Chainsaw.NumericExt._
 
 package object Chainsaw {
 
@@ -48,6 +43,7 @@ package object Chainsaw {
 
   // loading configs
   import org.yaml.snakeyaml.Yaml
+
   import scala.io.Source
 
   val yaml                 = new Yaml()
@@ -57,15 +53,13 @@ package object Chainsaw {
     yaml.load(configString).asInstanceOf[java.util.LinkedHashMap[String, Any]]
 
   val hasVivado: Boolean  = sys.env.contains("VIVADO")
-  val hasYosys: Boolean   = sys.env.contains("YOSYS")
   val hasQuartus: Boolean = sys.env.contains("QUARTUS")
   val hasPython: Boolean  = sys.env.contains("PYTHON")
   val hasFlopoco: Boolean = sys.env.contains("FLOPOCO")
-  val allowSynth: Boolean =
-    configs.get("allowSynth").asInstanceOf[Boolean] && hasVivado
-  val allowImpl: Boolean =
-    configs.get("allowImpl").asInstanceOf[Boolean] && hasVivado
-  val verbose: Int = configs.get("verbose").asInstanceOf[Int]
+  val allowSynth: Boolean = configs.get("allowSynth").asInstanceOf[Boolean] && hasVivado
+  val allowImpl: Boolean  = configs.get("allowImpl").asInstanceOf[Boolean] && hasVivado
+  val dspStrict: Boolean  = configs.get("dspStrict").asInstanceOf[Boolean]
+  val verbose: Int        = configs.get("verbose").asInstanceOf[Int]
   configSource.close()
 
   // global data
@@ -229,9 +223,16 @@ package object Chainsaw {
     def rotateRight(that: Int): Vec[T] = vecShiftWrapper(bits.rotateLeft, that)
 
     def rotateRight(that: UInt): Vec[T] = vecShiftWrapper(bits.rotateLeft, that)
+
+    def groupByChannel(channelCount: Int) = vec.zipWithIndex
+      .groupBy { case (_, i) => i % channelCount }
+      .map(_._2.map(_._1))
+      .map(Vec(_))
+      .toSeq
   }
 
   // for easy connection between ChainsawModules
+  type ChainsawVec  = Seq[AFix]
   type ChainsawFlow = Flow[Fragment[Vec[AFix]]]
 
   object ChainsawFlow {
@@ -246,6 +247,9 @@ package object Chainsaw {
   }
 
   implicit class ChainsawFlowUtil(flow: ChainsawFlow) {
+
+    /** replace fragment of current flow, pipeline valid & last when needed
+      */
     def mapFragment(
         func: Seq[AFix] => Seq[AFix],
         latency: Int = 0
@@ -259,7 +263,22 @@ package object Chainsaw {
       ret
     }
 
-    def >>(that: ChainsawBaseModule): Unit = that.flowIn := flow
+    def >>(that: ChainsawBaseModule): Flow[Fragment[Vec[AFix]]] = {
+      that.flowIn := flow
+      that.flowOut
+    }
+
+    def >>(gen: ChainsawBaseGenerator): Flow[Fragment[Vec[AFix]]] = this >> gen.implH
+
+    def >>(that: ChainsawBaseModule with DynamicModule, control: Vec[AFix]): Flow[Fragment[Vec[AFix]]] = {
+      that.flowIn    := flow
+      that.controlIn := control
+      that.flowOut
+    }
+
+    def >>(gen: ChainsawBaseGenerator with Dynamic, control: Vec[AFix]): Flow[Fragment[Vec[AFix]]] = {
+      this >> (gen.implH.asInstanceOf[ChainsawBaseModule with DynamicModule], control)
+    }
 
     def foreach(func: BaseType => Unit): Unit = {
       flow.fragment.map(_.raw).foreach(func)
@@ -274,13 +293,23 @@ package object Chainsaw {
       ret.last     := last
       ret
     }
+
+    def exportAs(name: String)(implicit monitoredFlows: ArrayBuffer[ChainsawFlow]) = {
+      monitoredFlows += flow
+      flow.setName(name)
+      flow.simPublic()
+    }
+
+    def fixTo(af: AFix) = flow.mapFragment(_.fixTo(af))
+
+    def split: Seq[ChainsawFlow] = flow.fragment.map(ele => flow.mapFragment(_ => Vec(ele)))
   }
 
   /** -------- Flows
     * --------
     */
 
-  import Chainsaw.xilinx._
+  import xilinx._
 
   /** generators in naiveList are set as naive in this box
     */

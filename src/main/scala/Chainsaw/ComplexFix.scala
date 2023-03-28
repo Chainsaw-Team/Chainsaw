@@ -3,6 +3,7 @@ package Chainsaw
 import spinal.core._
 
 import scala.language.postfixOps
+import NumericExt._
 
 class ComplexFix(maxRaw: BigInt, minRaw: BigInt, exp: Int)
   extends Bundle {
@@ -41,7 +42,7 @@ class ComplexFix(maxRaw: BigInt, minRaw: BigInt, exp: Int)
 
   def divideI = ComplexFix(imag, -real)
 
-  def conj = ComplexFix(real, -imag)
+  def conj = ComplexFix(real, imag.symmetricNegate)
 
   // TODO: truncation by real/complex numeric type
   def truncate(numericType: NumericType) = ???

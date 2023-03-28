@@ -76,6 +76,8 @@ class NumericType(val maxRaw: BigInt, val minRaw: BigInt, val exp: Int) {
     ret
   }
 
+  def getZero() = fromConstant(0.0)
+
   def random = {
     val range = maxRaw - minRaw
     val validRaw = Iterator

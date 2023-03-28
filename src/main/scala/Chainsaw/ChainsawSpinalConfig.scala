@@ -19,6 +19,8 @@ object ChainsawSpinalConfig {
       base.addTransformationPhase(new IoAlign) // for unaligned generator, pad the input and output
     //    if (!atSimTime) base.addTransformationPhase(new phases.FfIo) // TODO: subtract the additional FFs from synth/impl result?
     if (verbose >= 1) base.addTransformationPhase(new AreaEstimation)
+    base.addTransformationPhase(new DrawHierarchy)
+    logger.info("add retiming")
     base
   }
 

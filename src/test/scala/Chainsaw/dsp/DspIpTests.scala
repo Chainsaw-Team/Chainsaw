@@ -3,9 +3,7 @@ package Chainsaw.dsp
 import Chainsaw._
 import spinal.core.{IntToBuilder, _}
 
-import scala.language.postfixOps      // for more simulation
-
-
+import scala.language.postfixOps // for more simulation
 
 class DspIpTests extends ChainsawFlatSpec {
 
@@ -144,13 +142,10 @@ class DspIpTests extends ChainsawFlatSpec {
   }
 
   def testDelay(): Unit = {
-    parallels.foreach { parallel =>
-      if (parallel == 1)
-        testOperator(
-          DynamicDelay(delay, dataType, parallel),
-          generatorConfigTable("DynamicDelay")
-        )
-    }
+    testOperator(
+      DynamicDelay(delay, dataType),
+      generatorConfigTable("DynamicDelay")
+    )
   }
 
   /** -------- MOVING AVERAGE
@@ -223,7 +218,7 @@ class DspIpTests extends ChainsawFlatSpec {
 
 //  testComplexMult()
 //  testCordic()
-//  testDelay()
+  testDelay()
 //  testDds()
 //  testMovingAverage()
 //  testFirs()
