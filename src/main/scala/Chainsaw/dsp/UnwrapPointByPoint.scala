@@ -11,9 +11,7 @@ import scala.language.postfixOps // for Xilinx FPGA Flow
   * @param numericType
   *   unified input/output type for unwrap
   */
-case class UnwrapPointByPoint(numericType: NumericType)
-    extends ChainsawOperatorGenerator
-    with FixedLatency {
+case class UnwrapPointByPoint(numericType: NumericType) extends ChainsawOperatorGenerator with FixedLatency {
 
   override def name: String = s"unwrap_${numericType}"
 
@@ -40,11 +38,10 @@ case class UnwrapPointByPoint(numericType: NumericType)
     this
   ) {
 
-    val piReciprocal =
-      NumericType.SFix(0, 17).fromConstant(1 / (scala.math.Pi * 2))
-    val pi = NumericType.SFix(4, 13).fromConstant(scala.math.Pi * 2)
-
     val Seq(prev, next) = dataIn
+
+    val piReciprocal = NumericType.SFix(0, 17).fromConstant(1 / (scala.math.Pi * 2))
+    val pi           = NumericType.SFix(4, 13).fromConstant(scala.math.Pi * 2)
 
     val diff        = (next - prev).d()
     val scaledDiff  = (diff * piReciprocal).d(2)

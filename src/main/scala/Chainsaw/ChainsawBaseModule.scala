@@ -11,7 +11,7 @@ abstract class ChainsawBaseModule(val gen: ChainsawBaseGenerator) extends Compon
   import gen._
 
   val flowIn: Flow[Fragment[Vec[AFix]]] = slave Flow Fragment(Vec(inputTypes.map(_.apply())))
-  val flowOut = master Flow Fragment(Vec(outputTypes.map(_.apply())))
+  val flowOut                           = master Flow Fragment(Vec(outputTypes.map(_.apply())))
 
   val dataIn  = flowIn.fragment
   val validIn = flowIn.valid
@@ -53,13 +53,15 @@ abstract class ChainsawBaseModule(val gen: ChainsawBaseGenerator) extends Compon
 
   def fixTo(af: AFix) = map(_.map(_.fixTo(af)))
 
-  val monitoredFlows = ArrayBuffer[ChainsawFlow]()
+  implicit val monitoredFlows: ArrayBuffer[ChainsawFlow] = ArrayBuffer[ChainsawFlow]()
 
   def addMonitoredFlow(flow: ChainsawFlow, name: String) = {
     monitoredFlows += flow
     flow.setName(name)
     flow.simPublic()
   }
+
+  def >>(that: ChainsawBaseModule) = this.flowOut >> that.flowIn
 }
 
 trait DynamicModule {

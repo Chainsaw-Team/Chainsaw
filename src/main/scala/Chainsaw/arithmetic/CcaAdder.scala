@@ -7,19 +7,17 @@ import spinal.core._
 
 import scala.language.postfixOps
 
-/** long fast adder based on carry selection/increment, this consumes twice as
-  * much LUTs as binary CPA, assuring a O(\sqrt{w}) critical path and constant
-  * latency = 2
+/** long fast adder based on carry selection/increment, this consumes twice as much LUTs as binary CPA, assuring a
+  * O(\sqrt{w}) critical path and constant latency = 2
   *
   * @param width
   *   width of the binary adder
   * @param blockWidth
   *   width of a block
   * @see
-  *   ''Nguyen, Hong Diep, Bogdan Mihai Pasca and Thomas B. Preußer.
-  *   “FPGA-Specific Arithmetic Optimizations of Short-Latency Adders.” 2011
-  *   21st International Conference on Field Programmable Logic and Applications
-  *   (2011): 232-237.''
+  *   ''Nguyen, Hong Diep, Bogdan Mihai Pasca and Thomas B. Preußer. “FPGA-Specific Arithmetic Optimizations of
+  *   Short-Latency Adders.” 2011 21st International Conference on Field Programmable Logic and Applications (2011):
+  *   232-237.''
   */
 case class CcaAdder(override val width: Int, override val blockWidth: Int)
     extends CcaAddition(width: Int, blockWidth: Int)
@@ -52,11 +50,9 @@ case class CcaAdder(override val width: Int, override val blockWidth: Int)
 
   override def implH = new ChainsawOperatorModule(this) {
     // get words
-    val Seq(a, b, cin) = dataIn.map(_.asUInt())
-    val (aHead, aWords) =
-      a.subdivideIn(blockWidth bits, strict = false).splitAt(1)
-    val (bHead, bWords) =
-      b.subdivideIn(blockWidth bits, strict = false).splitAt(1)
+    val Seq(a, b, cin)  = dataIn.map(_.asUInt())
+    val (aHead, aWords) = a.subdivideIn(blockWidth bits, strict = false).splitAt(1)
+    val (bHead, bWords) = b.subdivideIn(blockWidth bits, strict = false).splitAt(1)
 
     // first block need no selection, LUT = blockWidth, FF = blockWidth + 1
     val (c0temp, sumWord0temp) =

@@ -106,6 +106,12 @@ object NumericExt {
     def fixTo(af: AFix) = vec.map(_.fixTo(af))
 
     def normalized = vec.map(_.normalized)
+
+  }
+
+  implicit class complexVecUtil(vec: Seq[ComplexFix]) {
+
+    def toAFixVec = vec.flatMap(complex => Seq(complex.real, complex.imag))
   }
 
   implicit class softVecUtil(vec: Seq[BigDecimal]) {

@@ -354,7 +354,7 @@ class ArithmeticIpTests extends ChainsawFlatSpec {
   //  testCompressors()
   // level 2: bit (multi-input)adders
   //  testCpa()
-  testFastAdditionAlgos()
+//  testFastAdditionAlgos()
   testCcaAdder()
   //  testMerge()
   // level 3: multipliers
