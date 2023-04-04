@@ -12,7 +12,7 @@ import scala.util.Random
 
 /** an extension of AFix
   */
-class NumericType(val maxRaw: BigInt, val minRaw: BigInt, val exp: Int) {
+case class NumericType(val maxRaw: BigInt, val minRaw: BigInt, val exp: Int) {
 
   val afixType = HardType(new AFix(maxRaw, minRaw, exp))
 
@@ -73,6 +73,12 @@ class NumericType(val maxRaw: BigInt, val minRaw: BigInt, val exp: Int) {
     val ret = asComplex()
     ret.real := constant.real
     ret.imag := constant.imag
+    ret
+  }
+
+  def fromBits(bits: Bits) = {
+    val ret = apply()
+    ret assignFromBits bits
     ret
   }
 
