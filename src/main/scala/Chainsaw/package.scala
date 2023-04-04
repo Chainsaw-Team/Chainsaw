@@ -303,6 +303,23 @@ package object Chainsaw {
     def fixTo(af: AFix) = flow.mapFragment(_.fixTo(af))
 
     def split: Seq[ChainsawFlow] = flow.fragment.map(ele => flow.mapFragment(_ => Vec(ele)))
+
+    def dataType = {
+      val ret = flow.fragment.head.numericType
+      assert(flow.fragment.forall(_.numericType == ret), s"head = ${ret}, others = ${flow.fragment.map(_.numericType).mkString(" ")}")
+      ret
+    }
+
+//    def scaleBy(constant: Double, coeffWidth: Int = 16) = {
+//
+//      val integralWidth = breeze.numerics.ceil(breeze.numerics.log2(constant.abs)).intValue()
+//      val coeffType     = NumericType.SFix(integralWidth, coeffWidth - integralWidth - 1)
+//
+//      flow.mapFragment(
+//        func    = vec => vec.map(_ * coeffType.fromConstant(constant)).map(_.d(2)).fixTo(dataType()),
+//        latency = 2
+//      )
+//    }
   }
 
   /** -------- Flows

@@ -84,6 +84,7 @@ case class DynamicMovingAverage(size: Int, dataType: NumericType)
       fractional = 25,
       signed     = true
     ) // size suitable for both Xilinx and Intel DSP blocks
+
     // TODO: build a method: ROM by
     val scalingFactor = {
       val scalingFactorRom = Mem(
@@ -91,6 +92,7 @@ case class DynamicMovingAverage(size: Int, dataType: NumericType)
       )
       scalingFactorRom.readSync(controlInUse)
     }
+
     dataOut.head := (sum * scalingFactor).d(2).fixTo(dataType(), roundType = RoundType.FLOOR)
     lastOut      := lastIn.validAfter(latency())
   }
