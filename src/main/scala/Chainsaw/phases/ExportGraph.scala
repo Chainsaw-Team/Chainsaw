@@ -7,14 +7,10 @@ import com.mxgraph.layout._
 import com.mxgraph.util.mxCellRenderer
 import org.jgrapht._
 import org.jgrapht.ext.JGraphXAdapter
-import spinal.core._
-import spinal.core.internals.Expression
 
 import java.awt.Color
 import java.io.File
 import javax.imageio.ImageIO
-import scala.collection.JavaConverters._
-import scala.collection.mutable
 
 /** unified graph visualization interface
  *
@@ -22,6 +18,7 @@ import scala.collection.mutable
 object ExportGraph {
   def apply[V, E](graph: Graph[V, E], name: String) = {
     val graphAdapter = new JGraphXAdapter[V, E](graph) // manager which store the information for rendering
+
     val layout = new mxCompactTreeLayout(graphAdapter, false, true)
     layout.setMoveTree(true)
     layout.setEdgeRouting(false)
