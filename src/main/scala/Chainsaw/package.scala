@@ -177,6 +177,7 @@ package object Chainsaw {
     def setAsBlockRam() = mem.addAttribute("ram_style", "block")
 
     def setAsUltraRam() = mem.addAttribute("ram_style", "ultra")
+
   }
 
   // extension of Data
@@ -306,7 +307,10 @@ package object Chainsaw {
 
     def dataType = {
       val ret = flow.fragment.head.numericType
-      assert(flow.fragment.forall(_.numericType == ret), s"head = ${ret}, others = ${flow.fragment.map(_.numericType).mkString(" ")}")
+      assert(
+        flow.fragment.forall(_.numericType == ret),
+        s"head = ${ret}, others = ${flow.fragment.map(_.numericType).mkString(" ")}"
+      )
       ret
     }
 
@@ -400,4 +404,5 @@ package object Chainsaw {
     * --------
     */
   lazy val matlabEngine = MatlabEngine.startMatlab()
+
 }

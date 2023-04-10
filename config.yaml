@@ -2,4 +2,4 @@ allowSynth: false
 
 allowImpl: false
 
-verbose: 0
+verbose: 1
