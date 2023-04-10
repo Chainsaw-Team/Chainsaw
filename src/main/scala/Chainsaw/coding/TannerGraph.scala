@@ -1,25 +1,19 @@
 package Chainsaw.coding
 
-import org.jgrapht._
-import org.jgrapht.graph._
-
-import scala.collection.mutable.ArrayBuffer
-import scala.collection.JavaConverters._
-import scala.collection.mutable
-
 import Chainsaw._
 import com.mxgraph.layout._
 import com.mxgraph.util.mxCellRenderer
 import org.jgrapht._
 import org.jgrapht.ext.JGraphXAdapter
+import org.jgrapht.graph._
 import spinal.core._
-import spinal.core.internals.Expression
 
 import java.awt.Color
 import java.io.File
 import javax.imageio.ImageIO
 import scala.collection.JavaConverters._
 import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 case class ParityCheckMatrix(value: Seq[Seq[Int]]) {
 
   assert(value.flatten.forall(ele => ele == 1 || ele == 0), "parity check matrix contains 0s and 1s only")
@@ -88,7 +82,7 @@ case class TannerGraph() extends SimpleGraph[TannerNode, TannerEdge](classOf[Tan
           .map(other => getEdge(other, check).messageLikelihood)
           .reduce(_ ⊞ _)
         getEdge(message, check).checkLikelihood = likelihood
-        println(s"L[$check -> $message] = ${likelihood.value}")
+        if(verbose >= 1) println(s"L[$check -> $message] = ${likelihood.value}")
       }
     )
   }
@@ -106,7 +100,7 @@ case class TannerGraph() extends SimpleGraph[TannerNode, TannerEdge](classOf[Tan
           .reduce(_ + _) + base
 
         this.getEdge(message, check).messageLikelihood = likelihood
-        println(s"L[$message -> $check] = ${likelihood.value}")
+        if(verbose >= 1) println(s"L[$message -> $check] = ${likelihood.value}")
       }
     }
   }
@@ -138,7 +132,7 @@ object TannerGraph {
     // add nodes
     (0 until parityCheckMatrix.messageNodeCount).foreach(i => graph.addMessageNode(i))
     (0 until parityCheckMatrix.checkNodeCount).foreach(i   => graph.addCheckNode(i))
-    println(graph.vertexSet().asScala.mkString(" "))
+    if(verbose >= 1) println(graph.vertexSet().asScala.mkString(" "))
     // add edges
     parityCheckMatrix.value.zipWithIndex.foreach { case (row, checkId) =>
       row.zipWithIndex.foreach { case (ele, messageId) =>
@@ -146,7 +140,7 @@ object TannerGraph {
           val src = graph.messageNodes(messageId)
           val des = graph.checkNodes(checkId)
           graph.addEdge(src, des, new TannerEdge())
-          println(s"add $src -> $des")
+          if(verbose >= 1) println(s"add $src -> $des")
         }
       }
     }
@@ -170,6 +164,6 @@ object TannerGraphTest extends App {
 
   val graph = TannerGraph(parityCheckMatrix)
   graph.saveFig("tanner")
-  val received = Seq(5.6, -10.2, 0.7, 0.5, -7.5, 12.2, -8.5, 6.9, -7.7).map(Llr(_))
-  println(s"${graph.beliefPropagation(received, 1).map(_.decideBpsk)}")
+  val received = Seq(5.6, -10.2, 0.7, 0.5, -7.5, 12.2, 8.5, 6.9, -7.7).map(Llr(_))
+  println(s"${graph.beliefPropagation(received, 2).map(_.decideBpsk)}")
 }
