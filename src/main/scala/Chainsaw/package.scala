@@ -38,8 +38,8 @@ package object Chainsaw {
   }
 
   /** -------- global run-time environment
-    * --------
-    */
+   * --------
+   */
 
   // loading configs
   import org.yaml.snakeyaml.Yaml
@@ -56,10 +56,23 @@ package object Chainsaw {
   val hasQuartus: Boolean = sys.env.contains("QUARTUS")
   val hasPython: Boolean  = sys.env.contains("PYTHON")
   val hasFlopoco: Boolean = sys.env.contains("FLOPOCO")
+
   val allowSynth: Boolean = configs.get("allowSynth").asInstanceOf[Boolean] && hasVivado
   val allowImpl: Boolean  = configs.get("allowImpl").asInstanceOf[Boolean] && hasVivado
-  val dspStrict: Boolean  = configs.get("dspStrict").asInstanceOf[Boolean]
-  val verbose: Int        = configs.get("verbose").asInstanceOf[Int]
+
+  val deviceFamilyList = Map(
+    "cyclone v"  -> CycloneV,
+    "ultrascale" -> UltraScale,
+    "7 series"   -> Series7
+  )
+
+  val targetDeviceFamily: DeviceFamily = {
+    val name = configs.get("targetDeviceFamily").asInstanceOf[String]
+    deviceFamilyList.getOrElse(name.toLowerCase, Generic)
+  }
+
+  val dspStrict: Boolean = configs.get("dspStrict").asInstanceOf[Boolean]
+  val verbose: Int       = configs.get("verbose").asInstanceOf[Int]
   configSource.close()
 
   // global data
@@ -72,8 +85,8 @@ package object Chainsaw {
       String
     ]() // list of generators which should be implemented by its naive version
   def setAsNaive(
-      generator: Any*
-  ): naiveSet.type = // add a generator to the naiveSet
+                  generator: Any*
+                ): naiveSet.type = // add a generator to the naiveSet
     naiveSet += generator.getClass.getSimpleName.replace("$", "")
 
   var testFlopoco = false
@@ -87,18 +100,18 @@ package object Chainsaw {
   val downArrow     = "↓"
 
   /** -------- type def
-    * --------
-    */
+   * --------
+   */
   type Metric      = (Any, Any)           => Boolean
   type FrameMetric = (Seq[Any], Seq[Any]) => Boolean
 
   /** -------- paths
-    * --------
-    */
+   * --------
+   */
 
   // outside Chainsaw
   val vivadoPath =
-    new File(sys.env.getOrElse("VIVADO", "")) // vivado executable path
+  new File(sys.env.getOrElse("VIVADO", "")) // vivado executable path
   val vitisPath =
     new File(sys.env.getOrElse("VITIS", "")) // vitis executable path
   val flopocoPath = new File(sys.env.getOrElse("FLOPOCO", ""))
@@ -119,8 +132,8 @@ package object Chainsaw {
   val dagOutputDir     = new File("src/main/resources/dfgGenerated")
 
   /** -------- scala type utils
-    * --------
-    */
+   * --------
+   */
   implicit class IntUtil(int: Int) {
     def divideAndCeil(base: Int): Int = (int + base - 1) / base
 
@@ -162,7 +175,7 @@ package object Chainsaw {
   }
 
   /** to manipulate a BigInt as Bits, you need a BitValue first, as BigInt has no width information
-    */
+   */
   implicit class BigIntUtil(bi: BigInt) {
     def toBitValue(width: Int = -1) = {
       if (width == -1) BitValue(bi, bi.bitLength)
@@ -170,14 +183,14 @@ package object Chainsaw {
     }
   }
 
+
   /** -------- spinal type utils
-    * --------
-    */
+   * --------
+   */
   implicit class MemUtil(mem: Mem[_]) {
     def setAsBlockRam() = mem.addAttribute("ram_style", "block")
 
     def setAsUltraRam() = mem.addAttribute("ram_style", "ultra")
-
   }
 
   // extension of Data
@@ -250,11 +263,11 @@ package object Chainsaw {
   implicit class ChainsawFlowUtil(flow: ChainsawFlow) {
 
     /** replace fragment of current flow, pipeline valid & last when needed
-      */
+     */
     def mapFragment(
-        func: Seq[AFix] => Seq[AFix],
-        latency: Int = 0
-    ): ChainsawFlow = {
+                     func: Seq[AFix] => Seq[AFix],
+                     latency: Int = 0
+                   ): ChainsawFlow = {
       val temp        = func(flow.fragment)
       val newFragment = Vec(temp)
       val ret         = new Flow(new Fragment(newFragment))
@@ -314,26 +327,26 @@ package object Chainsaw {
       ret
     }
 
-//    def scaleBy(constant: Double, coeffWidth: Int = 16) = {
-//
-//      val integralWidth = breeze.numerics.ceil(breeze.numerics.log2(constant.abs)).intValue()
-//      val coeffType     = NumericType.SFix(integralWidth, coeffWidth - integralWidth - 1)
-//
-//      flow.mapFragment(
-//        func    = vec => vec.map(_ * coeffType.fromConstant(constant)).map(_.d(2)).fixTo(dataType()),
-//        latency = 2
-//      )
-//    }
+    //    def scaleBy(constant: Double, coeffWidth: Int = 16) = {
+    //
+    //      val integralWidth = breeze.numerics.ceil(breeze.numerics.log2(constant.abs)).intValue()
+    //      val coeffType     = NumericType.SFix(integralWidth, coeffWidth - integralWidth - 1)
+    //
+    //      flow.mapFragment(
+    //        func    = vec => vec.map(_ * coeffType.fromConstant(constant)).map(_.d(2)).fixTo(dataType()),
+    //        latency = 2
+    //      )
+    //    }
   }
 
   /** -------- Flows
-    * --------
-    */
+   * --------
+   */
 
   import xilinx._
 
   /** generators in naiveList are set as naive in this box
-    */
+   */
   def ChainsawSimBox(naiveList: Seq[String])(test: => Unit): Unit = {
     naiveSet ++= naiveList
     test
@@ -341,10 +354,10 @@ package object Chainsaw {
   }
 
   def ChainsawEdaFlow(
-      gen: ChainsawBaseGenerator,
-      edaFlowType: EdaFlowType,
-      requirementStrategy: UtilRequirementStrategy
-  ) = {
+                       gen: ChainsawBaseGenerator,
+                       edaFlowType: EdaFlowType,
+                       requirementStrategy: UtilRequirementStrategy
+                     ) = {
     atSimTime = false // set environment
     try {
       val report = edaFlowType match {
@@ -360,18 +373,18 @@ package object Chainsaw {
   }
 
   def ChainsawSynth(
-      gen: ChainsawBaseGenerator,
-      requirementStrategy: UtilRequirementStrategy = DefaultRequirement
-  ) = ChainsawEdaFlow(gen, SYNTH, requirementStrategy)
+                     gen: ChainsawBaseGenerator,
+                     requirementStrategy: UtilRequirementStrategy = DefaultRequirement
+                   ) = ChainsawEdaFlow(gen, SYNTH, requirementStrategy)
 
   def ChainsawImpl(
-      gen: ChainsawBaseGenerator,
-      requirementStrategy: UtilRequirementStrategy = DefaultRequirement
-  ) = ChainsawEdaFlow(gen, IMPL, requirementStrategy)
+                    gen: ChainsawBaseGenerator,
+                    requirementStrategy: UtilRequirementStrategy = DefaultRequirement
+                  ) = ChainsawEdaFlow(gen, IMPL, requirementStrategy)
 
   /** -------- util functions
-    * --------
-    */
+   * --------
+   */
   def pow2(exp: Int) = BigInt(1) << exp
 
   def nextPow2(n: Int): BigInt = BigInt(1) << log2Up(n)
@@ -386,23 +399,22 @@ package object Chainsaw {
   def lcm(a: BigInt, b: BigInt): BigInt = a * b / gcd(a, b)
 
   /** -------- to getUniqueName
-    * --------
-    */
+   * --------
+   */
   // get name of a class/object
   def className(any: Any) = any.getClass.getSimpleName.replace("$", "")
   // get name of a unique "configuration"
   def hashName(any: Any) = any.hashCode().toString.replace("-", "N")
 
   /** -------- rings utils
-    * --------
-    */
+   * --------
+   */
   implicit class intzUti(intz: IntZ) {
     def toBigInt = BigInt(intz.toByteArray)
   }
 
   /** -------- matlab utils
-    * --------
-    */
+   * --------
+   */
   lazy val matlabEngine = MatlabEngine.startMatlab()
-
 }

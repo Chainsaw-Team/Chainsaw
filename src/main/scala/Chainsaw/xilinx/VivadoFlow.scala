@@ -10,6 +10,7 @@ import scala.collection.mutable
 import scala.io.Source
 import scala.language.{existentials, postfixOps}
 import scala.util.{Failure, Success, Try}
+import spinal.core.internals._
 
 /** used to generate sources for a Vivado flow and invoke Vivado to run it
   */
@@ -53,12 +54,13 @@ class VivadoFlow[T <: Component](
     val config = customizedConfig match {
       case Some(value) => value
       case None => // for general Component
-        SpinalConfig(
+        val config = SpinalConfig(
           defaultConfigForClockDomains = xilinxCDConfig,
           targetDirectory              = workspaceDir.getAbsolutePath + "/",
           oneFilePerComponent          = true
         )
-//        config.addTransformationPhase(new phases.FfIo)
+        config.addTransformationPhase(new phases.FfIo)
+        config
     }
 
     val rtlResources: Seq[String] = netlistDir match {
@@ -156,9 +158,9 @@ class VivadoFlow[T <: Component](
 
     // do flow
     def addSynth(): Unit = {
-      //      script += s"synth_design -part ${xilinxDevice.part} -top $topModuleName -mode out_of_context -retiming\n"
-      script += s"synth_design -part ${xilinxDevice.part} -top $topModuleName ${if (taskType == BIN) ""
-      else "-mode out_of_context"}\n"
+      script += s"synth_design -part ${xilinxDevice.part} -top $topModuleName -mode out_of_context -retiming\n"
+//      script += s"synth_design -part ${xilinxDevice.part} -top $topModuleName ${if (taskType == BIN) ""
+//      else "-mode out_of_context"}\n"
       script += s"write_checkpoint -force ${topModuleName}_after_synth.dcp\n"
       script += s"report_timing\n"
     }

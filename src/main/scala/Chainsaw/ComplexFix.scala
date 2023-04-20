@@ -50,6 +50,7 @@ class ComplexFix(maxRaw: BigInt, minRaw: BigInt, exp: Int)
   // TODO: saturation by real/complex numeric type
   def saturate(numericType: NumericType) = ???
 
+  // FIXME: use AFix instead of NumericType
   def fixTo(numericType: NumericType) = ComplexFix(real.fixTo(numericType()), imag.fixTo(numericType()))
 }
 

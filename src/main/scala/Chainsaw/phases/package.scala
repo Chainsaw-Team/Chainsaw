@@ -8,6 +8,8 @@ import scala.collection.mutable.ArrayBuffer
 
 package object phases {
 
+  type Stat = mutable.Map[(Int, Int), Int]
+
   /** using a phase on a generator
    */
   def testPhase(phase: Phase, gen: ChainsawBaseGenerator): Unit = {

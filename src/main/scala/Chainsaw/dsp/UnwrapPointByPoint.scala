@@ -13,7 +13,7 @@ import scala.language.postfixOps // for Xilinx FPGA Flow
   */
 case class UnwrapPointByPoint(numericType: NumericType) extends ChainsawOperatorGenerator with FixedLatency {
 
-  override def name: String = s"unwrap_${numericType}"
+  override def name: String = s"Unwrap_${numericType}"
 
   override def inputTypes: Seq[NumericType] = Seq.fill(2)(numericType)
 

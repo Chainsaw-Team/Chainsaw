@@ -259,8 +259,7 @@ case class ChainsawTest(
           if (last) {
             waitStart = true
             if (verbose >= 1) {
-              print(s"\r$segmentsCounter segment done")
-              Console.flush()
+              println(s"\r$segmentsCounter segment done")
             }
             segmentsCounter += 1
           }
@@ -347,10 +346,6 @@ case class ChainsawTest(
       outputSegments = splitPoints
         .sliding(2)
         .map { case Seq(start, end) =>
-          if (verbose >= 1)
-            logger.info(
-              s"output segment: ${outputTimes(start)} -> ${outputTimes(end)}"
-            )
           outputVectors.slice(start, end)
         }
         .map(_.flatMap(_._1))

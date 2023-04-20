@@ -1,20 +1,13 @@
 package Chainsaw
 
 import spinal.core._
-import spinal.core.sim._
-import spinal.lib._
-import spinal.lib.fsm._
 
-import java.io.File
 import scala.language.postfixOps
+import Chainsaw._
+import Chainsaw.xilinx._
 
 package object xilinx {
 
-  sealed trait XilinxDeviceFamily
-
-  object UltraScale extends XilinxDeviceFamily
-
-  object Series7 extends XilinxDeviceFamily
 
   val xilinxCDConfig = ClockDomainConfig( // recommended by Xilinx UG901
     clockEdge              = RISING,
