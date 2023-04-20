@@ -22,10 +22,10 @@ object ChainsawSpinalConfig {
 
     if (!atSimTime) base.addTransformationPhase(new phases.FfIo)
 
-    if (verbose >= 1) base.addTransformationPhase(new AreaEstimation)
+//    if (verbose >= 1) base.addTransformationPhase(new AreaEstimation)
 
     base.addTransformationPhase(new DrawHierarchy)
-    base.addTransformationPhase(new TimingDrc)
+    base.addTransformationPhase(new GenericEstimation)
 
     logger.info("add retiming")
     base

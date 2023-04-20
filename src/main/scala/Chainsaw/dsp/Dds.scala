@@ -18,7 +18,7 @@ case class Dds(ddsWave: DdsWave, dataType: NumericType, parallel: Int)
     extends ChainsawInfiniteGenerator
     with FixedLatency {
 
-  def name = s"Parallel_${parallel}_${Dds}_${dataType}_$ddsWave"
+  def name = s"${Dds}_${dataType}_${ddsWave}_Parallel_${parallel}"
 
   override def impl(testCase: TestCase) =
     ddsWave.generate(testCase.data.length * parallel).map(BigDecimal(_))

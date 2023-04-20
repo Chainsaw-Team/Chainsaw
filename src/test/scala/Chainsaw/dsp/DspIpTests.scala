@@ -179,6 +179,13 @@ class DspIpTests extends ChainsawFlatSpec {
     CooleyTukeyFftAlgo(16).selfTest()
   }
 
+  def testShiftSpec(): Unit = {
+    testOperator(
+      ShiftSpec(250 MHz, 80 MHz, NumericType.SFix(1, 14), complex = true, 2),
+      generatorConfigTable("ShiftSpec")
+    )
+  }
+
   override def algoNames = Seq("CooleyTukeyFft")
 
   override def generatorConfigTable: Map[String, TestConfig] = Map(
@@ -213,17 +220,23 @@ class DspIpTests extends ChainsawFlatSpec {
       naive = false,
       synth = true,
       impl  = false
+    ),
+    "ShiftSpec" -> TestConfig(
+      full  = true,
+      naive = false,
+      synth = true,
+      impl  = false
     )
   )
 
 //  testComplexMult()
 //  testCordic()
-  testDelay()
+//  testDelay()
 //  testDds()
 //  testMovingAverage()
 //  testFirs()
 //  testUnwrap()
 //  testPeriodicUnwrap()
 //  testFftAlgos()
-
+  testShiftSpec()
 }

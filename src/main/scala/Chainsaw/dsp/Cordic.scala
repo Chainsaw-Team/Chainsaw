@@ -39,7 +39,6 @@ case class Cordic(
 
   val phaseType     = NumericType(Pi, -Pi, -fractional)
   val amplitudeType = NumericType(2.1, -2.1, -fractional)
-  logger.info(s"phaseType: $phaseType, amplitudeType: $amplitudeType")
 
   /** -------- get coefficients
     * --------
@@ -206,8 +205,6 @@ case class Cordic(
         case (t, None)    => Some(t)
       }
 
-  logger.info(s"inputTypes: ${inputTypes.mkString(", ")}")
-
   override def outputTypes = Seq(amplitudeType, amplitudeType, phaseType)
 
   override def vivadoUtilEstimation = VivadoUtil()
@@ -233,7 +230,6 @@ class CordicModule(cordic: Cordic) extends ChainsawOperatorModule(cordic) {
     NumericType(1, 16, signed = false) // for 17 bit multiplier
   val scaleComplement =
     scaleType.fromConstant(getScaleComplement(iteration))
-  logger.info(s"compensation = ${getScaleComplement(iteration)}")
 
   /** -------- getDataIn
     * --------
@@ -338,9 +334,6 @@ class CordicModule(cordic: Cordic) extends ChainsawOperatorModule(cordic) {
     ._1
 
   val Seq(xOut, yOut, zOut) = ret
-  logger.info(
-    s"output: x: ${xOut.numericType}, y: ${yOut.numericType}, z: ${zOut.numericType}"
-  )
 
   dataOut(0) := (xOut * scaleComplement).d(speedLevel).truncated
   dataOut(1) := (yOut * scaleComplement).d(speedLevel).truncated

@@ -53,8 +53,8 @@ class VivadoReport(
 
   // get util
   val util = deviceFamily match {
-    case xilinx.UltraScale => getUltrascaleWithHierarchy(logFile)
-    case xilinx.Series7    => ???
+    case UltraScale => getUltrascaleWithHierarchy(logFile)
+    case Series7    => ???
   }
 
   override def toString: String =
