@@ -3,3 +3,5 @@ allowSynth: false
 allowImpl: false
 
 verbose: 1
+
+targetDeviceFamily: "Cyclone V"

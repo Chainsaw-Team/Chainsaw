@@ -259,7 +259,7 @@ case class ChainsawTest(
           if (last) {
             waitStart = true
             if (verbose >= 1) {
-              println(s"\r$segmentsCounter segment done")
+              println(s"\r$segmentsCounter/${inputSegments.length} segment done")
             }
             segmentsCounter += 1
           }

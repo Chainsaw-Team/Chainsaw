@@ -7,8 +7,5 @@ import spinal.sim._
 import spinal.core.sim._
 
 
-
-
-val a = "12345"
-
-println(a.inits.mkString("\n"))
+val a = Seq(6,16,8,2)
+a.scan(0)(_ + _).init

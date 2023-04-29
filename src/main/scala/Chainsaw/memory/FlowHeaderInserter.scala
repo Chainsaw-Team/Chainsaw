@@ -8,9 +8,9 @@ import spinal.lib.fsm._
 
 import scala.language.postfixOps
 
-/** insert a header before each sequence
+/** insert a header before each sequence whenever lastIn is asserted
   * @param header
-  *   sequence of w-bit data, which will be inserted before each sequence
+  *   several w-bit words, which will be inserted before each sequence
   * @param width
   *   width of the data(and the header)
   */
@@ -61,9 +61,10 @@ case class FlowHeaderInserter(
     val headerCounter = Counter(header.length)
 
     val fsm = new StateMachine {
-      val WAITHEADER = makeInstantEntry() // for sync
-      val HEADER     = new StateDelay(header.length)
-      val DATA       = State()
+      val WAITHEADER = makeInstantEntry()
+      val HEADER     = new StateDelay(header.length) // outputting header
+      val DATA       = State()                       // outputting data
+
       WAITHEADER.whenIsActive {
         when(dataInFifo.io.pop.valid)(goto(HEADER))
         dataInFifo.io.pop.ready := False
@@ -82,7 +83,7 @@ case class FlowHeaderInserter(
       }
       DATA.whenIsActive {
         when(dataInFifo.io.pop.payload.last && dataInFifo.io.pop.valid) {
-          when(dataInFifo.io.occupancy > 1)(goto(HEADER))
+          when(dataInFifo.io.occupancy > 1)(goto(HEADER)) // interrupting data outputting to output header
             .otherwise(goto(WAITHEADER))
         }
         dataInFifo.io.pop.ready := True
