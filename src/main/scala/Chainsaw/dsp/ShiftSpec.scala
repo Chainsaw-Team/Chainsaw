@@ -8,6 +8,8 @@ import Chainsaw._
 import Chainsaw.xilinx._
 import spinal.core._
 
+import scala.language.postfixOps
+
 case class ShiftSpec(
     inputFreq: HertzNumber,
     carrierFreq: HertzNumber,
@@ -38,11 +40,6 @@ case class ShiftSpec(
   override def implH: ChainsawInfiniteModule = new ChainsawInfiniteModule(this) {
 
     val ddsFlow = flowIn.mapFragment(_ => Seq[AFix]()) >> ddsGen
-
-//    val dds = ddsGen.implH
-//    dds.validIn := validIn
-//    dds.lastIn  := lastIn
-
     val delayedData = dataIn.d(ddsGen.latency())
 
     val shiftedFlow: ChainsawFlow =

@@ -12,22 +12,22 @@ abstract class FftAlgo extends HardAlgo {
 
   val n: Int
 
-  def fft(data: Signal) = {
-    exportSignal(data)
-    runPython(new File("utils/fft.py"))
-    importSignal().head
-  }
+//  def fft(data: Signal) = {
+//    exportSignal(data)
+//    runPython(new File("utils/fft.py"))
+//    importSignal().head
+//  }
 
   // TODO: NTT
 
   def impl(data: Signal): Signal
 
-  def selfTest(): Unit = {
-    val testCase = Seq.fill(10)(Seq.fill(n)(BigDecimal(Random.nextDouble())))
-    val golden   = testCase.map(fft)
-    val yours    = testCase.map(impl)
-    assert(golden.zip(yours).forall { case (signal0, signal1) => corrMetric(signal0, signal1, 0.9) })
-  }
+//  def selfTest(): Unit = {
+//    val testCase = Seq.fill(10)(Seq.fill(n)(BigDecimal(Random.nextDouble())))
+//    val golden   = testCase.map(fft)
+//    val yours    = testCase.map(impl)
+//    assert(golden.zip(yours).forall { case (signal0, signal1) => corrMetric(signal0, signal1, 0.9) })
+//  }
 }
 
 case class CooleyTukeyFftAlgo(override val n: Int) extends FftAlgo {

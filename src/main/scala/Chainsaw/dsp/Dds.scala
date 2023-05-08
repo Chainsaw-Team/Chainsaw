@@ -91,7 +91,7 @@ case class DdsWave(
   def wave = signalType match {
     case SINE =>
       val step     = 2 * Pi / pointsInSignalPeriod.toDouble
-      val points   = 1 to period
+      val points   = 0 until period
       val sineWave = points.map(i => sin(i * step + phaseOffset) * amplitude)
       val cosWave  = points.map(i => cos(i * step + phaseOffset) * amplitude)
       if (complex) cosWave.zip(sineWave).flatMap { case (cos, sin) => Seq(cos, sin) }
