@@ -5,3 +5,5 @@ allowImpl: false
 verbose: 1
 
 targetDeviceFamily: "Cyclone V"
+
+dspStrict: true

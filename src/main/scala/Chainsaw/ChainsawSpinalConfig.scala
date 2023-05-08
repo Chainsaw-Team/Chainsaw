@@ -15,16 +15,13 @@ object ChainsawSpinalConfig {
     )
 
     // for generator with undetermined latency, do retiming
-    if (gen.isInstanceOf[OverwriteLatency] && !gen.useNaive) base.addTransformationPhase(new Retiming)
+//    if (gen.isInstanceOf[OverwriteLatency] && !gen.useNaive) base.addTransformationPhase(new Retiming)
 
     // for unaligned generator, pad the input and output
     if (gen.isInstanceOf[Unaligned]) base.addTransformationPhase(new IoAlign)
 
     if (!atSimTime) base.addTransformationPhase(new phases.FfIo)
-
-//    if (verbose >= 1) base.addTransformationPhase(new AreaEstimation)
-
-    base.addTransformationPhase(new DrawHierarchy)
+//    base.addTransformationPhase(new DrawHierarchy)
     base.addTransformationPhase(new GenericEstimation)
 
     logger.info("add retiming")

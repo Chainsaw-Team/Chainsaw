@@ -63,6 +63,7 @@ abstract class ChainsawBaseModule(val gen: ChainsawBaseGenerator) extends Compon
   }
 
   def >>(that: ChainsawBaseModule) = this.flowOut >> that.flowIn
+
 }
 
 trait DynamicModule {

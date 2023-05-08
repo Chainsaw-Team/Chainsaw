@@ -106,7 +106,6 @@ class RetimingGraph extends ExpressionGraph {
 
     // solve the LP problem
     start()
-
     // rounding, toInt is equivalent to ceil, which is not appropriate
     import scala.math.round
     val minValue = variableMap.values.map(_.value.get).min

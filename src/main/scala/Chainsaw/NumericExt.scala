@@ -10,7 +10,7 @@ import scala.language.postfixOps
 object NumericExt {
 
   // extension for signed fix
-  implicit class SFixUtil(sf: SFix) {
+  implicit class sfixUtil(sf: SFix) {
 
     def isPositive: Bool = ~sf.raw.msb
 
@@ -47,6 +47,7 @@ object NumericExt {
       ret := sf.truncated
       ret
     }
+
   }
 
   implicit class afixUtil(afix: AFix) {
@@ -58,6 +59,15 @@ object NumericExt {
       val ret = new AFix(afix.maxRaw, afix.minRaw, afix.exp)
       if (afix.signed) ret.raw := (-afix.raw.asSInt).asBits
       else ret.raw             := U(afix.raw).twoComplement(True, null).asBits
+      ret
+    }
+
+    def mult(that: AFix) = {
+      require(afix.signed)
+      val retRaw  = afix.asSInt() * that.asSInt()
+      val retType = afix.numericType * that.numericType
+      val ret     = retType()
+      ret assignFromBits retRaw.asBits
       ret
     }
 
@@ -92,7 +102,7 @@ object NumericExt {
     }
   }
 
-  implicit class hardVecUtil(vec: Seq[AFix]) {
+  implicit class hardVecUtil(vec: ChainsawVec) {
 
     def toComplexFix =
       vec.grouped(2).toSeq.map { case Seq(a, b) => ComplexFix(a, b) }
@@ -106,6 +116,12 @@ object NumericExt {
     def fixTo(af: AFix) = vec.map(_.fixTo(af))
 
     def normalized = vec.map(_.normalized)
+
+//    def :=(that: ChainsawVec) = vec.zip(that).foreach(pair => pair._1 := pair._2)
+
+//    def d(cycle: Int) = vec.map(_.d(cycle))
+
+    def conj = vec.toComplexFix.map(_.conj).toAFixVec
 
   }
 

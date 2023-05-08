@@ -144,7 +144,7 @@ case class ChainsawTest(
     ) // for initialization
   }
 
-  if (doInterruptInsertion) insertInterrupts else valids.foreach(inputSegmentsWithInvalid += _)
+  if (doInterruptInsertion) insertInterrupts else valids.drop(1).foreach(inputSegmentsWithInvalid += _)
 
   val sortedValids = inputSegmentsWithInvalid.filter(_._2).map(_._1)
 
@@ -186,7 +186,8 @@ case class ChainsawTest(
   // segments -> vectors
   val inputVectorSize =
     if (inPortWidth == 0) 1
-    else inPortWidth          // when inPortWidth is 0, the module is driven by clock
+    else inPortWidth // when inPortWidth is 0, the module is driven by clock
+
   val inputVectorsWithInValid // data, control, valid, last
       : mutable.Seq[(Seq[BigDecimal], Seq[BigDecimal], Boolean, Boolean)] =
     inputSegmentsWithInvalid.flatMap { case (TestCase(segment, control), valid) =>

@@ -53,11 +53,11 @@ case class NumericType(val maxRaw: BigInt, val minRaw: BigInt, val exp: Int) {
     val ret = apply()
     assert(
       constant <= ret.maxValue,
-      s"Literal $constant is too big to be assigned in $this"
+      s"Literal $constant is too big to be assigned in $this (max = $maxValue)"
     )
     assert(
       constant >= ret.minValue,
-      s"Literal $constant is too negative to be assigned in this $this"
+      s"Literal $constant is too negative to be assigned in this $this (min = $minValue)"
     )
     val intValue = {
       if (constant >= 0.0) (constant / step).toBigInt()
@@ -67,7 +67,8 @@ case class NumericType(val maxRaw: BigInt, val minRaw: BigInt, val exp: Int) {
     ret
   }
 
-  def fromConstant(constant: Double): AFix = fromConstant(BigDecimal(constant))
+  def fromConstant(constant: Double): AFix =
+    fromConstant(BigDecimal(constant))
 
   def fromConstant(constant: Complex): ComplexFix = {
     val ret = asComplex()
@@ -125,8 +126,8 @@ case class NumericType(val maxRaw: BigInt, val minRaw: BigInt, val exp: Int) {
     signed || signed // use xnor?
   )
 
-  def withCarry(bitWidth: Int) =
-    NumericType(integral + bitWidth, fractional, signed)
+  def withCarry(bitWidth: Int)      = NumericType(integral + bitWidth, fractional, signed)
+  def withFractional(bitWidth: Int) = NumericType(integral, fractional + bitWidth, signed)
 
   override def toString =
     s"${if (signed) "S" else "U"}Q${integral}_$fractional".replace("-", "N")
