@@ -144,6 +144,7 @@ trait ChainsawBaseGenerator {
   def cloneOutput = Vec(outputTypes.map(_.apply()))
 
   def ffIoUtil = VivadoUtil(ff = inputTypes.map(_.bitWidth).sum + outputTypes.map(_.bitWidth).sum)
+
 }
 
 trait Dynamic {

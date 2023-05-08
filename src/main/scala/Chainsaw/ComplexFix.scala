@@ -24,7 +24,7 @@ class ComplexFix(maxRaw: BigInt, minRaw: BigInt, exp: Int)
    * multiplication
    * -------- */
 
-  def *(that: AFix): ComplexFix = ComplexFix(real * that, imag * that)
+  def *(that: AFix): ComplexFix = ComplexFix(real mult that, imag mult that)
 
   // TODO: multiplication using 3 mults
 

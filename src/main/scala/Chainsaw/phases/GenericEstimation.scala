@@ -226,12 +226,14 @@ class GenericEstimation extends Phase {
       trace += e.toString()
       // TODO: find MUXes
       e match {
-        case op: Operator.BitVector.Mul => updateBinaryStats(stat.multStatistics, getBinarySize(op))
-        case op: Operator.BitVector.Add => updateBinaryStats(stat.addSubStatistics, getBinarySize(op))
-        case op: Operator.BitVector.Sub => updateBinaryStats(stat.addSubStatistics, getBinarySize(op))
-        case memPort: MemReadSync       => updateMemStats(stat.memStatistics, memPort.mem, read = true)
-        case memPort: MemReadAsync      => updateMemStats(stat.memStatistics, memPort.mem, read = true)
-        case _                          =>
+        case op: Operator.BitVector.Mul       => updateBinaryStats(stat.multStatistics, getBinarySize(op))
+        case op: Operator.BitVector.Add       => updateBinaryStats(stat.addSubStatistics, getBinarySize(op))
+        case op: Operator.BitVector.Sub       => updateBinaryStats(stat.addSubStatistics, getBinarySize(op))
+        case op: Operator.SInt.SmallerOrEqual => updateBinaryStats(stat.addSubStatistics, getBinarySize(op))
+        case op: Operator.SInt.Smaller        => updateBinaryStats(stat.addSubStatistics, getBinarySize(op))
+        case memPort: MemReadSync             => updateMemStats(stat.memStatistics, memPort.mem, read = true)
+        case memPort: MemReadAsync            => updateMemStats(stat.memStatistics, memPort.mem, read = true)
+        case _                                =>
       }
       e.foreachExpression(recExpression)
       trace.dequeue()

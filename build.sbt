@@ -32,6 +32,10 @@ val snakeYaml = "org.yaml" % "snakeyaml" % "1.33"
 // for design pre-placement
 val rapidwright = "com.xilinx.rapidwright" % "rapidwright" % "2022.2.1"
 
+// for ndarray processing
+//val ndarray = "org.tensorflow" % "ndarray" % "0.4.0"
+
+
 lazy val Chainsaw = (project in file("."))
   .settings(
     name := "Chainsaw",
@@ -48,7 +52,8 @@ lazy val Chainsaw = (project in file("."))
     libraryDependencies += djlCore,
     libraryDependencies += djlBackend,
     libraryDependencies += snakeYaml,
-    libraryDependencies += rapidwright
+    libraryDependencies += rapidwright,
+//    libraryDependencies += ndarray
   )
 
 fork := true

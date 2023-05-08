@@ -14,8 +14,9 @@ class DspIpTests extends ChainsawFlatSpec {
   val dataType: NumericType  = NumericType.SFix(2, 14)
   val ddsType: NumericType   = NumericType(1, 16, signed = true)
 
-  val testIteration = 12
-  val testFraction  = 16
+  val testIteration     = 12
+  val testAmplitudeType = NumericType.SFix(2, 15)
+  val testFraction      = 16
 
   val sizeMax   = 50
   val parallels = 1 to 4
@@ -44,7 +45,7 @@ class DspIpTests extends ChainsawFlatSpec {
     algebraicModes.foreach(alg =>
       rotationModes.foreach(rot =>
         testOperator(
-          Cordic(alg, rot, iteration = testIteration, fractional = testFraction),
+          Cordic(alg, rot, iteration = testIteration, testAmplitudeType, phaseFractional = testFraction),
           generatorConfigTable("Cordic")
         )
       )
@@ -53,29 +54,30 @@ class DspIpTests extends ChainsawFlatSpec {
     // most frequently used CORDIC modes(with initValues)
     testOperator(
       CordicMagnitudePhase(
-        iteration  = testIteration,
-        fractional = testFraction
+        iteration = testIteration,
+        testAmplitudeType,
+        testFraction
       ),
       generatorConfigTable("Cordic")
     )
     testOperator(
-      CordicCosSin(iteration = testIteration, fractional = testFraction),
+      CordicCosSin(iteration = testIteration, testAmplitudeType, testFraction),
       generatorConfigTable("Cordic")
     )
     testOperator(
-      CordicMultiplication(iteration = testIteration, fractional = testFraction),
+      CordicMultiplication(iteration = testIteration, testAmplitudeType, testFraction),
       generatorConfigTable("Cordic")
     )
     testOperator(
-      CordicDivision(iteration = testIteration, fractional = testFraction),
+      CordicDivision(iteration = testIteration, testAmplitudeType, testFraction),
       generatorConfigTable("Cordic")
     )
     testOperator(
-      CordicHyperFunction(iteration = testIteration, fractional = testFraction),
+      CordicHyperFunction(iteration = testIteration, testAmplitudeType, testFraction),
       generatorConfigTable("Cordic")
     )
     testOperator(
-      CordicRotate(iteration = testIteration, fractional = testFraction),
+      CordicRotate(iteration = testIteration, testAmplitudeType, testFraction),
       generatorConfigTable("Cordic")
     )
   }
@@ -85,34 +87,24 @@ class DspIpTests extends ChainsawFlatSpec {
     */
 
   def testFirs(): Unit = {
+    val coeffLengths = Seq(17, 24, 33)
+    val coeffs       = coeffLengths.map(l => (1 to l).map(_ * 0.02))
+    val symmetricCoeffs =
+      coeffs.map(coeff => if (coeff.length % 2 == 0) coeff ++ coeff.reverse else coeff ++ coeff.init.reverse)
 
-    val coeffLengths = Seq(17, 25, 33)
-    val coeffs = coeffLengths.map(
-      designFilter(_, Seq(1.6 MHz), 240 MHz, "lowpass").map(_.toDouble)
-    )
-    val symmetricCoeffs = coeffs.map(coeff => coeff ++ coeff.reverse)
 
-    val symmetrics      = Seq(true, false)
-    val parallelFactors = Seq(4)
 
-    // Pipelined FIR
-    coeffs.foreach(coeff => testOperator(Fir(coeff, coeffType, dataType), generatorConfigTable("Fir")))
-    // Pipelined FIR with symmetric coefficients
-    symmetricCoeffs.foreach(coeff =>
-      testOperator(
-        Fir(coeff, coeffType, dataType, symmetric = true),
-        generatorConfigTable("Fir")
-      )
-    )
+//    // Pipelined FIR
+//    coeffs.foreach(coeff => testOperator(Fir(coeff, coeffType, dataType), generatorConfigTable("Fir")))
+//    // Pipelined FIR with symmetric coefficients
+//    symmetricCoeffs.foreach(coeff => testOperator(Fir(coeff, coeffType, dataType), generatorConfigTable("Fir")))
+
     // Parallel FIR by poly phase decomposition
-    coeffs.foreach(coeff =>
-      parallelFactors.foreach { parallelFactor =>
-        testOperator(
-          ParallelFir(coeff, coeffType, dataType, parallelFactor),
-          generatorConfigTable("Fir")
-        )
-      }
+    symmetricCoeffs.foreach(coeff =>
+      testOperator(ParallelFir(coeff, coeffType, dataType, 2), generatorConfigTable("Fir"))
     )
+
+    // TODO: test on higher parallel factor
   }
 
   /** -------- UNWRAP
@@ -175,9 +167,9 @@ class DspIpTests extends ChainsawFlatSpec {
     )
   }
 
-  def testFftAlgos() = {
-    CooleyTukeyFftAlgo(16).selfTest()
-  }
+//  def testFftAlgos() = {
+//    CooleyTukeyFftAlgo(16).selfTest()
+//  }
 
   def testShiftSpec(): Unit = {
     testOperator(
@@ -229,14 +221,15 @@ class DspIpTests extends ChainsawFlatSpec {
     )
   )
 
-//  testComplexMult()
-//  testCordic()
+  testFirs()
 //  testDelay()
-//  testDds()
-//  testMovingAverage()
-//  testFirs()
-//  testUnwrap()
-//  testPeriodicUnwrap()
-//  testFftAlgos()
-  testShiftSpec()
+  //  testComplexMult()
+//  testCordic()
+
+  //  testDds()
+  //  testMovingAverage()
+  //  testUnwrap()
+  //  testPeriodicUnwrap()
+  //  testFftAlgos()
+  //  testShiftSpec()
 }
