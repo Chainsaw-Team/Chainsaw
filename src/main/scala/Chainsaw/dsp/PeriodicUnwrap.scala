@@ -46,11 +46,7 @@ case class PeriodicUnwrap(numericType: NumericType, periodMax: Int) extends Chai
   override def vivadoUtilEstimation: VivadoUtil = VivadoUtil()
   override def fmaxEstimation: HertzNumber      = 600 MHz
   override def impl(testCase: TestCase): Seq[BigDecimal] =
-    goldenModelBySignal(
-      new File(pythongProjectDir, "utils/periodic_unwrap.py"),
-      testCase.control.head.toInt.toString,
-      testCase.data
-    ).head
+    runPythonModel("dsp", "periodic_unwrap", testCase.data, Some(testCase.control), Some(this))
 
   override def metric(
       yours: Seq[BigDecimal],

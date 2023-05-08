@@ -41,13 +41,9 @@ case class DynamicMovingAverage(size: Int, dataType: NumericType)
     val sizes = Seq.fill(3)(Random.nextInt(size) + 3 min size)
     sizes.map(size => TestCase(randomDataSequence(Random.nextInt(size * 3) + 5), Seq(size)))
   }
-
-  val adderTreeLatency = log2Up(size)
-  val scalingLatency   = 2
-
-  override def latency() =
-    adderTreeLatency + scalingLatency + 4 // 4 for control compensations
-
+  val adderTreeLatency    = log2Up(size)
+  val scalingLatency      = 2
+  override def latency()  = adderTreeLatency + scalingLatency + 4 // 4 for control compensations
   override def resetCycle = size
 
   override def controlTypes = Seq(NumericType.U(log2Up(size + 1)))
@@ -56,13 +52,12 @@ case class DynamicMovingAverage(size: Int, dataType: NumericType)
 
     // controlIn -> valids, latency = 3
     val control = controlIn.head.asUInt()
-    // TODO: build a method: lock
-    val controlInUse =
-      RegNextWhen(control, validIn) // lock the control until next validIn
+
+    val controlInUse = RegNextWhen(control, validIn) // lock the control until next validIn
     // this decoder is a bottleneck when size is large, considering implement it by RAM
 
-    val decoderValue = (0 until nextPow2(size + 1).toInt)
-      .map(i => if (i >= size) B("1" * size) else B("1" * i + "0" * (size - i)))
+    val decoderValue =
+      (0 until nextPow2(size + 1).toInt).map(i => if (i >= size) B("1" * size) else B("1" * i + "0" * (size - i)))
     val decoderRom = Mem(decoderValue)
     val valids     = decoderRom.readSync(controlInUse).d()
 
@@ -76,6 +71,7 @@ case class DynamicMovingAverage(size: Int, dataType: NumericType)
     }
     val sum: AFix = validElements
       .pipelinedBalancedTree(_ + _, 1)
+      .d()
       .fixTo(dataType() << log2Up(size))
 
     // get mean
@@ -93,7 +89,7 @@ case class DynamicMovingAverage(size: Int, dataType: NumericType)
       scalingFactorRom.readSync(controlInUse)
     }
 
-    dataOut.head := (sum * scalingFactor).d(2).fixTo(dataType(), roundType = RoundType.FLOOR)
+    dataOut.head := (sum mult scalingFactor).d(2).fixTo(dataType(), roundType = RoundType.FLOOR)
     lastOut      := lastIn.validAfter(latency())
   }
 }

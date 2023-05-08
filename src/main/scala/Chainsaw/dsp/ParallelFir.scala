@@ -1,6 +1,7 @@
 package Chainsaw.dsp
 
 import Chainsaw._
+import Chainsaw.intel.QuartusFlow
 import Chainsaw.xilinx._
 import spinal.core._
 import spinal.lib._
@@ -9,8 +10,6 @@ import scala.language.postfixOps
 import scala.util.Random
 
 // TODO: implement upsample & downsample
-
-// when number of outPorts is a multiple of number of downSample -
 case class ParallelFir(
     coeffs: Seq[Double],
     coeffType: NumericType,
@@ -23,21 +22,18 @@ case class ParallelFir(
     s"Parallel_${parallel}_Fir_${dataType}_${coeffType}_coeff${hashName(coeffs)}"
 
   val upSample = 1
-
-  val taps = coeffs.length
+  val tap      = coeffs.length
+  logger.info(s"parallel fir tap = $tap")
 
   /** -------- taps calculation
     * --------
     */
-  val phaseCount    = parallel * upSample
-  val coeffsPadded  = coeffs.padTo(taps.nextMultipleOf(phaseCount), 0.0)
-  val subFilterTaps = coeffsPadded.length / phaseCount
-  // poly phase decomposition of coefficients
-  val coeffGroups = (0 until phaseCount).map(i =>
-    coeffsPadded.zipWithIndex.filter(_._2 % phaseCount == i).map(_._1)
-  )
-  val subFilterGens = coeffGroups.map(coeff => Fir(coeff, coeffType, dataType))
-  val subFilterLatency = subFilterGens.head.latency()
+  val phaseCount   = parallel * upSample
+  val coeffsPadded = coeffs
+  val coeffGroups  = (0 until phaseCount).map(i => coeffsPadded.zipWithIndex.filter(_._2 % phaseCount == i).map(_._1))
+  coeffGroups.foreach(c => println(c.mkString(" ")))
+  val subFilterGens    = coeffGroups.map(coeff => Fir(coeff, coeffType, dataType))
+  val subFilterLatency = subFilterGens.map(_.latency()).max
 
   /** -------- poly phase network construction
     * --------
@@ -49,9 +45,7 @@ case class ParallelFir(
     PolyZDomain(terms)
   }
 
-  val termsX = (0 until parallel).map(i =>
-    TermZDomain(-i * upSample, Seq(("x", i * upSample)))
-  )
+  val termsX = (0 until parallel).map(i => TermZDomain(-i * upSample, Seq(("x", i * upSample))))
   val termsH = (0 until phaseCount).map(i => TermZDomain(-i, Seq(("h", i))))
 
   def getPolyPhase(p: PolyZDomain, n: Int) = {
@@ -73,18 +67,10 @@ case class ParallelFir(
   )
 
   // latency of the adderTree
-  val sumLatency = log2Up(termYs.head.length) // 1 before entering adderTree
-  val lengthDrop = (subFilterTaps - 1) * phaseCount
-
-  override def inputTypes = Seq.fill(parallel)(dataType)
-
-  val retType = dataType * coeffType
-
+  val sumLatency           = log2Up(termYs.head.length) // 1 before entering adderTree
+  override def inputTypes  = Seq.fill(parallel)(dataType)
+  val retType              = dataType * coeffType
   override def outputTypes = Seq.fill(parallel * upSample)(retType)
-
-  /** -------- performance
-    * --------
-    */
   override def vivadoUtilEstimation =
     VivadoUtil(dsp = coeffsPadded.length * parallel)
 
@@ -92,14 +78,18 @@ case class ParallelFir(
 
   override def implH =
     new ChainsawInfiniteModule(this) {
+
+      // sub filters
       val rets = termYs.map { terms =>
         val subFilterRets = terms.map { term =>
-          val inPort    = dataIn(term.getIndexOf("x") / upSample)
-          val subFilter = subFilterGens(term.getIndexOf("h"))
-          val ret       = subFilter.process(Seq(inPort)).head
+          val indexIn           = term.getIndexOf("x") / upSample
+          val subFilter         = subFilterGens(term.getIndexOf("h"))
+          val compensationDelay = subFilterLatency - subFilter.latency()
           val delay =
-            -(term.z / parallel) // divided by sizeOut as the system is running at a higher speed
-          ret.d(delay)
+            -(term.z / parallel) + compensationDelay // divided by sizeOut as the system is running at a higher speed
+          val inFlow  = flowIn.mapFragment(seq => seq.slice(indexIn, indexIn + 1))
+          val retFlow = (inFlow >> subFilter).d(delay)
+          retFlow.fragment.head
         }
 
         def add(a: AFix, b: AFix) = {
@@ -111,7 +101,7 @@ case class ParallelFir(
 
         subFilterRets.reduceBalancedTree(add, pipeline)
       }
-      dataOut := rets
+      dataOut := rets.map(_.truncated)
       lastOut := lastIn.validAfter(latency())
     }
 
@@ -124,16 +114,11 @@ case class ParallelFir(
   override def metric(yours: Seq[BigDecimal], golden: Seq[BigDecimal]) =
     corrMetric(yours, golden, 0.9)
 
-  override def testCases =
-    Seq.fill(3)(
-      TestCase(
-        randomDataSequence(Random.nextInt(1000) + 100) ++ Seq.fill(coeffs.length)(BigDecimal(0))
-      )
-    )
+  override def testCases = Seq.fill(3)(TestCase(randomDataSequence(Random.nextInt(1000) + 100)))
 
   override def resetCycle = latency()
 
-  override def latency() = subFilterLatency + sumLatency
+  override def latency() = subFilterLatency + sumLatency + (tap / parallel) - 1
 
   override def implNaiveH = None
 }

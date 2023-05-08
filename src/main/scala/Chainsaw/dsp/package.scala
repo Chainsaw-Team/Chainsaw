@@ -118,13 +118,13 @@ package object dsp {
   // python utils
   import Chainsaw.io.pythonIo._
   def plotSpectrum(signal: Signal, samplingFreq: HertzNumber) = {
-    exportSignal(signal)
+    exportSignal(inputArrayFile, signal)
     val pyPath = new File("goldenModel/utils/plot_spectrum.py")
     runPython(pyPath, samplingFreq.toDouble.toString)
   }
 
   def corrMetric(yours: Signal, golden: Signal, threshold: Double) = {
-    exportSignal(yours, golden)
+    exportSignals(inputArrayFile, yours, golden)
     val pyPath   = new File("goldenModel/utils/corr_metric.py")
     val rets     = runPython(pyPath).split(" ")
     val corrcoef = rets(0).toDouble
@@ -143,9 +143,7 @@ package object dsp {
       pyPath,
       s"$tap [${target.map(_.toDouble).mkString(", ")}] ${samplingFreq.toDouble} $filterType"
     )
-    importSignal().head
+    importSignal(outputArrayFile)
   }
 
-  def unwrap(signal: Signal) =
-    goldenModelBySignal(new File(pythongProjectDir, "utils/unwrap.py"), "", signal)
 }

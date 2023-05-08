@@ -10,9 +10,9 @@ import scala.language.postfixOps
 import scala.util.Random
 
 /** input = (x, c), output = xz^-c^
-  */
+ */
 case class DynamicDelay(delayMax: Int, dataType: NumericType)
-    extends ChainsawDynamicInfiniteGenerator
+  extends ChainsawDynamicInfiniteGenerator
     with DynamicLatency {
 
   override def name = s"DynamicDelay_$delayMax"
@@ -43,7 +43,7 @@ case class DynamicDelay(delayMax: Int, dataType: NumericType)
   override def implH = new ChainsawDynamicInfiniteModule(this) {
 
     val delay = controlIn.head.asUInt()
-    assert(delay >= U(4))
+//    assert(delay >= U(4))
 
     val currentDelay = RegNextWhen(delay, validIn.rise()) // lock the control value
 
