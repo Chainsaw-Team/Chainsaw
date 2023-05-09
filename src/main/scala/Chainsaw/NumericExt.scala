@@ -109,7 +109,6 @@ object NumericExt {
 
     def pipelinedBalancedTree(op: (AFix, AFix) => AFix, latency: Int) = {
       def pipeline(op: AFix, i: Int) = op.d(latency)
-
       vec.reduceBalancedTree(op, pipeline)
     }
 

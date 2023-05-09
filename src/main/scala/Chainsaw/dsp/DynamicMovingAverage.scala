@@ -26,6 +26,9 @@ case class DynamicMovingAverage(size: Int, dataType: NumericType)
 
   override def outputTypes = Seq(dataType)
 
+  // size suitable for both Xilinx and Intel DSP blocks
+  val scalingFactorType = NumericType.SFix(0, 24)
+
   override def impl(testCase: TestCase) = {
     val size   = testCase.control.head.toInt
     val padded = Seq.fill(size - 1)(BigDecimal(0)) ++ testCase.data
@@ -50,46 +53,32 @@ case class DynamicMovingAverage(size: Int, dataType: NumericType)
 
   override def implH = new ChainsawDynamicInfiniteModule(this) {
 
-    // controlIn -> valids, latency = 3
-    val control = controlIn.head.asUInt()
-
+    // control -> controlInUse, latency = 1
+    val control      = controlIn.head.asUInt()
     val controlInUse = RegNextWhen(control, validIn) // lock the control until next validIn
-    // this decoder is a bottleneck when size is large, considering implement it by RAM
+    // multi-hot decoder implemented by ROM, latency = 2
+    val decoderSize  = nextPow2(size + 1).toInt
+    val decoderValue = (0 until decoderSize).map(i => if (i >= size) B("1" * size) else B("1" * i + "0" * (size - i)))
+    val decoderRom   = Mem(decoderValue)
+    val valids       = decoderRom.readSync(controlInUse).d() // control -> valids, latency = 3
+    // scaling factor ROM
+    val scalingFactors   = Seq(2.0, 2.0) ++ (2 to size).map(_.toDouble)
+    val scalingFactorRom = Mem(scalingFactors.map(i => scalingFactorType.fromConstant(1 / i)))
+    val scalingFactor    = scalingFactorRom.readSync(controlInUse) // control -> scalingFactor, latency = 3
+    // align dataIn with controlIn
+    val data = Mux(validIn, dataIn.head, dataIn.head.getZero).d(3)
 
-    val decoderValue =
-      (0 until nextPow2(size + 1).toInt).map(i => if (i >= size) B("1" * size) else B("1" * i + "0" * (size - i)))
-    val decoderRom = Mem(decoderValue)
-    val valids     = decoderRom.readSync(controlInUse).d()
-
-    // delay line
-    // dataIn -> head, latency = 3
-    val head    = Mux(validIn, dataIn.head, dataIn.head.getZero).d(3)
-    val history = Seq.iterate(head, size)(_.d())
-    // get moving sum
-    val validElements = history.zip(valids.asBools.reverse).map { case (ele, bool) =>
-      Mux(bool, ele, ele.getZero).d()
-    }
+    // build delay line
+    val history = Seq.iterate(data, size)(_.d())
+    // get sum
+    val validElements = history.zip(valids.asBools.reverse).map { case (ele, bool) => Mux(bool, ele, ele.getZero).d() }
     val sum: AFix = validElements
       .pipelinedBalancedTree(_ + _, 1)
       .d()
-      .fixTo(dataType() << log2Up(size))
-
+      .fixTo(dataType() << log2Up(size)) // !! fixTo here is not a cost-free operation!
     // get mean
-    val scalingFactorType = NumericType(
-      integral   = 0,
-      fractional = 25,
-      signed     = true
-    ) // size suitable for both Xilinx and Intel DSP blocks
-
-    // TODO: build a method: ROM by
-    val scalingFactor = {
-      val scalingFactorRom = Mem(
-        (Seq(2.0, 2.0) ++ (2 to size).map(_.toDouble)).map(i => scalingFactorType.fromConstant(1 / i))
-      )
-      scalingFactorRom.readSync(controlInUse)
-    }
-
     dataOut.head := (sum mult scalingFactor).d(2).fixTo(dataType(), roundType = RoundType.FLOOR)
+
     lastOut      := lastIn.validAfter(latency())
   }
 }

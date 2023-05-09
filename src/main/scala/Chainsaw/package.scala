@@ -148,9 +148,7 @@ package object Chainsaw {
     def divideToChannel(channelCount: Int) = {
       val fullLength = divideAndCeil(channelCount)
       val diff       = fullLength * channelCount - int
-      Seq.fill(channelCount - diff)(fullLength) ++ Seq.fill(diff)(
-        fullLength - 1
-      )
+      Seq.fill(channelCount - diff)(fullLength) ++ Seq.fill(diff)(fullLength - 1)
     }
   }
 
@@ -313,6 +311,9 @@ package object Chainsaw {
       val retFlows = this.split.map(_ >> (that, control))
       retFlows.head.mapFragment(_ => retFlows.flatMap(_.fragment))
     }
+
+    def getPhase(id: Int) = flow.mapFragment(vec => Seq(vec(id)))
+
 
     def foreach(func: BaseType => Unit): Unit = {
       flow.fragment.map(_.raw).foreach(func)

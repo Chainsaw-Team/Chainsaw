@@ -63,9 +63,10 @@ class QuartusFlow[T <: Component](dut: => T = null, workspace: String = "temp", 
     val newProject      = "project_new -overwrite -r " + revisionName + " temp\n"
     val setTop          = "set_global_assignment -name TOP_LEVEL_ENTITY temp\n"
     val setFamily       = "set_global_assignment -name FAMILY \"" + FAMILY + "\"\n"
+    val setDevice       = "set_global_assignment -name DEVICE \"" + DEVICE + "\"\n"
     val loadVerilogFile = "set_global_assignment -name VERILOG_FILE temp.v\n"
     val compileProject  = "execute_flow -compile\n"
-    val tclSeq          = Seq(laodFlow, newProject, setTop, setFamily, loadVerilogFile, compileProject)
+    val tclSeq          = Seq(laodFlow, newProject, setTop, setFamily, setDevice, loadVerilogFile, compileProject)
 
     val tclFile = new File(workspaceDir, "set.tcl")
     val writer  = new PrintWriter(tclFile)
@@ -93,7 +94,7 @@ class QuartusFlow[T <: Component](dut: => T = null, workspace: String = "temp", 
 
         case Report.TIMING =>
           var index = -1
-          report.zipWithIndex.foreach { case (r, i) => if (r.contains("Slow 1100mV 85C Model Fmax Summary")) index = i }
+          report.zipWithIndex.foreach { case (r, i) => if (r.contains("Slow 1100mV 100C Model Fmax Summary")) index = i }
           val timingReport = report.zipWithIndex.filter { case (r, i) => i >= index - 1 && i <= index + 6 }.map(_._1)
           timingReport
       }
@@ -108,7 +109,7 @@ class QuartusFlow[T <: Component](dut: => T = null, workspace: String = "temp", 
 object QuartusFlow extends App {
 
   import Chainsaw._
-  import Chainsaw.dsp.Fir     // for Xilinx FPGA Flow
+  import Chainsaw.dsp.Fir // for Xilinx FPGA Flow
 
   new QuartusFlow(Fir(Seq(1.0, 1.0, 1.0), NumericType.SFix(2, 16), dataType = NumericType.SFix(2, 16)).implH).impl()
 }
