@@ -213,6 +213,7 @@ case class Cordic(
 
 class CordicModule(cordic: Cordic) extends ChainsawOperatorModule(cordic) {
 
+  // TODO: using LZC for pre/post shifting for x and y channel
   import cordic._
 
   implicit val mode: AlgebraicMode = algebraicMode
@@ -284,14 +285,15 @@ class CordicModule(cordic: Cordic) extends ChainsawOperatorModule(cordic) {
     case VECTORING => group(0).asBits.msb ^ group(1).asBits.msb // d = sign(x,y)
   }
 
+  val dataType = amplitudeType // running on an expanded bit width TODO: better width growth strategy
+    .withFractional(iteration)
+
   val Seq(xOut, yOut, zOut) = Seq
     .iterate((xyz, 0), iteration + 1) { case (Seq(x, y, z), i) =>
       val shift     = shiftingCoeffs(i)
       val phaseStep = phaseType.fromConstant(getPhaseCoeff(i))
       // TODO: implement an iteration by addSub primitive with latency = 1?
       // stage 0, add/sub, preparing candidates
-      val dataType = amplitudeType.withFractional(iteration) // running on an expanded bit width
-      // TODO: better width growth strategy
       val direction = getCounterclockwise(Seq(x, y, z)).d() // determinant
       val xShifted  = (x >> shift).fixTo(dataType())
       val yShifted  = (y >> shift).fixTo(dataType())
