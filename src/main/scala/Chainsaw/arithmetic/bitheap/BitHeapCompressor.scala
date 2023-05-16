@@ -45,7 +45,10 @@ case class BitHeapCompressor(
     logger.info(
       s"add a final 3:2 compression stage as the output width ${bitHeapGroup.positiveLength} > $cpaWidthMax"
     )
-  val finalHeight = if (doFinal3to2) 2 else solution.outHeight
+  val finalHeight =
+    if (doFinal3to2) 2
+    else if (solution.outHeight == -1) bitHeapGroup.bitHeaps.map(_.heightMax).max
+    else solution.outHeight
 
   override def outputTypes: Seq[NumericType] =
     Seq.fill(finalHeight)(NumericType.U(positiveLength))
@@ -72,11 +75,10 @@ case class BitHeapCompressor(
     if (doFinal3to2) { // TODO: skip 3:2 compressor for columns with height = 2 / 1
       val nonEmptyCols = heapOut.heights.zipWithIndex.filter { case (h, _) => h > 0 }.map(_._2)
       val finalStage = CompressorStageSolution(
-        nonEmptyCols.map(i => CompressorStepSolution("Compressor3to2", 1, i)),
+        nonEmptyCols.map(i => CompressorStepSolution("Compressor3to2", 1, i, solution.stageSolutions.length + 1)),
         stageInHeight  = 3,
         stageOutHeight = 2,
-        pipelined      = true,
-        solution.stageSolutions.length + 1
+        pipelined      = true
       )
       heapOut.implStageHard(finalStage)
     }
@@ -88,6 +90,14 @@ case class BitHeapCompressor(
   override def doSelfTest(): ChainsawTest = {
     logger.info(s"solution information table: \n${solution.tableReport}")
     logger.info(s"solution vivadoUtils: \n${solution.vivadoUtilEstimation}")
+    logger.info(
+      s"used compressor: \n${solution.stageSolutions
+        .flatMap(_.compressorSolutions)
+        .groupBy(_.compressorName.firstBeforeChar('_'))
+        .toSeq
+        .map { case (str, solutions) => s"$str * ${solutions.length}" }
+        .mkString(",")}"
+    )
     super.doSelfTest()
   }
 }

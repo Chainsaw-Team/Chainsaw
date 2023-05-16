@@ -97,8 +97,7 @@ case class CompressorFullSolution(stageSolutions: Seq[CompressorStageSolution]) 
     * @return
     *   the output height of final stage
     */
-  def outHeight = if (stageSolutions.last.stageOutHeight == -1) 3
-  else stageSolutions.last.stageOutHeight
+  def outHeight = if (stageSolutions.nonEmpty) stageSolutions.last.stageOutHeight else -1
 
   /** this method is used to get the clb utilization of this solution
     * @return
@@ -272,16 +271,25 @@ object CompressorFullSolution {
   *   the output [[BitHeap]] height of this stage
   * @param pipelined
   *   this is used indicate whether this stage solve is pipelined
-  * @param stageIndex
-  *   the stage index for generating solution log information
   */
 case class CompressorStageSolution(
     compressorSolutions: Seq[CompressorStepSolution],
     stageInHeight: Int,
     stageOutHeight: Int,
-    pipelined: Boolean,
-    stageIndex: Int
+    pipelined: Boolean
 ) {
+
+  /** this method is used to get the stageIndex for generating solution log information
+    * @return
+    *   the stageIndex of this [[CompressorStageSolution]]
+    */
+  def stageIndex = {
+    require(
+      compressorSolutions.forall(_.stageIndex == compressorSolutions.head.stageIndex),
+      s"all compressorSolutions in a compressorStageSolution should have same stageIndex."
+    )
+    compressorSolutions.head.stageIndex
+  }
 
   /** this method is used to get the clb utilization of this stage solution
     * @return
@@ -341,7 +349,8 @@ case class CompressorStageSolution(
   * @param width
   *   the width of compressor solution
   * @param columnIndex
-  *   the start index covered by the compressor in this step solution
+  *   the start index covered by the compressor in this step solution * @param stageIndex the stage index for generating
+  *   solution log information and reducing fan-out
   * @param compressorScores
   *   the scores of a step solution
   */
@@ -349,6 +358,7 @@ case class CompressorStepSolution(
     compressorName: String,
     width: Int,
     columnIndex: Int,
+    stageIndex: Int,
     compressorScores: ScoreIndicator = ScoreIndicator(0, 0, 0, 0, 0)
 ) {
 

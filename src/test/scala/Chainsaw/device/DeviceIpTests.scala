@@ -11,12 +11,10 @@ class DeviceIpTests extends ChainsawFlatSpec {
 
     // test the factory method from logic expression to LUT6_2
     val exp0 =
-      (i0: Boolean, i1: Boolean, i2: Boolean, i3: Boolean, i4: Boolean) =>
-        (i0.toInt + i1.toInt + i2.toInt) >= 2
+      (i0: Boolean, i1: Boolean, i2: Boolean, i3: Boolean, i4: Boolean) => (i0.toInt + i1.toInt + i2.toInt) >= 2
 
     val exp1 =
-      (i0: Boolean, i1: Boolean, i2: Boolean, i3: Boolean, i4: Boolean) =>
-        i0 ^ i1 ^ i2 ^ i3
+      (i0: Boolean, i1: Boolean, i2: Boolean, i3: Boolean, i4: Boolean) => i0 ^ i1 ^ i2 ^ i3
 
     val gen = LUT5to2(exp0, exp1)
     testOperator(gen, generatorConfigTable("LUT6_2"))
@@ -28,7 +26,7 @@ class DeviceIpTests extends ChainsawFlatSpec {
   it should "get inversed" in {
     val valueBefore = BigInt(64, Random)
     val inverseMask = Seq(false, true, false, false, false, false)
-    val valueAfter  = LUT6_2.getValueWithInverse(valueBefore, inverseMask)
+    val valueAfter  = LUTUtils.getValueWithInverse(valueBefore, inverseMask)
 
     (0 until 100).foreach { _ =>
       val bools = Seq.fill(6)(Random.nextInt(2)) // low to high

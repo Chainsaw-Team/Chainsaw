@@ -146,12 +146,6 @@ class BitHeapTests extends ChainsawFlatSpec {
 
   it should "getSubHeap" in {
     (0 until 1000).foreach { _ =>
-      val stepSolution = CompressorStepSolution(
-        "Compressor4to2",
-        8,
-        0,
-        ScoreIndicator(0, 0, 0, 0, 0)
-      )
       val bitHeap = getRandomBitHeap
       val small =
         BitHeap.fromHeights(Seq(2, 1, 1, 7), bitHeap.weightLow, bitHeap.time)
@@ -219,16 +213,16 @@ class BitHeapTests extends ChainsawFlatSpec {
       CompressorStageSolution(
         (0 until 200).map(i =>
           CompressorStepSolution(
-            compressorName   = "Compressor6to3",
-            width            = 1,
-            columnIndex      = i,
+            compressorName = "Compressor6to3",
+            width          = 1,
+            columnIndex    = i,
+            1,
             compressorScores = ScoreIndicator(0, 0, 0, 0, 0)
           )
         ),
         -1,
         -1,
-        pipelined = true,
-        1
+        pipelined = true
       ),
       CompressorStageSolution(
         (0 until 3).map(i =>
@@ -236,13 +230,13 @@ class BitHeapTests extends ChainsawFlatSpec {
             "Compressor3to1",
             96,
             96 * i,
+            2,
             ScoreIndicator(0, 0, 0, 0, 0)
           )
         ),
         -1,
         -1,
-        pipelined = true,
-        2
+        pipelined = true
       )
     )
   )
@@ -330,31 +324,34 @@ class BitHeapTests extends ChainsawFlatSpec {
               "Compressor2117",
               1,
               0,
+              1,
               ScoreIndicator(0, 0, 0, 0, 4)
             ),
             CompressorStepSolution(
               "Compressor2117",
               1,
               2,
+              1,
               ScoreIndicator(0, 0, 0, 0, 4)
             ),
             CompressorStepSolution(
               "Compressor2117",
               1,
               4,
+              1,
               ScoreIndicator(0, 0, 0, 0, 4)
             ),
             CompressorStepSolution(
               "Compressor2117",
               1,
               6,
+              1,
               ScoreIndicator(0, 0, 0, 0, 4)
             )
           ),
           -1,
           -1,
-          pipelined = true,
-          1
+          pipelined = true
         ),
         CompressorStageSolution(
           Seq(
@@ -362,11 +359,13 @@ class BitHeapTests extends ChainsawFlatSpec {
               "Compressor2117",
               1,
               0,
+              2,
               ScoreIndicator(0, 0, 0, 0, 4)
             ),
             CompressorStepSolution(
               "Compressor2117",
               1,
+              2,
               2,
               ScoreIndicator(0, 0, 0, 0, 4)
             ),
@@ -374,19 +373,20 @@ class BitHeapTests extends ChainsawFlatSpec {
               "Compressor2117",
               1,
               4,
+              2,
               ScoreIndicator(0, 0, 0, 0, 4)
             ),
             CompressorStepSolution(
               "Compressor2117",
               1,
               6,
+              2,
               ScoreIndicator(0, 0, 0, 0, 4)
             )
           ),
           -1,
           -1,
-          pipelined = true,
-          2
+          pipelined = true
         )
       )
     )

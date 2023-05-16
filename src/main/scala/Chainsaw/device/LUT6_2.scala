@@ -2,7 +2,7 @@ package Chainsaw.device
 
 import spinal.core._
 
-import scala.collection.mutable.ArrayBuffer
+import LUTUtils._
 import scala.language.postfixOps
 import Chainsaw._
 import Chainsaw.xilinx._
@@ -51,7 +51,7 @@ case class LUT5to2(
   override def testCases = Seq.fill(100)(randomTestCase)
 
   val init =
-    (LUT6_2.expression2value(exp1, 5) << 32) + LUT6_2.expression2value(exp0, 5)
+    (expression2value(exp1, 5) << 32) + expression2value(exp0, 5)
 //  logger.info(s"LUT value = ${init.toString(16)}")
 
   override def implH = new ChainsawOperatorModule(this) {
@@ -96,49 +96,6 @@ object LUT6_2 {
     Seq(lut.O5, lut.O6)
   }
 
-  def expression2value(expression: Seq[Boolean] => Boolean, bitCount: Int) = {
-    val truthTable = ArrayBuffer[Int]()
-    (0 until (1 << bitCount)) // build truth table
-      .map { id =>
-        val bools = id.toBinaryString.reverse.padTo(bitCount, '0').map(_ == '1')
-        bools
-      } // low to high
-      .map(expression)
-      .foreach(bool => truthTable += bool.toInt)
-
-    BigInt(truthTable.reverse.mkString, 2)
-  }
-
-  def getExpressionWithInverse(
-      expression: Seq[Boolean] => Boolean,
-      inverseList: Seq[Boolean]
-  ): Seq[Boolean] => Boolean = { data =>
-    {
-      val inversed = data.zip(inverseList).map { case (bool, inverse) =>
-        if (inverse) !bool else bool
-      }
-      expression(inversed)
-    }
-  }
-
-  def getValueWithInverse(value: BigInt, inverseList: Seq[Boolean]): BigInt = {
-    val truthTable = value.toString(2).reverse.padTo(64, '0') // low to high
-    val inversedTruthTable = (0 until 64).map { addr =>
-      val addrStr = addr.toBinaryString.reverse
-        .padTo(6, '0')
-        .zip(inverseList)
-        .map { case (bit, inverse) =>
-          if (inverse) 1 - bit.asDigit else bit.asDigit
-        }
-        .reverse
-        .mkString
-      val inversedAddr = BigInt(addrStr, 2)
-      truthTable(inversedAddr.toInt)
-    } // low to high
-    val ret = BigInt(inversedTruthTable.reverse.mkString, 2)
-    ret
-  }
-
   def main(args: Array[String]): Unit = {
     val exp0 = (data: Seq[Boolean]) => {
       val Seq(i0, i1, i2, i3, i4) = data
@@ -167,5 +124,11 @@ object LUT6_2 {
         5
       ).toString(16)
     )
+  }
+}
+
+object LUT5to2 {
+  def toLUT5_2Format(func: Seq[Boolean] => Boolean): (Boolean, Boolean, Boolean, Boolean, Boolean) => Boolean = {
+    (i0, i1, i2, i3, i4) => func(Seq(i0, i1, i2, i3, i4))
   }
 }

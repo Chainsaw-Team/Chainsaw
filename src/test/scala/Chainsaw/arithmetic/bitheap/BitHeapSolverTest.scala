@@ -35,61 +35,61 @@ class BitHeapSolverTest extends ChainsawFlatSpec {
 //      timeUpBound  = 10
 //    ), // rectangle, positive, diff time(Increase), withNoise
 //    RectangularInfos(
-//      50 to 100 by 60,
-//      50 to 100 by 60,
+//      100 to 100 by 60,
+//      100 to 100 by 60,
 //      withNoise    = true,
 //      timeStrategy = RandomTimeDiff,
 //      timeUpBound  = 10
 //    ), // rectangle, positive, diff time(Random), withNoise
 //    RectangularInfos(
-//      50 to 100 by 60,
-//      50 to 100 by 60,
+//      100 to 100 by 60,
+//      100 to 100 by 60,
 //      timeStrategy = IncreaseTimeDiff,
 //      timeUpBound  = 10
 //    ), // rectangle, positive, diff time(Increase)
 //    RectangularInfos(
-//      50 to 100 by 60,
-//      50 to 100 by 60,
+//      100 to 100 by 60,
+//      100 to 100 by 60,
 //      timeStrategy = RandomTimeDiff,
 //      timeUpBound  = 10
 //    ), // rectangle, positive, diff time(Random)
 //    RectangularInfos(
-//      50 to 100 by 60,
-//      50 to 100 by 60,
+//      100 to 100 by 60,
+//      100 to 100 by 60,
 //      randomSign = true
 //    ), // rectangle, mixSign, same time
 //    RectangularInfos(
-//      50 to 100 by 60,
-//      50 to 100 by 60,
+//      100 to 100 by 60,
+//      100 to 100 by 60,
 //      withNoise  = true,
 //      randomSign = true,
 //      shift      = 2
 //    ), // rectangle, mixSign, same time, withNoise
 //    RectangularInfos(
-//      50 to 100 by 60,
-//      50 to 100 by 60,
+//      100 to 100 by 60,
+//      100 to 100 by 60,
 //      randomSign   = true,
 //      shift        = 2,
 //      timeStrategy = RandomTimeDiff,
 //      timeUpBound  = 10
 //    ), // rectangle, mixSign, diff time
 //    RectangularInfos(
-//      50 to 100 by 60,
-//      50 to 100 by 60,
+//      100 to 100 by 60,
+//      100 to 100 by 60,
 //      withNoise    = true,
 //      randomSign   = true,
 //      shift        = 2,
 //      timeStrategy = RandomTimeDiff,
 //      timeUpBound  = 10
-//    ), // rectangle, mixSign, diff time, withNoise
+//    ) // rectangle, mixSign, diff time, withNoise
 //
-//    TriangleInfos(widthRange = 50 to 100 by 60),                    // triangle, positive, same time
+//    TriangleInfos(widthRange = 50 to 100 by 60), // triangle, positive, same time
 //    TriangleInfos(widthRange = 100 to 100 by 50, withNoise = true), // triangle, positive, same time, withNoise
 //    TriangleInfos(
 //      widthRange   = 100 to 100 by 50,
 //      timeStrategy = RandomTimeDiff,
 //      timeUpBound  = 10
-//    ), // triangle, positive, diff time(Random)
+//    ) // triangle, positive, diff time(Random)
 //    TriangleInfos(
 //      widthRange   = 100 to 100 by 50,
 //      timeStrategy = RandomTimeDiff,
@@ -316,9 +316,9 @@ class BitHeapSolverTest extends ChainsawFlatSpec {
 //  testNaiveSolver()
 //  testGreedSolver()
 //  testStrategySeparationSolver()
-//  testStrategySeparationOptimizedSolver()
+  testStrategySeparationOptimizedSolver()
 //  testTernaryTreeSolver()
 //  testGpcSolver()
-  testBestSolver()
+//  testBestSolver()
 //  evalHeapSize(Range.inclusive(190, 300, 10), Range.inclusive(80, 100, 20), true)
 }

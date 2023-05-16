@@ -3,9 +3,11 @@ package Chainsaw.arithmetic
 import Chainsaw._
 
 import scala.collection.mutable
-import scala.collection.mutable.ArrayBuffer
+import scala.math.BigInt
 
 package object bitheap {
+
+  type ST = BigInt
 
   val candidateCompressors = RowAdders() ++ Gpcs()
   val solverSet = mutable.Set[BitHeapSolver](
@@ -23,11 +25,40 @@ package object bitheap {
       complementHeap: Seq[Seq[Boolean]] = null
   ): CompressorGenerator = {
     compressorName.firstBeforeChar('_') match {
-      case "Compressor1to1" => Compressor1to1(width, complementHeap)
-      case "Compressor3to2" => Compressor3to2(complementHeap)
-      case "Compressor6to3" => Compressor6to3(complementHeap)
-      case "Compressor3to1" => Compressor3to1(width, 0, complementHeap)
-      case "Compressor4to2" => Compressor4to2(width, complementHeap)
+      case "Compressor1to1"        => Compressor1to1(width, complementHeap)
+      case "Compressor3to2"        => Compressor3to2(complementHeap)
+      case "Compressor6to3"        => Compressor6to3(complementHeap)
+      case "Compressor3to1"        => Compressor3to1(width, 0, complementHeap)
+      case "Compressor4to2"        => Compressor4to2(width, complementHeap)
+      case "Compressor15to3"       => Compressor15to3(complementHeap)
+      case "Compressor5to3"        => Compressor5to3(complementHeap)
+      case "Compressor14to3"       => Compressor14to3(complementHeap)
+      case "Compressor23to3"       => Compressor23to3(complementHeap)
+      case "Compressor4to2V2"      => Compressor4to2V2(width, complementHeap)
+      case "Compressor1415to5"     => Compressor1415to5(complementHeap)
+      case "Compressor1406to5"     => Compressor1406to5(complementHeap)
+      case "Compressor1325to5"     => Compressor1325to5(complementHeap)
+      case "Compressor623to5"      => Compressor623to5(complementHeap)
+      case "Compressor606to5"      => Compressor606to5(complementHeap)
+      case "Compressor615to5"      => Compressor615to5(complementHeap)
+      case "Compressor14051415to9" => Compressor14051415to9(complementHeap)
+      case "Compressor13241415to9" => Compressor13241415to9(complementHeap)
+      case "Compressor06051415to9" => Compressor06051415to9(complementHeap)
+      case "Compressor14050623to9" => Compressor14050623to9(complementHeap)
+      case "Compressor13240623to9" => Compressor13240623to9(complementHeap)
+      case "Compressor06050623to9" => Compressor06050623to9(complementHeap)
+      case "Compressor14050615to9" => Compressor14050615to9(complementHeap)
+      case "Compressor13240615to9" => Compressor13240615to9(complementHeap)
+      case "Compressor06050615to9" => Compressor06050615to9(complementHeap)
+      case "Compressor14141406to9" => Compressor14141406to9(complementHeap)
+      case "Compressor06221406to9" => Compressor06221406to9(complementHeap)
+      case "Compressor06141406to9" => Compressor06141406to9(complementHeap)
+      case "Compressor14141325to9" => Compressor14141325to9(complementHeap)
+      case "Compressor06221325to9" => Compressor06221325to9(complementHeap)
+      case "Compressor06141325to9" => Compressor06141325to9(complementHeap)
+      case "Compressor14140606to9" => Compressor14140606to9(complementHeap)
+      case "Compressor06220606to9" => Compressor06220606to9(complementHeap)
+      case "Compressor06140606to9" => Compressor06140606to9(complementHeap)
     }
   }
 

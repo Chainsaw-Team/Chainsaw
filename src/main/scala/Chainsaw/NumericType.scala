@@ -114,7 +114,7 @@ class NumericType(val maxRaw: BigInt, val minRaw: BigInt, val exp: Int) {
   def *(that: NumericType) = NumericType(
     integral + that.integral + 1,
     fractional + that.fractional,
-    signed || signed
+    signed || signed // use xnor?
   )
 
   def withCarry(bitWidth: Int) =
