@@ -10,6 +10,7 @@ import scala.collection.mutable.ArrayBuffer
 import scala.language.postfixOps
 import bitheap._
 
+import scala.collection.immutable
 import scala.util.Random
 
 trait Compressor {
@@ -94,14 +95,26 @@ trait CompressorGenerator extends ChainsawOperatorGenerator with Compressor with
   // complement related
   def complementHeap: Seq[Seq[Boolean]]
 
+  /** this method is used to get the complement configuration information of this [[CompressorGenerator]]
+    * @return
+    *   the complement information of this [[CompressorGenerator]]
+    */
   def getComplementHeap: Seq[Seq[Boolean]] =
     if (complementHeap == null) inputFormat.map(i => Seq.fill(i)(true))
     else complementHeap
 
+  /** this method is used to indicate whether this [[CompressorGenerator]] is running on complement pattern
+    * @return
+    *   the Boolean which indicate whether this [[CompressorGenerator]] is running on complement pattern
+    */
   def shouldDoComplement: Boolean =
     !getComplementHeap.forall(_.forall(_ == getComplementHeap.head.head))
 
   // for verification
+  /** this method is used to generate a random complement configuration information of this [[CompressorGenerator]]
+    * @return
+    *   a random complement information of this [[CompressorGenerator]]
+    */
   def getRandomComplementHeap: Seq[Seq[Boolean]] =
     inputFormat.map(i => Seq.fill(i)(Random.nextBoolean()))
 
@@ -155,6 +168,12 @@ trait CompressorGenerator extends ChainsawOperatorGenerator with Compressor with
     Seq(BigDecimal(ret)).padTo(outputTypes.length, BigDecimal(0))
   }
 
+  /** this method is used to compress a [[BitHeapHard]] to another [[BitHeapHard]] using this [[CompressorGenerator]]
+    * @param bitsIn
+    *   the input [[BitHeapHard]] of this [[CompressorGenerator]]
+    * @return
+    *   the output [[BitHeapHard]] of this [[CompressorGenerator]]
+    */
   def compress(bitsIn: BitHeapHard): BitHeapHard = {
     require(bitsIn.zip(complementHeap).forall { case (buffer, booleans) =>
       buffer.zip(booleans).forall { case (bit, bool) =>
@@ -164,9 +183,12 @@ trait CompressorGenerator extends ChainsawOperatorGenerator with Compressor with
     this match {
       case _: Compressor1to1 => bitsIn
       case _ =>
-        val paddedBitsIn = bitsIn.zip(inputFormat).map { case (bits, h) =>
-          bits.padTo(h, Bit(False))
-        }
+        val paddedBitsIn = bitsIn
+          .zip(inputFormat)
+          .map { case (bits, h) =>
+            bits.padTo(h, Bit(False))
+          }
+          .filter(_.nonEmpty)
         val operands = this match {
           case _: Gpc =>
             paddedBitsIn.map(_.map(_.value)).map(_.asBits().asUInt.toAFix)
@@ -180,6 +202,13 @@ trait CompressorGenerator extends ChainsawOperatorGenerator with Compressor with
     }
   }
 
+  /** this method is used to compress a HardType [[BitHeap]] to another HardType [[BitHeap]] using this
+    * [[CompressorGenerator]]
+    * @param bitsIn
+    *   the input HardType [[BitHeap]] of this [[CompressorGenerator]]
+    * @return
+    *   the output HardType [[BitHeap]] of this [[CompressorGenerator]]
+    */
   def compressHard(bitsIn: BitHeap[Bool]): BitHeap[Bool] = {
     bitsIn.heap.zip(inputFormat).foreach { case (col, h) =>
       col.padTo(h, False)
@@ -189,6 +218,13 @@ trait CompressorGenerator extends ChainsawOperatorGenerator with Compressor with
     retHeap
   }
 
+  /** this method is used to compress a SoftType [[BitHeap]] to another SoftType [[BitHeap]] using this
+    * [[CompressorGenerator]]
+    * @param bitsIn
+    *   the input SoftType [[BitHeap]] of this [[CompressorGenerator]]
+    * @return
+    *   the output SoftType [[BitHeap]] of this [[CompressorGenerator]]
+    */
   def compressSoft(bitsIn: BitHeap[BigInt]): BitHeap[BigInt] = {
     val heapOut =
       BitHeap.fromHeights(outputFormat, bitsIn.weightLow, bitsIn.time)
@@ -196,7 +232,13 @@ trait CompressorGenerator extends ChainsawOperatorGenerator with Compressor with
     heapOut
   }
 
-  def columns2Infos(columns: Seq[Int]) = {
+  /** this method is used to convert the columns of a [[BitHeap]] to the sequence of [[ArithInfo]] format
+    * @param columns
+    *   the columns of a [[BitHeap]]
+    * @return
+    *   the sequence of [[ArithInfo]] format of this [[BitHeap]]
+    */
+  def columns2Infos(columns: Seq[Int]): Seq[ArithInfo] = {
     (0 until columns.max).map(i =>
       ArithInfo(
         width  = columns.count(_ > i),
@@ -205,6 +247,13 @@ trait CompressorGenerator extends ChainsawOperatorGenerator with Compressor with
     )
   }
 
+  /** this method is used to convert the columns of a HardType [[BitHeap]] to the sequence of operands using [[AFix]]
+    * format
+    * @param columns
+    *   the columns of a HardType [[BitHeap]]
+    * @return
+    *   the sequence of operands using [[AFix]] format of this [[BitHeap]]
+    */
   def columns2Operands(columns: Seq[Seq[Bit[Bool]]]): Seq[AFix] = {
     val intColumns = columns.map(col => col.map(_ => 1).sum)
     (0 until intColumns.max).map { i =>
@@ -216,6 +265,17 @@ trait CompressorGenerator extends ChainsawOperatorGenerator with Compressor with
     }
   }
 
+  /** this method is used to convert the operands to the [[BitHeapHard]] format for generating HardType [[BitHeap]]
+    * @param operands
+    *   the operands which will be convert to the rows of [[BitHeap]]
+    * @param operandsFormat
+    *   the operands format for generating [[BitHeapHard]], it describe the columns information of this HardType
+    *   [[BitHeap]]
+    * @param complement
+    *   describe whether all bits in this [[BitHeap]] need complement
+    * @return
+    *   the [[BitHeapHard]] format according to configuration information for generating HardType [[BitHeap]]
+    */
   def operands2Columns(
       operands: Seq[AFix],
       operandsFormat: Seq[Int],

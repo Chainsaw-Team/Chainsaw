@@ -1,7 +1,8 @@
 package Chainsaw.arithmetic
 
 import Chainsaw._
-import Chainsaw.device.{CARRY8, LUT5to2, LUT6_2}
+import Chainsaw.device.LUT5to2.toLUT5_2Format
+import Chainsaw.device.{CARRY8, LUT5to2, LUT6_2, LUTUtils}
 import Chainsaw.xilinx.VivadoUtil
 import spinal.core._
 import spinal.lib._
@@ -56,7 +57,7 @@ abstract class RowAdder extends CompressorGenerator {
     * @return
     *   a sequence of the [[ArithInfo]] parsing from [[outputFormat]]
     */
-  def outputInfos: immutable.Seq[ArithInfo] = columns2Infos(outputFormat)
+  def outputInfos: Seq[ArithInfo] = columns2Infos(outputFormat)
 
   override def inputTypes: Seq[NumericType] =
     inputInfos.map(_.width).map(NumericType.U)
@@ -92,20 +93,17 @@ case class Compressor4to2(
   override def implH = new ChainsawOperatorModule(this) {
     val Seq(x, y, z, w, cIn) = dataIn.map(_.asUInt())
 
-    def toLUT5_2Format(func: Seq[Boolean] => Boolean): (Boolean, Boolean, Boolean, Boolean, Boolean) => Boolean = {
-      (i0, i1, i2, i3, i4) => func(Seq(i0, i1, i2, i3, i4))
-    }
     def lutGen(inverseList: Seq[Boolean]) = {
       LUT5to2(
         toLUT5_2Format(
-          LUT6_2
+          LUTUtils
             .getExpressionWithInverse(
               table => (table(0).toInt + table(1).toInt + table(2).toInt) >= 2,
               inverseList
             )
         ), // carryout bit of FA
         toLUT5_2Format(
-          LUT6_2
+          LUTUtils
             .getExpressionWithInverse(
               table => table(0) ^ table(1) ^ table(2) ^ table(3) ^ table(4),
               inverseList
@@ -174,6 +172,113 @@ case class Compressor4to2(
     )
 }
 
+case class Compressor4to2V2(
+    width: Int,
+    override val complementHeap: Seq[Seq[Boolean]] = null
+) extends RowAdder {
+
+  override def widthMax = cpaWidthMax
+
+  override def widthMin = 8
+
+  override def inputFormat = 5 +: Seq.fill(width - 2)(4) :+ 2
+
+  override def outputFormat = 1 +: Seq.fill(width - 1)(2) :+ 2
+
+  override def implH = new ChainsawOperatorModule(this) {
+    val Seq(x, y, z, w, cIn) = dataIn.map(_.asUInt())
+
+    def lutGen(inverseList: Seq[Boolean]) = {
+      LUT5to2(
+        toLUT5_2Format(
+          LUTUtils
+            .getExpressionWithInverse(
+              table => (table(0).toInt + table(2).toInt + table(3).toInt) >= 2,
+              inverseList
+            )
+        ), // carryout bit of FA
+        toLUT5_2Format(
+          LUTUtils
+            .getExpressionWithInverse(
+              table => table(0) ^ table(1) ^ table(2) ^ table(3) ^ table(4),
+              inverseList
+            )
+        ) // sum bit of FA
+      )
+    }
+
+    def finalLutGen(inverseList: Seq[Boolean]) = {
+      LUT5to2(
+        toLUT5_2Format(LUTUtils.getExpressionWithInverse(table => table.head ^ table(1), inverseList)),
+        toLUT5_2Format(LUTUtils.getExpressionWithInverse(table => table.head ^ table(1), inverseList))
+      )
+    }
+
+    val lutOuts = ((0 until width - 1)
+      .map(i => lutGen(getComplementHeap(i).take(4).padTo(5, true).map(!_)).process(x(i), y(i), z(i), w(i), False)) :+
+      finalLutGen(
+        (getComplementHeap(width - 1).take(2).padTo(2, true) ++ Seq(true, true) :+ true).map(!_)
+      ).process(x(width - 1), y(width - 1), False, False, False))
+      .map(seq => (seq(0), seq(1)))
+
+    val carryCount  = (width + 7) / 8
+    val carryChains = Seq.fill(carryCount)(CARRY8())
+    val selects     = lutOuts.map(_._2)
+    val data = y.asBools
+      .zip {
+        getComplementHeap.map { colCHeap =>
+          val paddedCHeap = colCHeap.padTo(4, true)
+          paddedCHeap(3)
+        }
+      }
+      .map { case (bit, cHeap) => if (cHeap) bit else ~bit }
+      .asBits
+
+    carryChains.zipWithIndex.foreach { case (carryChain, i) =>
+      (0 until 8).foreach { j =>
+        val index = i * 8 + j
+        if (index < width) {
+          carryChain.DI(j) := data(index)
+          carryChain.S(j)  := selects(index)
+        } else {
+          carryChain.DI(j) := False
+          carryChain.S(j)  := False
+        }
+      }
+      if (i == 0) carryChain.CI := (if (getComplementHeap.head.last) cIn.asBool else ~cIn.asBool)
+      else carryChain.CI        := carryChains(i - 1).CO(7)
+      carryChain.CI_TOP         := False
+    }
+
+    dataOut := Vec(
+      (False.asUInt +: carryChains.reverse
+        .map(_.O))
+        .reduce(_ @@ _)
+        .takeLow(width)
+        .asUInt
+        .toAFix,                                                                              // weight = 0
+      (lutOuts.init.map(_._1) :+ carryChains.last.CO((width + 7) % 8)).asBits().asUInt.toAFix // weight = 1
+    )
+  }
+
+  // TODO: implement this for faster simulation
+  override def implNaiveH = Some(new ChainsawOperatorModule(this) {
+    val sum = dataIn.reduce(_ + _).asUInt().resize(width + 2)
+    // this trick assure that both data won't overflow
+    dataOut(0) := (False.asUInt @@ (((sum.takeHigh(width + 1).asUInt - sum
+      .takeHigh(width)
+      .asUInt) << 1).resize(width + 1) + sum.lsb.asUInt).resize(width)).toAFix
+    dataOut(1) := sum.takeHigh(width).asUInt.toAFix
+  })
+
+  override def vivadoUtilEstimation =
+    VivadoUtil(
+      lut    = width,
+      carry8 = width.divideAndCeil(8),
+      ff     = outputFormat.sum - 1
+    )
+}
+
 // TODO: 3to1 and 2to1
 case class Compressor3to1(
     width: Int,
@@ -239,14 +344,14 @@ case class Compressor3to1(
         val bits = candidates.take(3) :+ False :+ candidates(3) :+ True
         val inverse: Seq[Boolean] =
           inverseList.take(3) :+ false :+ inverseList(3) :+ false
-        LUT6_2.process(bits, LUT6_2.getValueWithInverse(lutContent, inverse))
+        LUT6_2.process(bits, LUTUtils.getValueWithInverse(lutContent, inverse))
       } else {
         val candidates = Seq(x(i), y(i), z(i), False, innerCarries(i), True)
         val inverseList =
           getComplementHeap(i).padTo(3, true).map(!_) ++ Seq.fill(3)(false)
         LUT6_2.process(
           candidates,
-          LUT6_2.getValueWithInverse(lutContent, inverseList)
+          LUTUtils.getValueWithInverse(lutContent, inverseList)
         )
       }
     }

@@ -24,8 +24,8 @@ abstract class BitHeapSolver {
   var solveStageIndex = 1
 
   // for strategy to get next time heap
-  var nextTimeHeap: Option[BitHeap[BigInt]] = None
-  var nextHeapCarry: mutable.Map[Int, Int]  = mutable.Map[Int, Int]()
+  var nextTimeHeap: Option[BitHeap[ST]]    = None
+  var nextHeapCarry: mutable.Map[Int, Int] = mutable.Map[Int, Int]()
 
   // for save row adder search time
   var searchThreshold = 0.2
@@ -50,7 +50,7 @@ abstract class BitHeapSolver {
     * @return
     *   the new pipelineState
     */
-  def refreshPipelineState(bitHeap: BitHeap[BigInt]): Boolean = {
+  def refreshPipelineState(bitHeap: BitHeap[ST]): Boolean = {
     (bitHeap.reachLastStage, inferPipelineMode && startInferPipeline) match {
       case (true, true) =>
         if (recordTailGap == 1) {
@@ -96,10 +96,10 @@ abstract class BitHeapSolver {
     * @return
     *   the [[CompressorFullSolution]] after solving
     */
-  def solveAll(bitHeapGroup: BitHeapGroup[BigInt]): CompressorFullSolution = {
+  def solveAll(bitHeapGroup: BitHeapGroup[ST]): CompressorFullSolution = {
     bitHeapGroup.absorbConstant()
 
-    val timeAndHeaps: Map[Int, BitHeap[BigInt]] =
+    val timeAndHeaps: Map[Int, BitHeap[ST]] =
       bitHeapGroup.bitHeaps.groupBy(_.time).map(pair => pair._1 -> pair._2.head)
     val stages = ArrayBuffer[CompressorStageSolution]()
 
@@ -136,7 +136,7 @@ abstract class BitHeapSolver {
     * @return
     *   the [[CompressorStageSolution]] after solving
     */
-  def solveStage(bitHeap: BitHeap[BigInt]): CompressorStageSolution = {
+  def solveStage(bitHeap: BitHeap[ST]): CompressorStageSolution = {
     import bitHeap._
 //    logger.info(s"soft solve heap\n$bitHeap")
     nextHeapCarry.clear()
@@ -146,7 +146,7 @@ abstract class BitHeapSolver {
     var stagePipelineState = refreshPipelineState(bitHeap)
 
     val steps    = ArrayBuffer[CompressorStepSolution]()
-    val heapOuts = ArrayBuffer[BitHeap[BigInt]]()
+    val heapOuts = ArrayBuffer[BitHeap[ST]]()
     while (nonEmpty) {
       val stepSolution = solveStep(bitHeap)
       steps += stepSolution
@@ -155,7 +155,7 @@ abstract class BitHeapSolver {
     }
     require(isEmpty, s"Incomplete solve in stage $solveStageIndex")
 
-    val heapNext: BitHeap[BigInt] = heapOuts.reduce(_ + _)
+    val heapNext: BitHeap[ST] = heapOuts.reduce(_ + _)
     asSoft.absorbHeapFrom(heapNext)
     if (verbose >= 1)
       logger.info(
@@ -168,8 +168,7 @@ abstract class BitHeapSolver {
       steps,
       initialHeightMax,
       heightMax,
-      pipelined = stagePipelineState,
-      solveStageIndex - 1
+      pipelined = stagePipelineState
     )
   }
 
@@ -179,7 +178,7 @@ abstract class BitHeapSolver {
     * @return
     *   the [[CompressorStepSolution]] after solving
     */
-  def solveStep(bitHeap: BitHeap[BigInt]): CompressorStepSolution
+  def solveStep(bitHeap: BitHeap[ST]): CompressorStepSolution
 
   /** This method is used to simplify the way the solver is called
     * @param bitHeapGroup
@@ -187,7 +186,7 @@ abstract class BitHeapSolver {
     * @return
     *   the [[CompressorFullSolution]] after solving
     */
-  def apply(bitHeapGroup: BitHeapGroup[BigInt]): CompressorFullSolution =
+  def apply(bitHeapGroup: BitHeapGroup[ST]): CompressorFullSolution =
     solveAll(bitHeapGroup)
 
   /** This method is used to simplify the way the solver is called when solve a BitHeap
@@ -196,7 +195,7 @@ abstract class BitHeapSolver {
     * @return
     *   the [[CompressorFullSolution]] after solving
     */
-  def apply(bitHeap: BitHeap[BigInt]): CompressorFullSolution = solveAll(
+  def apply(bitHeap: BitHeap[ST]): CompressorFullSolution = solveAll(
     BitHeapGroup(ArrayBuffer(bitHeap))
   )
 
@@ -216,12 +215,11 @@ abstract class BitHeapSolver {
   */
 object NaiveSolver extends BitHeapSolver {
 
-  override def solveStep(bitHeap: BitHeap[BigInt]): CompressorStepSolution = {
+  override def solveStep(bitHeap: BitHeap[ST]): CompressorStepSolution = {
 
     import bitHeap._
 
     def isLastStage = heightMax <= 6
-
     if (!isLastStage) {
       val maxHeightColumnIndex = heap.indexWhere(_.nonEmpty)
       val endIdx               = heap.lastIndexWhere(_.nonEmpty)
@@ -230,8 +228,9 @@ object NaiveSolver extends BitHeapSolver {
         compressorName = "Compressor3to1",
         width,
         maxHeightColumnIndex,
+        solveStageIndex,
         getExactScores(
-          Compressor3to1(width),
+          Compressor4to2V2(width),
           maxHeightColumnIndex,
           shouldPipeline = true
         )
@@ -242,8 +241,9 @@ object NaiveSolver extends BitHeapSolver {
         compressorName = "Compressor6to3",
         width,
         maxHeightColumnIndex,
+        solveStageIndex,
         getExactScores(
-          Compressor6to3(),
+          Compressor13240615to9(),
           maxHeightColumnIndex,
           shouldPipeline = true
         )
@@ -256,7 +256,7 @@ object NaiveSolver extends BitHeapSolver {
   */
 object GreedSolver extends BitHeapSolver {
 
-  override def solveStep(bitHeap: BitHeap[BigInt]): CompressorStepSolution = {
+  override def solveStep(bitHeap: BitHeap[ST]): CompressorStepSolution = {
 
     import bitHeap._
 
@@ -345,6 +345,7 @@ object GreedSolver extends BitHeapSolver {
           gpc.name,
           -1,
           maxHeightColumnIndex,
+          solveStageIndex,
           getExactScores(gpc, maxHeightColumnIndex, pipelineState)
         )
       case rowAdder: RowAdder =>
@@ -352,6 +353,7 @@ object GreedSolver extends BitHeapSolver {
           rowAdder.name,
           rowAdder.width,
           maxHeightColumnIndex,
+          solveStageIndex,
           getExactScores(
             rowAdder,
             maxHeightColumnIndex,
@@ -385,7 +387,7 @@ abstract class ConditionalStrategySolver(
     * @return
     *   the [[CompressorStepSolution]] after solving
     */
-  def headStrategy(bitHeap: BitHeap[BigInt]): CompressorStepSolution
+  def headStrategy(bitHeap: BitHeap[ST]): CompressorStepSolution
 
   /** this method is used to solve given [[BitHeap]] using tailStrategy
     * @param bitHeap
@@ -393,12 +395,12 @@ abstract class ConditionalStrategySolver(
     * @return
     *   the [[CompressorStepSolution]] after solving
     */
-  def tailStrategy(bitHeap: BitHeap[BigInt]): CompressorStepSolution
+  def tailStrategy(bitHeap: BitHeap[ST]): CompressorStepSolution
 
-  override def solveStep(bitHeap: BitHeap[BigInt]): CompressorStepSolution =
+  override def solveStep(bitHeap: BitHeap[ST]): CompressorStepSolution =
     if (useHeadStrategy) headStrategy(bitHeap) else tailStrategy(bitHeap)
 
-  override def solveStage(bitHeap: BitHeap[BigInt]): CompressorStageSolution = {
+  override def solveStage(bitHeap: BitHeap[ST]): CompressorStageSolution = {
     useHeadStrategy = !bitHeap.reachLastStage
     if (verbose >= 1)
       logger.info(
@@ -419,14 +421,14 @@ object StrategySeparationSolver extends ConditionalStrategySolver(headBound = 1.
   val greedSolver = GreedSolver
 
   override def headStrategy(
-      bitHeap: BitHeap[BigInt]
+      bitHeap: BitHeap[ST]
   ): CompressorStepSolution = {
     greedSolver.absorbMetaInfosFrom(this)
     greedSolver.solveStep(bitHeap)
   }
 
   override def tailStrategy(
-      bitHeap: BitHeap[BigInt]
+      bitHeap: BitHeap[ST]
   ): CompressorStepSolution = {
     import bitHeap._
 
@@ -515,6 +517,7 @@ object StrategySeparationSolver extends ConditionalStrategySolver(headBound = 1.
           gpc.name,
           -1,
           maxHeightColumnIndex,
+          solveStageIndex,
           getExactScores(gpc, maxHeightColumnIndex, pipelineState)
         )
       case rowAdder: RowAdder =>
@@ -522,6 +525,7 @@ object StrategySeparationSolver extends ConditionalStrategySolver(headBound = 1.
           rowAdder.name,
           rowAdder.width,
           maxHeightColumnIndex,
+          solveStageIndex,
           getExactScores(
             rowAdder,
             maxHeightColumnIndex,
@@ -547,7 +551,7 @@ object StrategySeparationOptimizedSolver extends ConditionalStrategySolver(headB
     * @return
     *   the result which indicate whether can skip, true means that it can skip
     */
-  def isNeedSkipSearch(heap: BitHeap[BigInt]): Boolean = {
+  def isNeedSkipSearch(heap: BitHeap[ST]): Boolean = {
     import heap._
 
     val maxHeightColumnIndex                                          = heights.indexWhere(_ == heightMax)
@@ -619,7 +623,7 @@ object StrategySeparationOptimizedSolver extends ConditionalStrategySolver(headB
     *   the compare result, if true, means that the [[bestRowAdder]] better than the [[candidateRowAdder]]
     */
   def compareRowAdder(
-      heap: BitHeap[BigInt],
+      heap: BitHeap[ST],
       bestRowAdder: RowAdder,
       candidateRowAdder: RowAdder,
       startColumnIndex: Int
@@ -746,7 +750,7 @@ object StrategySeparationOptimizedSolver extends ConditionalStrategySolver(headB
   }
 
   override def headStrategy(
-      bitHeap: BitHeap[BigInt]
+      bitHeap: BitHeap[ST]
   ): CompressorStepSolution = {
     import bitHeap._
 
@@ -841,7 +845,7 @@ object StrategySeparationOptimizedSolver extends ConditionalStrategySolver(headB
                     }
                 }
 
-                if ((exactScores.reductionEfficiency + searchThreshold) < 1.0) {
+                if ((exactScores.reductionEfficiency + searchThreshold) < headBound) {
                   searchWidth = 8 * floor((searchWidth - 1) / 8).toInt
                 } else
                   searchWidth -= 1
@@ -869,6 +873,7 @@ object StrategySeparationOptimizedSolver extends ConditionalStrategySolver(headB
           gpc.name,
           -1,
           maxHeightColumnIndex,
+          solveStageIndex,
           getExactScores(gpc, maxHeightColumnIndex, pipelineState)
         )
       case rowAdder: RowAdder =>
@@ -876,6 +881,7 @@ object StrategySeparationOptimizedSolver extends ConditionalStrategySolver(headB
           rowAdder.name,
           rowAdder.width,
           maxHeightColumnIndex,
+          solveStageIndex,
           getExactScores(
             rowAdder,
             maxHeightColumnIndex,
@@ -886,7 +892,7 @@ object StrategySeparationOptimizedSolver extends ConditionalStrategySolver(headB
   }
 
   override def tailStrategy(
-      bitHeap: BitHeap[BigInt]
+      bitHeap: BitHeap[ST]
   ): CompressorStepSolution = {
     import bitHeap._
 
@@ -900,7 +906,7 @@ object StrategySeparationOptimizedSolver extends ConditionalStrategySolver(headB
       .sortBy(compressor => compressor.reductionEfficiency)
       .reverse
 
-    val rowAdderEfficiencyTable = candidateCompressors
+    val rowAdderIndicatorTable = candidateCompressors
       .filter(_.isInstanceOf[RowAdder])
       .flatMap { rowAdder =>
         val (widthMax, widthMin) = (
@@ -932,50 +938,45 @@ object StrategySeparationOptimizedSolver extends ConditionalStrategySolver(headB
                 rowAdder,
                 maxHeightColumnIndex,
                 pipelineState
-              ).reductionEfficiency
+              )
           }
       }
-    val maxEfficiencyRowAdder = rowAdderEfficiencyTable
-      .filter { case (_, efficiency) =>
-        efficiency == rowAdderEfficiencyTable.maxBy(_._2)._2
+    val maxEfficiencyRowAdder = rowAdderIndicatorTable
+      .filter { case (_, indicator) =>
+        indicator.reductionEfficiency == rowAdderIndicatorTable.maxBy(_._2.reductionEfficiency)._2.reductionEfficiency
       }
       .maxBy(_._1.heightReduction)
 
-//    val needGpcSearch = if (maxEfficiencyRowAdder._2 > 1.0) {
-//      val rowAdderWidth = maxEfficiencyRowAdder._1.inputFormat.length
-//      if (!pipelineState) {
-//        if (
-//          rowAdderWidth + maxHeightColumnIndex != width && heights(
-//            rowAdderWidth + maxHeightColumnIndex
-//          ) + nextHeapCarry.getOrElse(
-//            rowAdderWidth + maxHeightColumnIndex,
-//            0
-//          ) > 1
-//        ) true
-//        else false
-//      } else {
-//        if (rowAdderWidth + maxHeightColumnIndex != width) true
-//        else false
-//      }
-//    } else true
+    //    val needGpcSearch = if (maxEfficiencyRowAdder._2 > 1.0) {
+    //      val rowAdderWidth = maxEfficiencyRowAdder._1.inputFormat.length
+    //      if (!pipelineState) {
+    //        if (
+    //          rowAdderWidth + maxHeightColumnIndex != width && heights(
+    //            rowAdderWidth + maxHeightColumnIndex
+    //          ) + nextHeapCarry.getOrElse(
+    //            rowAdderWidth + maxHeightColumnIndex,
+    //            0
+    //          ) > 1
+    //        ) true
+    //        else false
+    //      } else {
+    //        if (rowAdderWidth + maxHeightColumnIndex != width) true
+    //        else false
+    //      }
+    //    } else true
 
-    val needGpcSearch = if (maxEfficiencyRowAdder._2 > 1.0) {
+    val considerRowAdder = if (maxEfficiencyRowAdder._2.reductionEfficiency > 1.0) {
       val rowAdderWidth = maxEfficiencyRowAdder._1.inputFormat.length
       if (
         rowAdderWidth + maxHeightColumnIndex != width && nextHeapCarry.getOrElse(
           rowAdderWidth + maxHeightColumnIndex,
           0
         ) > 1
-      ) true
-      else false
-    } else true
+      ) false
+      else true
+    } else false
 
-    if (!needGpcSearch) {
-      bestCompressor          = maxEfficiencyRowAdder._1
-      bestReductionEfficiency = maxEfficiencyRowAdder._2
-    }
-
-    if (!isNeedSkipSearch(bitHeap) && needGpcSearch) {
+    if (!isNeedSkipSearch(bitHeap)) {
       gpcs.foreach { gpc =>
         val exactScores =
           getExactScores(
@@ -999,6 +1000,16 @@ object StrategySeparationOptimizedSolver extends ConditionalStrategySolver(headB
       }
     }
 
+    if (considerRowAdder && !isNeedSkipSearch(bitHeap)) {
+      val sameEfficiency      = bestReductionEfficiency == maxEfficiencyRowAdder._2.reductionEfficiency
+      val lessEfficiency      = bestReductionEfficiency < maxEfficiencyRowAdder._2.reductionEfficiency
+      val lessHeightReduction = bestHeightReduction < maxEfficiencyRowAdder._2.heightReduction
+      if (lessEfficiency || sameEfficiency && lessHeightReduction) {
+        bestCompressor          = maxEfficiencyRowAdder._1
+        bestReductionEfficiency = maxEfficiencyRowAdder._2.reductionEfficiency
+      }
+    }
+
     if (bestCompressor.outputFormat.length > 1) {
       bestCompressor.outputFormat.zipWithIndex.foreach { case (h, i) =>
         val oldRecord = nextHeapCarry.get(maxHeightColumnIndex + i)
@@ -1018,6 +1029,7 @@ object StrategySeparationOptimizedSolver extends ConditionalStrategySolver(headB
           gpc.name,
           -1,
           maxHeightColumnIndex,
+          solveStageIndex,
           getExactScores(gpc, maxHeightColumnIndex, pipelineState)
         )
       case rowAdder: RowAdder =>
@@ -1025,6 +1037,7 @@ object StrategySeparationOptimizedSolver extends ConditionalStrategySolver(headB
           rowAdder.name,
           rowAdder.width,
           maxHeightColumnIndex,
+          solveStageIndex,
           getExactScores(
             rowAdder,
             maxHeightColumnIndex,
@@ -1040,7 +1053,7 @@ object StrategySeparationOptimizedSolver extends ConditionalStrategySolver(headB
   */
 object TernaryTreeSolver extends BitHeapSolver {
 
-  override def solveStep(bitHeap: BitHeap[BigInt]): CompressorStepSolution = {
+  override def solveStep(bitHeap: BitHeap[ST]): CompressorStepSolution = {
     import bitHeap._
     val maxHeightColumnIndex = heap.indexWhere(_.nonEmpty)
     val endIdx               = heap.lastIndexWhere(_.nonEmpty)
@@ -1049,6 +1062,7 @@ object TernaryTreeSolver extends BitHeapSolver {
       compressorName = "Compressor3to1",
       width,
       maxHeightColumnIndex,
+      solveStageIndex,
       getExactScores(
         Compressor3to1(width),
         maxHeightColumnIndex,
@@ -1062,7 +1076,7 @@ object TernaryTreeSolver extends BitHeapSolver {
   */
 object GpcSolver extends BitHeapSolver {
 
-  override def solveStep(bitHeap: BitHeap[BigInt]): CompressorStepSolution = {
+  override def solveStep(bitHeap: BitHeap[ST]): CompressorStepSolution = {
     import bitHeap._
     val maxHeightColumnIndex = heap.indexWhere(_.nonEmpty)
     val bestCompressor = Gpcs().maxBy(gpc => getExactScores(gpc, maxHeightColumnIndex, pipelineState).heightReduction)
@@ -1070,6 +1084,7 @@ object GpcSolver extends BitHeapSolver {
       compressorName = bestCompressor.name.firstBeforeChar('_'),
       width,
       maxHeightColumnIndex,
+      solveStageIndex,
       getExactScores(
         bestCompressor,
         maxHeightColumnIndex,

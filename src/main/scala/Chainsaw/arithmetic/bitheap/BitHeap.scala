@@ -19,6 +19,14 @@ import scala.util.Random
   */
 case class Bit[T](value: T, notComplement: Boolean = true) {
 
+  var compressorId = "IN"
+
+  /** this method is used to set the compressorId of this Bit, for reducing fan-out
+    * @param id
+    *   the new compressorId of this Bit
+    */
+  def setCompressorId(id: String): Unit = compressorId = id
+
   /** @return
     *   the HardType data
     */
@@ -212,7 +220,6 @@ case class BitHeap[T](
     val reductionEfficiency = (bits - compressor.outputBitsCount) / cost // (bitsIn - bitsOut) / cost
     val reductionRatio      = bits.toDouble / compressor.outputBitsCount
     val bitReduction        = bits - compressor.outputBitsCount
-    if (bitsCoveredShape.isEmpty) logger.info(s"$this")
     val heightReduction =
       bitsCoveredShape.max - compressor.outputFormat.max
     compressor.resetPipelineState()
@@ -408,11 +415,34 @@ case class BitHeap[T](
     */
   private[bitheap] def getSub(format: Seq[Int], columnIdx: Int): BitHeap[T] = {
     require(heap(columnIdx).nonEmpty, s"src:\n$this\nformat: $format, columnIdx: $columnIdx")
-    val newHeap = ArrayBuffer.fill(format.length)(ArrayBuffer[Bit[T]]())
+    var relocate = true
+    val newHeap  = ArrayBuffer.fill(format.length)(ArrayBuffer[Bit[T]]())
     heap.drop(columnIdx).zip(newHeap).zip(format).foreach { case ((column, newColumn), height) =>
-      (0 until height).foreach { _ =>
-        if (column.nonEmpty) newColumn += column.remove(0)
+      if (!relocate) {
+        (0 until height).foreach { _ =>
+          if (column.nonEmpty) newColumn += column.remove(0)
+        }
+      } else {
+        val lengthAndIndex = column.zipWithIndex
+          .groupBy(_._1.compressorId)
+          .toSeq
+          .map { case (_, bitsWithIndex) => (bitsWithIndex.length, bitsWithIndex.map(_._2)) }
+          .sortBy(_._1)(Ordering[Int].reverse)
+        val selected     = ArrayBuffer[Int]()
+        val lengthMapped = lengthAndIndex.exists(_._1 == height)
+        if (lengthMapped) {
+          selected ++= lengthAndIndex.find(_._1 == height).get._2
+        } else {
+          lengthAndIndex.foreach { case (_, indices) =>
+            if (selected.length < height) selected ++= indices
+          }
+        }
+        newColumn ++= selected.take(height).map(column)
+        val remained = column.indices.diff(selected.take(height)).map(column)
+        column.clear()
+        column ++= remained
       }
+
     }
     BitHeap(newHeap, weightLow + columnIdx, time)
   }
@@ -446,11 +476,14 @@ case class BitHeap[T](
     *   the output SoftType [[BitHeap]] of the compressor, its the sub-[[BitHeap]] of stage compress result
     */
   private[bitheap] def implStepSoft(stepSolution: CompressorStepSolution): BitHeap[BigInt] = {
-    val columnIdx = stepSolution.columnIndex
-    val format    = stepSolution.getCompressor().inputFormat
-    val heapIn    = asSoft.getSub(format, columnIdx)
-    val heapOut =
-      stepSolution.getCompressor(heapIn.complementHeap).compressSoft(heapIn)
+    val columnIdx    = stepSolution.columnIndex
+    val format       = stepSolution.getCompressor().inputFormat
+    val heapIn       = asSoft.getSub(format, columnIdx)
+    val compressor   = stepSolution.getCompressor(heapIn.complementHeap)
+    val stageIndex   = stepSolution.stageIndex
+    val heapOut      = compressor.compressSoft(heapIn)
+    val randomString = System.currentTimeMillis().toString
+    heapOut.heap.foreach(_.foreach(_.setCompressorId(hashName(stageIndex.toString + compressor.name + randomString))))
     heapOut
   }
 
@@ -466,6 +499,7 @@ case class BitHeap[T](
       .map(implStepSoft)
     val heapNext: BitHeap[BigInt] = heapOuts.reduce(_ + _)
     asSoft.absorbHeapFrom(heapNext)
+    logger.info(s" stage:\n${heap.map(_.map(_.compressorId).mkString(",")).mkString("\n")}")
     if (stageSolution.pipelined) dSoft()
     if (verbose >= 1)
       logger.info(s"--------soft impl stage output--------\n${this}")
@@ -509,11 +543,15 @@ case class BitHeap[T](
     *   the output HardType [[BitHeap]] of the compressor, its the sub-[[BitHeap]] of stage compress result
     */
   private[bitheap] def implStepHard(stepSolution: CompressorStepSolution) = {
-    val columnIdx = stepSolution.columnIndex
-    val format    = stepSolution.getCompressor().inputFormat
-    val heapIn    = asHard.getSub(format, columnIdx)
+    val columnIdx  = stepSolution.columnIndex
+    val format     = stepSolution.getCompressor().inputFormat
+    val heapIn     = asHard.getSub(format, columnIdx)
+    val compressor = stepSolution.getCompressor(heapIn.complementHeap)
+    val stageIndex = stepSolution.stageIndex
     val heapOut =
       stepSolution.getCompressor(heapIn.complementHeap).compressHard(heapIn)
+    val randomString = System.currentTimeMillis().toString
+    heapOut.heap.foreach(_.foreach(_.setCompressorId(hashName(stageIndex.toString + compressor.name + randomString))))
     heapOut
   }
 
