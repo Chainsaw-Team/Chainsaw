@@ -314,7 +314,6 @@ package object Chainsaw {
 
     def getPhase(id: Int) = flow.mapFragment(vec => Seq(vec(id)))
 
-
     def foreach(func: BaseType => Unit): Unit = {
       flow.fragment.map(_.raw).foreach(func)
       func(flow.valid)
@@ -326,6 +325,14 @@ package object Chainsaw {
       ret.fragment := flow.fragment
       ret.valid    := flow.valid
       ret.last     := last
+      ret
+    }
+
+    def withValid(valid: Bool) = {
+      val ret = new Flow(new Fragment(flow.fragment))
+      ret.fragment := flow.fragment
+      ret.valid    := valid
+      ret.last     := flow.last
       ret
     }
 
