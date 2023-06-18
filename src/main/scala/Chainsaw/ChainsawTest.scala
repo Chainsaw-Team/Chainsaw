@@ -301,6 +301,7 @@ case class ChainsawTest(
     // working in the main thread, pushing the simulation forward
     def waitSimDone(): Unit =
       while (currentSegments < targetSegmentCount && noValid < terminateAfter) {
+        // FIXME: 持续有valid标志位产生时,simulation无法结束
         if (outputVectors.length == currentVectors) noValid += 100
         currentVectors = outputVectors.length
         clockDomain.waitSampling(100)
@@ -315,8 +316,11 @@ case class ChainsawTest(
 
     if (noValid >= terminateAfter)
       logger.error(
-        s"Simulation terminated after $terminateAfter cycles of no valid output"
+        s"Simulation terminated after $terminateAfter cycles of no valid output, set larger 'terminateAfter' for ChainsawTest if this is not what you desire"
       )
+
+    logger.info("exporting data")
+    logger.info(s"size = ${npzData.values.head.length}")
 
     npzData.foreach { case (flow, decimals) => exportSignal(new File(s"${flow.getName()}.npz"), decimals) }
     logger.info("data exported")
