@@ -57,7 +57,8 @@ package object Chainsaw {
     yaml.load(configString).asInstanceOf[java.util.LinkedHashMap[String, Any]]
 
   val hasVivado: Boolean  = sys.env.contains("VIVADO")
-  val hasQuartus: Boolean  = sys.env.contains("QUARTUS")
+  val hasYosys: Boolean   = sys.env.contains("YOSYS")
+  val hasQuartus: Boolean = sys.env.contains("QUARTUS")
   val hasPython: Boolean  = sys.env.contains("PYTHON")
   val hasFlopoco: Boolean = sys.env.contains("FLOPOCO")
   val allowSynth: Boolean =
@@ -279,7 +280,7 @@ package object Chainsaw {
     * --------
     */
 
-  import xilinx._
+  import Chainsaw.xilinx._
 
   /** generators in naiveList are set as naive in this box
     */
