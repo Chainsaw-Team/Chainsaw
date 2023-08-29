@@ -1,7 +1,7 @@
 package Chainsaw.arithmetic.flopoco
 
 import Chainsaw._
-import Chainsaw.xilinx._
+import Chainsaw.edaFlow._
 import spinal.core._
 import spinal.core.sim.SpinalSimBackendSel
 import spinal.core.sim.SpinalSimBackendSel.{GHDL, VERILATOR}

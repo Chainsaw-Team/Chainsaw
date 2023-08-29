@@ -7,6 +7,7 @@ import scala.language.postfixOps
 import scala.util.Try
 import Chainsaw._
 import Chainsaw.xilinx.VivadoReport.getUltrascaleWithHierarchy
+import Chainsaw.edaFlow._
 
 import java.io.File
 

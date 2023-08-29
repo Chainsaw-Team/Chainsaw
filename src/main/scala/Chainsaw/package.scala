@@ -13,6 +13,7 @@ import scala.collection.mutable.ArrayBuffer
 import scala.language.implicitConversions
 import scala.reflect.ClassTag // for more simulation
 import Chainsaw.NumericExt._
+import Chainsaw.edaFlow._
 
 package object Chainsaw {
 
@@ -54,6 +55,7 @@ package object Chainsaw {
 
   val hasVivado: Boolean  = sys.env.contains("VIVADO")
   val hasQuartus: Boolean = sys.env.contains("QUARTUS")
+  val hasYosys: Boolean   = sys.env.contains("YOSYS")
   val hasPython: Boolean  = sys.env.contains("PYTHON")
   val hasFlopoco: Boolean = sys.env.contains("FLOPOCO")
 
@@ -66,7 +68,7 @@ package object Chainsaw {
     "7 series"   -> Series7
   )
 
-  val targetDeviceFamily: DeviceFamily = {
+  val targetDeviceFamily = {
     val name = configs.get("targetDeviceFamily").asInstanceOf[String]
     deviceFamilyList.getOrElse(name.toLowerCase, Generic)
   }
