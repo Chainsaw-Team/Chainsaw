@@ -2,6 +2,7 @@ package Chainsaw.arithmetic.flopoco
 
 import Chainsaw._
 import Chainsaw.xilinx._
+import Chainsaw.edaFlow._
 import spinal.core.{IntToBuilder, _}
 import spinal.lib._
 

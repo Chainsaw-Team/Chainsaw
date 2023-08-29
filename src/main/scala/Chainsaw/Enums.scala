@@ -135,17 +135,3 @@ sealed trait MwNrMode extends ChainsawEnum
 object PURELOGIC extends MwNrMode
 object REPLICATION extends MwNrMode
 object MULTIPUMPING extends MwNrMode
-
-sealed trait DeviceFamily extends ChainsawEnum
-sealed trait XilinxDeviceFamily extends DeviceFamily
-
-object UltraScale extends XilinxDeviceFamily
-
-object Series7 extends XilinxDeviceFamily
-
-
-sealed trait IntelDeviceFamily extends DeviceFamily
-
-object CycloneV extends IntelDeviceFamily
-
-object Generic extends DeviceFamily

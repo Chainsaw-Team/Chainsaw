@@ -5,6 +5,7 @@ import spinal.core._
 import scala.language.postfixOps
 import Chainsaw._
 import Chainsaw.xilinx._
+import Chainsaw.edaFlow._
 
 package object xilinx {
 

@@ -25,6 +25,10 @@ package object edaFlow {
 
   sealed trait AlteraDeviceFamily extends Family
 
+  object CycloneV extends AlteraDeviceFamily
+
+  object Generic extends Family
+
   class Device(val vendor: Vendor, val deviceFamily: Family, val familyPart: String) {}
 
   case class XilinxDevice(

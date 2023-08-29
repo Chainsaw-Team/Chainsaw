@@ -1,14 +1,10 @@
 package Chainsaw.xilinx
 
+import Chainsaw._
+import Chainsaw.edaFlow._
 import spinal.core.HertzNumber
 
 import java.io.File
-import Chainsaw._
-import spinal.core._
-import spinal.core.sim._
-import spinal.lib._
-import spinal.lib.fsm._
-
 import scala.language.postfixOps
 
 /** @param family

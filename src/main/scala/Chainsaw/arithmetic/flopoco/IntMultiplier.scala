@@ -4,6 +4,7 @@ import Chainsaw._
 import Chainsaw.xilinx._
 import spinal.core._
 import spinal.lib._
+import Chainsaw.edaFlow._
 
 import scala.language.postfixOps
 

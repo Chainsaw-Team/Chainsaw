@@ -1,6 +1,7 @@
 package Chainsaw.phases
 
 import Chainsaw._
+import Chainsaw.edaFlow._
 import spinal.core._
 import spinal.core.internals._
 
@@ -49,8 +50,8 @@ case class ComponentUtilStats(
         case UltraScale => (18, 27)
         case Series7    => (18, 25)
       }
-    case family: IntelDeviceFamily => (27, 27)
-    case Generic                   => (32, 32)
+    case altera: AlteraDeviceFamily => (27, 27)
+    case Generic                    => (32, 32)
   }
 
   val dspLowserBound = (4, 4)

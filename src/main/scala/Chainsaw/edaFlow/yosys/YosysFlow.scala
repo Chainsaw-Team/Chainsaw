@@ -1,10 +1,10 @@
 package Chainsaw.edaFlow.yosys
 
 import Chainsaw._
-import Chainsaw.edaFlow.{Device => _, _}
+import Chainsaw.edaFlow._
 import org.apache.commons.io.FileUtils
 import org.slf4j._
-import spinal.core._
+import spinal.core.{Device => _, _}
 import spinal.lib.DoCmd
 
 import java.io.File
