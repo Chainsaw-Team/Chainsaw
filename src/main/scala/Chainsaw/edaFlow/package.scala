@@ -183,7 +183,6 @@ package object edaFlow {
 
     def runScript(): Unit
 
-    def startFlow(): Unit
   }
 
 }

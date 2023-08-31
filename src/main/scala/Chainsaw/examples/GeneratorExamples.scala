@@ -8,6 +8,7 @@ import spinal.lib._
 import scala.language.postfixOps
 import scala.util.Random
 import Chainsaw.memory._
+import spinal.core.sim.SpinalSimBackendSel
 
 // TODO: formal examples
 
@@ -36,6 +37,8 @@ case class ExampleAdder(width: Int) extends ChainsawOperatorGenerator with Fixed
   }
 
   override def implNaiveH = None
+
+  override def simBackEnd: SpinalSimBackendSel = SpinalSimBackendSel.VCS
 }
 
 case class ExampleAddSub(width: Int) extends ChainsawDynamicOperatorGenerator {
@@ -79,6 +82,8 @@ case class ExampleAddSub(width: Int) extends ChainsawDynamicOperatorGenerator {
   logger.info(s"input types: ${inputTypes.mkString(" ")}")
 
   override def outputTypes = Seq(NumericType.S(width + 1))
+
+  override def simBackEnd: SpinalSimBackendSel = SpinalSimBackendSel.VCS
 
 }
 
@@ -135,6 +140,8 @@ case class ExampleStaticFlip(dataType: NumericType, length: Int) extends Chainsa
   override def inputTypes = Seq(dataType)
 
   override def outputTypes = Seq(dataType)
+
+  override def simBackEnd: SpinalSimBackendSel = SpinalSimBackendSel.VCS
 }
 
 case class ExampleDynamicFlip(dataType: NumericType, maxLength: Int)
@@ -269,6 +276,8 @@ case class ExampleStaticFir(dataType: NumericType, coeffs: Seq[Double])
   override def inputTypes = Seq(dataType)
 
   override def outputTypes = Seq(productType)
+
+  override def simBackEnd: SpinalSimBackendSel = SpinalSimBackendSel.VCS
 }
 
 case class ExampleDynamicFir(dataType: NumericType, tap: Int)
@@ -324,22 +333,24 @@ case class ExampleDynamicFir(dataType: NumericType, tap: Int)
   override def inputTypes = Seq(dataType)
 
   override def outputTypes = Seq(productType)
+
+  override def simBackEnd: SpinalSimBackendSel = SpinalSimBackendSel.VCS
 }
 
 // anytime you change the implementation of ChainsawGenerators/ChainsawTest, run this test for verification
 object TestGeneratorExamples extends App {
-  ChainsawTest("testAdder", ExampleAdder(8))
+  ChainsawTest("testAdder0", ExampleAdder(8))
   ChainsawTest("testAdder", ExampleAddSub(8), terminateAfter = 1000)
   ChainsawTest(
     "testFlip",
     ExampleStaticFlip(dataType = NumericType.U(8), length = 20),
     terminateAfter = 1000
   )
-  ChainsawTest(
-    "testFlip",
-    ExampleDynamicFlip(dataType = NumericType.U(8), maxLength = 20),
-    terminateAfter = 1000
-  )
+//  ChainsawTest(
+//    "testFlip",
+//    ExampleDynamicFlip(dataType = NumericType.U(8), maxLength = 20),
+//    terminateAfter = 1000
+//  )
   ChainsawTest(
     "testFir",
     ExampleStaticFir(

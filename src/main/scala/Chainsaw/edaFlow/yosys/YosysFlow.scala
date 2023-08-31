@@ -1,10 +1,10 @@
 package Chainsaw.edaFlow.yosys
 
 import Chainsaw._
-import Chainsaw.edaFlow._
+import Chainsaw.edaFlow.{Device, _}
 import org.apache.commons.io.FileUtils
 import org.slf4j._
-import spinal.core.{Device => _, _}
+import spinal.core._
 import spinal.lib.DoCmd
 
 import java.io.File
@@ -31,7 +31,7 @@ case class YosysFlow(
 
   require(
     hasYosys,
-    "to use VivadoFlow, please set the environment variable 'VIVADO' to the vivado executable, e.g. /tools/Xilinx/Vivado/2022.1/bin/vivado"
+    "to use YosysFlow, please set the environment variable 'YOSYS' to the Yosys executable, e.g. /opt/Yosys/oss-cad-suite/bin"
   )
 
   val yosysLogger = LoggerFactory.getLogger(s"YosysFlow")
@@ -128,6 +128,7 @@ case class YosysFlow(
   }
 
   override def genScript(): String = {
+    genYosysScript()
     yosysLogger.info(s"Generating Shell script for running Yosys...")
     val script = s"yosys ${yosysScript.getAbsolutePath} > ${logFile.getAbsolutePath} 2>&1"
     FileUtils.write(shellFile, script)
@@ -141,8 +142,7 @@ case class YosysFlow(
     yosysLogger.info(s"Finish YosysFlow...")
   }
 
-  override def startFlow(): Unit = {
-    genYosysScript()
+  def startFlow(): Unit = {
     genScript()
     runScript()
     YosysReport(logFile, deviceType).genInfosReport()

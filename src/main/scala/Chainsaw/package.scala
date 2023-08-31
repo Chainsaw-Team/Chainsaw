@@ -1,19 +1,32 @@
+import Chainsaw.NumericExt._
+import Chainsaw.edaFlow._
 import cc.redberry.rings.scaladsl.IntZ
 import com.mathworks.engine.MatlabEngine
-import org.slf4j.{Logger, LoggerFactory}
+import org.slf4j._
 import spinal.core._
 import spinal.core.internals.PhaseContext
 import spinal.core.sim._
 import spinal.lib._
 
-import java.io.File
+import java.io._
 import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.language.implicitConversions
-import scala.reflect.ClassTag // for more simulation
-import Chainsaw.NumericExt._
-import Chainsaw.edaFlow._
+import scala.math.BigInt
+import scala.reflect.ClassTag
+import spinal.core._
+import spinal.lib._
+import spinal.lib.fsm._
+import spinal.lib.bus._
+import spinal.lib.bus.regif._
+import spinal.sim._
+import spinal.core.sim._
+import spinal.sim.WaveFormat._
+
+import java.nio.file.Paths
+import java.time._
+import org.apache.commons.io.FileUtils // for more simulation
 
 package object Chainsaw {
 
@@ -54,8 +67,10 @@ package object Chainsaw {
     yaml.load(configString).asInstanceOf[java.util.LinkedHashMap[String, Any]]
 
   val hasVivado: Boolean  = sys.env.contains("VIVADO")
-  val hasQuartus: Boolean = sys.env.contains("QUARTUS")
   val hasYosys: Boolean   = sys.env.contains("YOSYS")
+  val hasQuartus: Boolean = sys.env.contains("QUARTUS")
+  val hasVcs: Boolean     = sys.env.contains("VCS_HOME")
+  val hasVerdi: Boolean   = sys.env.contains("VERDI_HOME")
   val hasPython: Boolean  = sys.env.contains("PYTHON")
   val hasFlopoco: Boolean = sys.env.contains("FLOPOCO")
 
@@ -116,6 +131,11 @@ package object Chainsaw {
     new File(sys.env.getOrElse("VIVADO", "")) // vivado executable path
   val vitisPath =
     new File(sys.env.getOrElse("VITIS", "")) // vitis executable path
+
+  val novasPath    = new File(sys.env.getOrElse("VERDI_HOME", ""), "share/PLI/VCS/LINUX64")
+  val novasPliPath = new File(novasPath, "pli.a")
+  val novasTabPath = new File(novasPath, "novas.tab")
+
   val flopocoPath = new File(sys.env.getOrElse("FLOPOCO", ""))
   val quartusPath = new File(sys.env.getOrElse("QUARTUS", ""))
   val quartusDir  = quartusPath.getParentFile                 // quartus executable dir
@@ -464,6 +484,68 @@ package object Chainsaw {
     */
   implicit class intzUti(intz: IntZ) {
     def toBigInt = BigInt(intz.toByteArray)
+  }
+
+  /** @param target
+    *   the SpinalSimConfig class
+    */
+  implicit class SpinalSimUtils(target: SpinalSimConfig) {
+
+    /** @param rtl
+      *   the DUT of simulation
+      * @tparam T
+      *   the DUT type
+      * @return
+      *   SimCompiled[T] (for doSim)
+      */
+    def compileWithScript[T <: Component](rtl: => T): SimCompiled[T] = {
+      val logger: Logger = LoggerFactory.getLogger("compileWithRunScript")
+      val compiled       = target.compile(rtl)
+      val waveScriptDir = target._workspaceName match {
+        case null => Paths.get(target._workspacePath, compiled.report.toplevelName)
+        case _    => Paths.get(target._workspacePath, target._workspaceName)
+      }
+      val covScriptDir = Paths.get(target._workspacePath, "cov.vdb")
+
+      val timeLog         = s"# ****** date : ${LocalDate.now()} \t time : ${LocalTime.now()} ******\n\n"
+      val interpreterInfo = "#!/bin/bash\n"
+      target._waveFormat match {
+        case FST =>
+          var gtkWaveShellContent = ""
+          val targetWaveFile      = "test.fst"
+          val shellCommand        = List("gtkwave", targetWaveFile).mkString(" ") + " &" + s"\n"
+          gtkWaveShellContent = timeLog + interpreterInfo + shellCommand
+          val verilatorShellScriptFile = Paths.get(waveScriptDir.toString, "run_gtkWave").toFile
+          FileUtils.write(verilatorShellScriptFile, gtkWaveShellContent)
+        case VCD =>
+          var gtkWaveShellContent = ""
+          val targetWaveFile      = "test.vcd"
+          val shellCommand        = List("gtkwave", targetWaveFile).mkString(" ") + " &" + s"\n"
+          gtkWaveShellContent = timeLog + interpreterInfo + shellCommand
+          val verilatorShellScriptFile = Paths.get(waveScriptDir.toString, "run_gtkWave").toFile
+          FileUtils.write(verilatorShellScriptFile, gtkWaveShellContent)
+        case FSDB =>
+          var verdiShellContent = ""
+          var dveShellContent   = ""
+          val targetWaveFile    = s"${compiled.report.toplevelName}.fsdb"
+          val targetFileList    = "filelist.f"
+          val verdiShellCommand =
+            List("verdi", "-f", targetFileList, "-ssf", targetWaveFile).mkString(" ") + " -nologo &" + s"\n"
+          verdiShellContent = timeLog + interpreterInfo + verdiShellCommand
+          val dveShellCommand = List("dve", "-cov -dir", covScriptDir).mkString(" ") + " &" + s"\n"
+          dveShellContent = timeLog + interpreterInfo + dveShellCommand
+          val verdiShellScriptFile = Paths.get(waveScriptDir.toString, "run_verdi").toFile
+          val dveShellScriptFile   = Paths.get(covScriptDir.toString, "show_coverage").toFile
+          FileUtils.write(verdiShellScriptFile, verdiShellContent)
+          FileUtils.write(dveShellScriptFile, dveShellContent)
+
+        case _ =>
+          logger.warn(
+            s"This invoke is not generate valid shell file, Because the compileWithScript method of this type waveFormat : ${target._waveFormat.toString()} is not realize !"
+          )
+      }
+      compiled
+    }
   }
 
   /** -------- matlab utils

@@ -142,7 +142,7 @@ case class VivadoFlow(
     vivadoLogger.info(s"Finish VivadoFlow...")
   }
 
-  override def startFlow(): Unit = {
+  def startFlow(): Unit = {
     genScript()
     runScript()
     VivadoReport(logFile, deviceType).genInfosReport()

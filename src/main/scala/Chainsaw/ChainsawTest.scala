@@ -1,5 +1,6 @@
 package Chainsaw
 
+import Chainsaw.edaFlow.vcs._
 import spinal.core._
 import spinal.core.sim._
 import spinal.lib._
@@ -9,8 +10,10 @@ import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.util.Random
 import Chainsaw.io.pythonIo._
+import spinal.core.sim.SpinalSimBackendSel._
 
 import java.io.File
+import java.nio.file.Paths
 
 case class ChainsawTest(
     testName: String = "testTemp",
@@ -20,19 +23,41 @@ case class ChainsawTest(
     terminateAfter: Int                  = 10000,
     errorSegmentsShown: Int              = 10,
     doInterruptInsertion: Boolean        = true,
-    withWave: Boolean                    = true
+    withWave: Boolean                    = true,
+    genMakeFileScript: Boolean           = true
 ) {
 
   import gen._
 
   def simConfig = {
     val spinalConfig = ChainsawSpinalConfig(gen)
-    val ret = SimConfig
-      .workspaceName(testName)
-      .allOptimisation
-      .withConfig(spinalConfig)
-    ret._backend = gen.simBackEnd
-    if (withWave) ret.withFstWave else ret
+
+    gen.simBackEnd match {
+      case VERILATOR =>
+        val ret = SimConfig
+          .workspacePath(Paths.get(simWorkspace.getAbsolutePath, "verilator").toFile.getAbsolutePath)
+          .workspaceName(testName)
+          .withConfig(spinalConfig)
+        if (withWave) ret.withFstWave else ret
+      case VCS =>
+        VcsFlow(
+          new File(simWorkspace, "vcs"),
+          topModuleName = None,
+          compileOption = VcsCompileOption(
+            enableCoverageType = Seq(FullCoverage),
+            parallelNumber     = 8,
+            incrementCompile   = true,
+            enableMemHierarchy = true,
+            noTimingCheck      = true
+          ),
+          customizedConfig = Some(spinalConfig),
+          includeDirs      = None,
+          macroFile        = None,
+          memBinaryFile    = None
+        ).getSpinalSimConfig(withWave).workspaceName(testName)
+      case _ => ???
+    }
+
   }
 
   /** -------- get input segments
@@ -215,7 +240,9 @@ case class ChainsawTest(
   logger.info(s"start simulation for $testName")
   logger.info(s"current naive list: ${naiveSet.mkString(" ")}")
 
-  simConfig.compile(gen.getImplH).doSim { dut =>
+  val compiled = if (genMakeFileScript) simConfig.compileWithScript(gen.getImplH) else simConfig.compile(gen.getImplH)
+
+  compiled.doSim { dut =>
     import dut.{clockDomain, flowInPointer, flowOutPointer}
 
     var currentSegments = 0
@@ -320,7 +347,7 @@ case class ChainsawTest(
       )
 
     logger.info("exporting data")
-    logger.info(s"size = ${npzData.values.head.length}")
+//    logger.info(s"size = ${npzData.values.head.length}")
 
     npzData.foreach { case (flow, decimals) => exportSignal(new File(s"${flow.getName()}.npz"), decimals) }
     logger.info("data exported")
