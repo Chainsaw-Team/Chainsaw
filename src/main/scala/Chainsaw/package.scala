@@ -123,7 +123,7 @@ package object Chainsaw {
   type FrameMetric = (Seq[Any], Seq[Any]) => Boolean
 
   /** -------- paths
-    * --------
+    * ---------
     */
 
   // outside Chainsaw
