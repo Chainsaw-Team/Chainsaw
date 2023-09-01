@@ -85,7 +85,7 @@ package object Chainsaw {
 
   val targetDeviceFamily = {
     val name = configs.get("targetDeviceFamily").asInstanceOf[String]
-    deviceFamilyList.getOrElse(name.toLowerCase, Generic)
+    if (name == null) Generic else deviceFamilyList.getOrElse(name.toLowerCase, Generic)
   }
 
   val dspStrict: Boolean = configs.get("dspStrict").asInstanceOf[Boolean]
