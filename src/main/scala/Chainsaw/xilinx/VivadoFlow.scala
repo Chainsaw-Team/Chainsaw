@@ -130,10 +130,10 @@ class VivadoFlow[T <: Component](
   def getTcl(dutRtlSources: Seq[String], xdcFile: File): String = {
     var script = ""
 
-    val rapidWrightPrerequisite = Source.fromFile("src/main/resources/tcl/rapidwright.tcl")
-    script += rapidWrightPrerequisite.getLines().mkString("\n")
-    script += "\n"
-    rapidWrightPrerequisite.close()
+//    val rapidWrightPrerequisite = Source.fromFile("src/main/resources/tcl/rapidwright.tcl")
+//    script += rapidWrightPrerequisite.getLines().mkString("\n")
+//    script += "\n"
+//    rapidWrightPrerequisite.close()
 
     /** rtl file path -> read command
       */

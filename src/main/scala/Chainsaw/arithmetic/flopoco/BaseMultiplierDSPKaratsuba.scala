@@ -8,75 +8,68 @@ import Chainsaw.edaFlow._
 
 import scala.language.postfixOps
 
-/** n-split Karatsuba, rectangular multiplier is supported
-  *
-  * @param width
-  *   width of base multiplier
-  * @param height
-  *   height of base multiplier
-  * @param split
-  *   number of splits
-  */
-case class BaseMultiplierDSPKaratsuba(width: Int, height: Int, split: Int)
-    extends FlopocoOperator {
+/** n-split Karatsuba multiplier, whose size is wX * split X wY * split
+ *
+ * @param wX
+ * width of base multiplier
+ * @param wY
+ * height of base multiplier
+ * @param split
+ * number of splits
+ */
+case class BaseMultiplierDSPKaratsuba
+(override val family: XilinxDeviceFamily, override val targetFrequency: HertzNumber,
+ wX: Int, wY: Int, split: Int
+)
+  extends FlopocoOperator(family, targetFrequency) {
 
-  val n = split - 1
-
-  override def implNaiveH = Some(new ChainsawOperatorModule(this) {
-    dataOut.head := dataIn.reduce(_ * _).d(latency())
-  })
-
-  override def vivadoUtilEstimation = VivadoUtil()
-
-  // TODO: width inference for rectangular multiplier
-  val widthX = width * split
-  val widthY = height * split
+  val widthX = wX * split
+  val widthY = wY * split
   val widthR = widthX + widthY
 
+  /** -------- params for FloPoCo generation
+   * --------
+   */
+  override val operatorName: String = "BaseMultiplierDSPKaratsuba"
+  override val entityName: String = "IntKaratsuba"
+  override val params: Seq[(String, Any)] = Seq(("wX", wX), ("wY", wY), ("n", split - 1))
+
+  override def implH: ChainsawOperatorModule = new ChainsawOperatorModule(this) {
+    val box = new FlopocoBlackBox(hasClk = true) {
+      // setting I/O for black box
+      val X = in Bits (widthX bits)
+      val Y = in Bits (widthY bits)
+      val R = out Bits (widthR bits)
+    }
+    // mapping I/O of ChainsawOperatorModule to the black box
+    box.X := flowIn.payload(0).asBits
+    box.Y := flowIn.payload(1).asBits
+    flowOut.payload(0) := box.R.asUInt.toAFix
+  }
+
+  override def implNaiveH: Option[ChainsawOperatorModule] = ???
+
+  /** -------- performance
+   * --------
+   */
+  override def vivadoUtilEstimation: VivadoUtil = ???
+
+  /** -------- interfaces
+   * --------
+   */
   override def inputTypes = Seq(NumericType.U(widthX), NumericType.U(widthY))
 
   override def outputTypes = Seq(NumericType.U(widthR))
 
-  /** -------- model
-    * --------
-    */
+  /** -------- behavior model
+   * --------
+   */
   override def impl(testCase: TestCase) = Seq(testCase.data.product)
 
-  override def metric(yours: Seq[BigDecimal], golden: Seq[BigDecimal]) =
-    yours.equals(golden)
+  override def metric(yours: Seq[BigDecimal], golden: Seq[BigDecimal]) = yours.equals(golden)
 
   override def testCases = {
     val getVector = Seq(BigInt(widthX), BigInt(widthY)).map(BigDecimal(_))
     Seq.fill(1000)(TestCase(getVector))
-  }
-
-  /** -------- params for Flopoco generation
-    * --------
-    */
-  override def name = s"${operatorName}_w${width}_h${height}_n$n"
-
-  override val operatorName = "BaseMultiplierDSPKaratsuba"
-  override val entityName   = "IntKaratsuba"
-  override val family       = UltraScale
-
-  override def fmaxEstimation = 600 MHz
-
-  override val params = Seq(("wX", width), ("wY", height), ("n", n))
-
-  /** black box used in synthesis
-    */
-  override def blackbox = new FlopocoBlackBoxWithClk {
-    val X = in Bits (widthX bits)
-    val Y = in Bits (widthY bits)
-    val R = out Bits (widthR bits)
-
-    override def mapChainsawModule(
-        flowIn: Flow[Fragment[Vec[AFix]]],
-        flowOut: Flow[Fragment[Vec[AFix]]]
-    ): Unit = {
-      X                  := flowIn.payload(0).asBits
-      Y                  := flowIn.payload(1).asBits
-      flowOut.payload(0) := R.asUInt.toAFix
-    }
   }
 }
