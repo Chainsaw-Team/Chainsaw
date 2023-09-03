@@ -3,77 +3,106 @@ package Chainsaw.arithmetic.flopoco
 import Chainsaw._
 import Chainsaw.edaFlow._
 import spinal.core._
-import spinal.core.sim.SpinalSimBackendSel
-import spinal.core.sim.SpinalSimBackendSel.{GHDL, VERILATOR}
-import spinal.lib._
 
 import java.io.File
 import scala.io.Source
+import scala.language.postfixOps
 
-import Chainsaw._
+/** for implementing of FloPoCo operators as Chainsaw operators, which can be verified and synthesized automatically
+ */
+abstract class FlopocoOperator(override val family: XilinxDeviceFamily, override val targetFrequency: HertzNumber)
+  extends Flopoco(family, targetFrequency)
+    with ChainsawOperatorGenerator with FixedLatency {
 
-trait Flopoco extends FixedLatency {
+  implicit val flopocoGen: FlopocoOperator = this
 
-  /** -------- params for Flopoco generation
-    * --------
-    */
-  // required parameters
-  def name: String
+  // template of def implH in FlopocoOperator
+  //  new ChainsawOperatorModule(this) {
+  //      val box = new FlopocoBlackBox(hasClk = ) {
+  //      // setting I/O for black box
+  //      }
+  //      // mapping I/O of ChainsawOperatorModule to the black box
+  //    }
 
+  override def fmaxEstimation: HertzNumber = targetFrequency
+}
+
+/** black box designed for FlopocoOperator implementation, which addRtlPath and setDefinitionName automatically
+ *
+ * @param hasClk  whether the black box has a clock input named "clk", when true, define the clock input and map it to the current clock domain
+ * @param flopoco background FlopocoOperator
+ */
+abstract class FlopocoBlackBox(hasClk: Boolean)(implicit val flopoco: Flopoco) extends BlackBox {
+  hasClk.generate {
+    val clk = in Bool()
+    clk.setName("clk")
+    mapCurrentClockDomain(clk)
+  }
+  addRTLPath(flopoco.verilogFile.getAbsolutePath)
+  logger.info(s"setting${flopoco.moduleName}")
+  setDefinitionName(flopoco.moduleName)
+}
+
+/** providing generation methods for FloPoCo operators
+ *
+ * @param family FPGA device family, currently supporting Series7, UltraScale and UltraScalePlus
+ */
+abstract class Flopoco(val family: XilinxDeviceFamily, val targetFrequency: HertzNumber) {
+
+  /** -------- params for FloPoCo generation
+   * --------
+   */
+
+  //
   val operatorName: String
 
-  def entityName: String = operatorName
+  // prefix of the generated module name
+  val entityName: String
 
-  val family: XilinxDeviceFamily
-
-  def fmaxEstimation: HertzNumber
-
-  private def familyLine = family match {
-    case UltraScale => "VirtexUltrascalePlus"
-    case Series7    => "Kintex7"
-  }
-
-  // optional parameters
   val params: Seq[(String, Any)]
 
-  def getSimBackEnd: SpinalSimBackendSel =
-    if (testFlopoco) GHDL else VERILATOR // for VHDL verification
+  // this should be a valid verilog/vhdl module name, which is unique
+  def name: String = s"${operatorName}_${params.map { case (param, value) => s"${param}_$value" }.mkString("_")}"
 
-  def getUseNaive: Boolean =
-    if (atSimTime) !testFlopoco // while sim
-    else false                  // while synth/impl
-
-  /** output RTL file name defined by all params, making cache file possible
-    */
-  def rtlPath = new File(flopocoOutputDir, s"$name.vhd")
-
-  /** black box used in synthesis
-    */
-  def blackbox: FlopocoBlackBox
-
-  /** invoke flopoco to generate RTL and get terminal output
-    */
-  def flopocoRun(): Unit = {
-    val paramsLine =
-      params.map { case (param, value) => s"$param=$value" }.mkString(" ")
-    val command =
-      s"$flopocoPath frequency=${fmaxEstimation.toInt / 1e6} target=$familyLine verbose=1 outputFile=${rtlPath.getAbsolutePath} $operatorName $paramsLine"
-    flopocoOutputDir.mkdirs()
-    DoCmd.doCmd(command, flopocoOutputDir.getAbsolutePath)
+  private def familyLine = family match {
+    case UltraScalePlus => "VirtexUltrascalePlus"
+    case UltraScale => "VirtexUltrascalePlus"
+    case Series7 => "Kintex7"
+    case device => logger.warn(s"$device not supported, using Kintex7 as default")
+      "Kintex7"
   }
 
-  /** extract the module name as well as the pipeline level from generated RTL
-    */
-  def getInfoFromRtl: (Int, String) = { // FIXME: this is not robust
-    if (!rtlPath.exists()) flopocoRun()
-    val src            = Source.fromFile(rtlPath)
-    val lines          = src.getLines().toSeq
-    val lineIndex      = lines.indexWhere(_.contains(s"${entityName}_"))
+  def vdhFile: File = {
+    val ret = new File(flopocoOutputDir, s"$name.vhd")
+    if (!ret.exists()) {
+      val optionsLine = s"frequency=${targetFrequency.toInt / 1e6} target=$familyLine verbose=1 outputFile=${ret.getAbsolutePath}"
+      val paramsLine = params.map { case (param, value) => s"$param=$value" }.mkString(" ")
+      doCmd(s"$flopocoPath $optionsLine $operatorName $paramsLine")
+    }
+    ret
+  }
+
+  def verilogFile: File = {
+    val ret = new File(flopocoOutputDir, s"$name.v")
+    if (!ret.exists()) {
+      doCmds(Seq(
+        s"ghdl -a -fsynopsys -fexplicit ${vdhFile.getAbsolutePath}",
+        s"ghdl synth -fsynopsys -fexplicit --out=verilog $moduleName > ${ret.getAbsolutePath}"))
+    }
+    ret
+  }
+
+  /** find latency and top module name from generated .vhd file
+   */
+  def getInfoFromRtl: (Int, String) = { // TODO: better method
+    val src = Source.fromFile(vdhFile)
+    val lines = src.getLines().toSeq
+    val lineIndex = lines.indexWhere(_.contains(s"${entityName}_"))
     val linesForSearch = lines.drop(lineIndex)
-    val latencyLine    = linesForSearch.find(_.startsWith("-- Pipeline depth: "))
+    val latencyLine = linesForSearch.find(_.startsWith("-- Pipeline depth: "))
     val latency = latencyLine match {
       case Some(line) => line.filter(_.isDigit).mkString("").toInt
-      case None       => 0
+      case None => 0
     }
     //    println(linesForSearch.mkString("\n"))
     val moduleName = linesForSearch
@@ -81,44 +110,11 @@ trait Flopoco extends FixedLatency {
       .head
       .split(" ")(1)
     src.close()
+    println(s"latency = $latency, moduleName = $moduleName")
     (latency, moduleName)
   }
 
-  def latency() = getInfoFromRtl._1
+  lazy val latency: Int = getInfoFromRtl._1
 
-  def moduleName: String = getInfoFromRtl._2
-}
-
-/** base class of wrappers of Flopoco operators
-  */
-abstract class FlopocoOperator extends ChainsawOperatorGenerator with Flopoco {
-
-  override def simBackEnd: SpinalSimBackendSel = getSimBackEnd
-
-  override def useNaive = getUseNaive
-
-  override def implH = new ChainsawOperatorModule(this) {
-    val box = blackbox
-    box.addRTLPath(rtlPath.getAbsolutePath)
-    println(s"moduleName = $moduleName")
-    box.setDefinitionName(moduleName)
-    box.mapChainsawModule(flowIn, flowOut)
-  }
-
-  override def doSelfTest() = {
-    testFlopoco = true
-    super.doSelfTest()
-  }
-}
-
-abstract class FlopocoBlackBox extends BlackBox {
-  def mapChainsawModule(
-      flowIn: Flow[Fragment[Vec[AFix]]],
-      flowOut: Flow[Fragment[Vec[AFix]]]
-  ): Unit
-}
-
-abstract class FlopocoBlackBoxWithClk extends FlopocoBlackBox {
-  val clk = in Bool ()
-  mapCurrentClockDomain(clk)
+  lazy val moduleName: String = getInfoFromRtl._2
 }
