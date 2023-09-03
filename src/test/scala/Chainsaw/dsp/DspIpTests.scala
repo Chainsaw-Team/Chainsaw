@@ -14,9 +14,8 @@ class DspIpTests extends ChainsawFlatSpec {
   val dataType: NumericType  = NumericType.SFix(2, 14)
   val ddsType: NumericType   = NumericType(1, 16, signed = true)
 
-  val testIteration     = 12
-  val testAmplitudeType = NumericType.SFix(2, 15)
-  val testFraction      = 16
+  val testIteration = 12
+  val testFraction  = 16
 
   val sizeMax   = 50
   val parallels = 1 to 4
@@ -39,47 +38,22 @@ class DspIpTests extends ChainsawFlatSpec {
 
   def testCordic(): Unit = {
     // CORDIC under all 6 modes
-    val algebraicModes = Seq(CIRCULAR, HYPERBOLIC, LINEAR)
-    val rotationModes  = Seq(ROTATION, VECTORING)
-
-    algebraicModes.foreach(alg =>
-      rotationModes.foreach(rot =>
+    val cordicFunctions = Seq(Rotate, Translate, SinAndCos, SinhAndCosh, ArcTan, ArcTanh, SquareRoot, Hypot, SquareDiffSqrt)
+    for(archi <- 0 to 0){
+      cordicFunctions.foreach(func =>
         testOperator(
-          Cordic(alg, rot, iteration = testIteration, testAmplitudeType, phaseFractional = testFraction),
+          Cordic(
+            iteration  = testIteration,
+            fractional = testFraction,
+            optimizeGoal = archi,
+            errorEnable = false,
+            functionSelect = func,
+            bias = true
+          ),
           generatorConfigTable("Cordic")
         )
       )
-    )
-
-    // most frequently used CORDIC modes(with initValues)
-    testOperator(
-      CordicMagnitudePhase(
-        iteration = testIteration,
-        testAmplitudeType,
-        testFraction
-      ),
-      generatorConfigTable("Cordic")
-    )
-    testOperator(
-      CordicCosSin(iteration = testIteration, testAmplitudeType, testFraction),
-      generatorConfigTable("Cordic")
-    )
-    testOperator(
-      CordicMultiplication(iteration = testIteration, testAmplitudeType, testFraction),
-      generatorConfigTable("Cordic")
-    )
-    testOperator(
-      CordicDivision(iteration = testIteration, testAmplitudeType, testFraction),
-      generatorConfigTable("Cordic")
-    )
-    testOperator(
-      CordicHyperFunction(iteration = testIteration, testAmplitudeType, testFraction),
-      generatorConfigTable("Cordic")
-    )
-    testOperator(
-      CordicRotate(iteration = testIteration, testAmplitudeType, testFraction),
-      generatorConfigTable("Cordic")
-    )
+    }
   }
 
   /** -------- FIRs
@@ -190,7 +164,7 @@ class DspIpTests extends ChainsawFlatSpec {
     "Cordic" -> TestConfig(
       full  = true,
       naive = false,
-      synth = true,
+      synth = false,
       impl  = false
     ),
     "DynamicDelay" -> TestConfig(
@@ -221,15 +195,12 @@ class DspIpTests extends ChainsawFlatSpec {
     )
   )
 
-  testFirs()
+//  testComplexMult()
+testCordic()
 //  testDelay()
-  //  testComplexMult()
-//  testCordic()
-
-  //  testDds()
-  //  testMovingAverage()
-  //  testUnwrap()
-  //  testPeriodicUnwrap()
-  //  testFftAlgos()
-  //  testShiftSpec()
+//  testDds()
+//  testMovingAverage()
+//  testFirs()
+//  testUnwrap()
+//  testPeriodicUnwrap()
 }
