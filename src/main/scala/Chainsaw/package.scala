@@ -1,18 +1,20 @@
-import Chainsaw.NumericExt._
-import Chainsaw.edaFlow._
 import cc.redberry.rings.scaladsl.IntZ
 import com.mathworks.engine.MatlabEngine
-import org.slf4j._
+import org.slf4j.{Logger, LoggerFactory}
 import spinal.core._
 import spinal.core.internals.PhaseContext
 import spinal.core.sim._
 import spinal.lib._
 
-import java.io._
+import java.io.File
 import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.language.implicitConversions
+import scala.reflect.ClassTag // for more simulation
+import Chainsaw.NumericExt._
+import Chainsaw.edaFlow._
+
 import scala.math.BigInt
 import scala.reflect.ClassTag
 import spinal.core._
@@ -85,7 +87,8 @@ package object Chainsaw {
 
   val targetDeviceFamily = {
     val name = configs.get("targetDeviceFamily").asInstanceOf[String]
-    if (name == null) Generic else deviceFamilyList.getOrElse(name.toLowerCase, Generic)
+    deviceFamilyList.getOrElse(name.toLowerCase, Generic)
+
   }
 
   val dspStrict: Boolean = configs.get("dspStrict").asInstanceOf[Boolean]
@@ -123,7 +126,7 @@ package object Chainsaw {
   type FrameMetric = (Seq[Any], Seq[Any]) => Boolean
 
   /** -------- paths
-    * ---------
+    * --------
     */
 
   // outside Chainsaw
