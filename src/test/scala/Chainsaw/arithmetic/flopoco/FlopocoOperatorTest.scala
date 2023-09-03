@@ -1,83 +1,60 @@
 package Chainsaw.arithmetic.flopoco
 
 import Chainsaw._
+import Chainsaw.edaFlow.UltraScale
+import spinal.core.IntToBuilder
+
+import scala.language.postfixOps
 
 class FlopocoOperatorTest extends ChainsawFlatSpec {
 
-  /** -------- IntMultiAdder
-    * --------
-    */
   def testIntMultiAdder(): Unit = {
     val operandWidths = Seq(10, 20, 30)
     val operandCounts = Seq(10)
-    val signeds       = Seq(false, true)
+    val signeds = Seq(false, true)
 
     signeds.foreach(signed =>
       operandCounts.foreach(n =>
         operandWidths.foreach(widthIn =>
-          testFlopocoOperator(
-            IntMultiAdder(widthIn, n, signed),
-            synth = false,
-            impl  = false
-          )
-        )
+          testOperator(IntMultiAdder(UltraScale, 400 MHz, widthIn, n, signed), generatorConfigTable("IntMultiAdder")))
       )
     )
   }
 
-  /** -------- IntMultiplier
-    * --------
-    */
   def testIntMultiplier(): Unit = {
-    val multWidths = Seq(24)
-    multWidths.foreach(width =>
-      testFlopocoOperator(
-        IntMultiplier(width, width, 1),
-        synth = false,
-        impl  = false
-      )
-    )
+    val multWidths = Seq(24, 32)
+    multWidths.foreach(width => testOperator(IntMultiplier(UltraScale, 400 MHz, width, width, 1), generatorConfigTable("IntMultiplier")))
   }
 
-  /** -------- BaseKaratsuba
-    * --------
-    */
   def testBaseKaratsuba(): Unit = {
     val ns = Seq(2, 3, 4)
-    ns.foreach(n =>
-      testFlopocoOperator(
-        BaseMultiplierDSPKaratsuba(17, 17, n),
-        synth = false,
-        impl  = false
-      )
-    )
+    ns.foreach(n => testOperator(BaseMultiplierDSPKaratsuba(UltraScale, 400 MHz, 17, 17, n), generatorConfigTable("BaseKaratsuba")))
   }
 
-  override val generatorConfigTable = Map(
+  override def generatorConfigTable: Map[String, TestConfig] = Map(
     "IntMultiAdder" -> TestConfig(
-      full  = false,
-      naive = true,
-      synth = false,
-      impl  = false
+      full = true,
+      naive = false,
+      synth = true,
+      impl = false
     ),
     "IntMultiplier" -> TestConfig(
-      full  = false,
-      naive = true,
-      synth = false,
-      impl  = false
+      full = true,
+      naive = false,
+      synth = true,
+      impl = false
     ),
     "BaseKaratsuba" -> TestConfig(
-      full  = false,
-      naive = true,
-      synth = false,
-      impl  = false
+      full = true,
+      naive = false,
+      synth = true,
+      impl = false
     )
   )
 
-  // TODO: check existence of flopoco
-  if (hasFlopoco) {
-    testIntMultiAdder()
-    testIntMultiplier()
-    testBaseKaratsuba()
-  }
+  testIntMultiAdder()
+  testIntMultiplier()
+  testBaseKaratsuba()
+
+
 }

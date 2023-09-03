@@ -25,6 +25,7 @@ out
 *.vcd
 *.npz
 *.npy
+*.cf
 # exceptions
 !tester/src/test/resources/*.vhd
 # resources
@@ -40,6 +41,7 @@ src/main/resources/*
 genWorkSpace/
 simWorkspace/
 synthWorkspace/
+flopocoWorkspace/
 testReports/
 tmp/
 null
@@ -55,4 +57,5 @@ src/main/scala/draft.sc
 /goldenModel/.ipynb_checkpoints/
 /tmpRtl/
 /src/main/resources/das/matlab/
-/src/main/resources/das/matlab/
+
+

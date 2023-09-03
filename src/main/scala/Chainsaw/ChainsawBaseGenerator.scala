@@ -5,9 +5,9 @@ import spinal.core._
 import spinal.core.sim._
 
 case class TestCase(
-    data: Seq[BigDecimal],
-    control: Seq[BigDecimal] = Seq[BigDecimal]()
-) {
+                     data: Seq[BigDecimal],
+                     control: Seq[BigDecimal] = Seq[BigDecimal]()
+                   ) {
   override def toString =
     s"data   : ${data.take(100).mkString(",")}...\ncontrol: ${control.mkString(",")}"
 }
@@ -20,22 +20,22 @@ trait ChainsawBaseGenerator {
   def name: String
 
   /** -------- performance
-    * --------
-    */
+   * --------
+   */
   def vivadoUtilEstimation: VivadoUtil
 
   def fmaxEstimation: HertzNumber
 
   /** -------- interfaces
-    * --------
-    */
+   * --------
+   */
   def inputTypes: Seq[NumericType]
 
   def outputTypes: Seq[NumericType]
 
-  /** -------- model
-    * --------
-    */
+  /** -------- behavior model
+   * --------
+   */
   def impl(testCase: TestCase): Seq[BigDecimal]
 
   def metric(yours: Seq[BigDecimal], golden: Seq[BigDecimal]): Boolean
@@ -44,11 +44,11 @@ trait ChainsawBaseGenerator {
 
   def resetCycle: Int
 
-  /** -------- implementations
-    * --------
-    */
   def simBackEnd: SpinalSimBackendSel = SpinalSimBackendSel.VERILATOR
 
+  /** -------- implementations
+   * --------
+   */
   def implH: ChainsawBaseModule // core module, that is, the datapath
 
   // naive RTL implementation for simulation & top-down design, optional
@@ -94,8 +94,8 @@ trait ChainsawBaseGenerator {
   def outPortWidth = outputTypes.length
 
   /** -------- utils for input/output generation
-    * --------
-    */
+   * --------
+   */
   def emptyTypes: Seq[NumericType] = Seq[NumericType]()
 
   def clockInput(cycle: Int): Seq[BigDecimal] = Seq.fill(cycle)(BigDecimal(1))
@@ -109,8 +109,8 @@ trait ChainsawBaseGenerator {
   def randomTestCase: TestCase
 
   /** -------- utils for test
-    * --------
-    */
+   * --------
+   */
 
   def doSelfTest() = ChainsawTest(s"test$name", this)
 
@@ -124,8 +124,8 @@ trait ChainsawBaseGenerator {
        |""".stripMargin
 
   /** -------- utils for instantiation
-    * --------
-    */
+   * --------
+   */
   def process(data: Seq[AFix]) = {
     val core = getImplH
     core.dataIn.zip(data).foreach { case (in, data) => in := data }
@@ -339,12 +339,12 @@ trait ChainsawDynamicInfiniteGenerator extends ChainsawBaseGenerator with SemiIn
     super.getImplH.asInstanceOf[ChainsawDynamicInfiniteModule]
 
   override def randomTestCase = TestCase(
-    data    = Seq.fill(resetCycle + 1)(randomDataVector).flatten,
+    data = Seq.fill(resetCycle + 1)(randomDataVector).flatten,
     control = randomControlVector
   )
 
   def randomTestCase(cycle: Int) = TestCase(
-    data    = Seq.fill(cycle)(randomDataVector).flatten,
+    data = Seq.fill(cycle)(randomDataVector).flatten,
     control = randomControlVector
   )
 }
