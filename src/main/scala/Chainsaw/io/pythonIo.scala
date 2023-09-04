@@ -71,12 +71,9 @@ object pythonIo {
   }
 
   // end-to-end python golden model
-  def runPython(pyPath: File, args: String*): String = {
-    require(
-      hasPython,
-      "to use python module, please set the environment variable 'PYTHON' to the python executable with numpy,scipy & matplotlib, e.g. /usr/bin/python3"
-    )
-    val command = s"$pythonPath ${pyPath.getAbsolutePath} ${args.mkString(" ")}"
+  def runPython(workingDirectory: File, args: String*): String = {
+    require(PYTHON.exist(), "to use python module, please set the environment variable 'PYTHON' to the python executable with numpy,scipy & matplotlib, e.g. /usr/bin/python3")
+    val command = s"${PYTHON.path} ${workingDirectory.getAbsolutePath} ${args.mkString(" ")}"
     println(command)
     val process: Process = Runtime.getRuntime.exec(
       command,

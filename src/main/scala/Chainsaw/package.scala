@@ -1,120 +1,104 @@
+import Chainsaw.NumericExt._
+import Chainsaw.edaFlow._
 import cc.redberry.rings.scaladsl.IntZ
 import com.mathworks.engine.MatlabEngine
+import org.apache.commons.io.FileUtils
 import org.slf4j.{Logger, LoggerFactory}
+import org.yaml.snakeyaml.Yaml
 import spinal.core._
-import spinal.core.internals.PhaseContext
 import spinal.core.sim._
 import spinal.lib._
+import spinal.sim.WaveFormat._
 
 import java.io.File
+import java.nio.file.Paths
+import java.time._
 import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
+import scala.io.Source
 import scala.language.implicitConversions
-import scala.reflect.ClassTag // for more simulation
-import Chainsaw.NumericExt._
-import Chainsaw.edaFlow._
-
-import scala.math.BigInt
 import scala.reflect.ClassTag
-import spinal.core._
-import spinal.lib._
-import spinal.lib.fsm._
-import spinal.lib.bus._
-import spinal.lib.bus.regif._
-import spinal.sim._
-import spinal.core.sim._
-import spinal.sim.WaveFormat._
-
-import java.nio.file.Paths
-import java.time._
-import org.apache.commons.io.FileUtils // for more simulation
+import scala.sys.process.Process
 
 package object Chainsaw {
 
-  def inVirtualGlob[T](func: => T) = {
-    val old = GlobalData.get
+  // third-party dependencies
+  case class ThirdParty(envName: String, workspaceName: Option[String]) {
 
-    val virtualGlob = new GlobalData(SpinalConfig())
-    virtualGlob.phaseContext = new PhaseContext(SpinalConfig())
-    GlobalData.set(virtualGlob)
-    val ret = func
+    def exist(): Boolean = sys.env.contains(envName)
 
-    GlobalData.set(old)
-    ret
-  }
+    /** absolute path of the executable
+      */
+    def path: String = new File(sys.env.getOrElse(envName, "")).getAbsolutePath
 
-  def inVirtualComponent[T](func: => T) = {
-    inVirtualGlob {
-      val com = new Module {
-        val ret = func
-      }
-      com.ret
+    def workspace: File = {
+      val ret = new File(workspaceName.get)
+      if (!ret.exists()) assert(ret.mkdirs())
+      ret
     }
   }
 
-  /** -------- global run-time environment
-    * --------
-    */
+  // synthesizer
+  val VIVADO: ThirdParty  = ThirdParty("VIVADO", Some("synthWorkspace"))
+  val VITIS: ThirdParty   = ThirdParty("VITIS", Some("synthWorkspace"))
+  val QUARTUS: ThirdParty = ThirdParty("QUARTUS", Some("synthWorkspace"))
+  val YOSYS: ThirdParty   = ThirdParty("YOSYS", Some("synthWorkspace"))
+  // simulator
+  val VCS: ThirdParty = ThirdParty("VCS_HOME", Some("simWorkspace"))
+  // wave viewer
+  val VERDI: ThirdParty = ThirdParty("VERDI_HOME", None)
+  // other dependencies
+  val FLOPOCO: ThirdParty = ThirdParty("FLOPOCO", Some("flopocoWorkspace"))
+  val PYTHON: ThirdParty  = ThirdParty("PYTHON", None)
+  val hasVivado: Boolean  = sys.env.contains("VIVADO")
 
-  // loading configs
-  import org.yaml.snakeyaml.Yaml
+  val genWorkspace   = new File("genWorkspace")   // RTL
+  val simWorkspace   = new File("simWorkspace")   // waveform
+  val synthWorkspace = new File("synthWorkspace") // log & checkpoint
 
-  import scala.io.Source
+  val unisimDir    = new File("src/main/resources/unisims") // for Xilinx primitives
+  val dagOutputDir = new File("src/main/resources/dfgGenerated")
 
+  // loading & generating global configs
   val yaml                 = new Yaml()
   private val configSource = Source.fromFile("config.yaml")
   private val configString = configSource.getLines().mkString("\n")
-  private val configs =
-    yaml.load(configString).asInstanceOf[java.util.LinkedHashMap[String, Any]]
+  private val configs      = yaml.load(configString).asInstanceOf[java.util.LinkedHashMap[String, Any]]
 
-  val hasVivado: Boolean  = sys.env.contains("VIVADO")
-  val hasYosys: Boolean   = sys.env.contains("YOSYS")
-  val hasQuartus: Boolean = sys.env.contains("QUARTUS")
-  val hasVcs: Boolean     = sys.env.contains("VCS_HOME")
-  val hasVerdi: Boolean   = sys.env.contains("VERDI_HOME")
-  val hasPython: Boolean  = sys.env.contains("PYTHON")
-  val hasFlopoco: Boolean = sys.env.contains("FLOPOCO")
+  // configs
+  val allowSynth: Boolean = configs.getOrDefault("allowSynth", false).asInstanceOf[Boolean]
+  val allowImpl: Boolean  = configs.getOrDefault("allowImpl", false).asInstanceOf[Boolean]
+  val verbose: Int        = configs.getOrDefault("verbose", 1).asInstanceOf[Int]
 
-  val allowSynth: Boolean = configs.get("allowSynth").asInstanceOf[Boolean] && hasVivado
-  val allowImpl: Boolean  = configs.get("allowImpl").asInstanceOf[Boolean] && hasVivado
-
-  val deviceFamilyList = Map(
-    "cyclone v"  -> CycloneV,
-    "ultrascale" -> UltraScale,
-    "7 series"   -> Series7
-  )
-
-  val targetDeviceFamily = {
-    val name = configs.get("targetDeviceFamily").asInstanceOf[String]
-    deviceFamilyList.getOrElse(name.toLowerCase, Generic)
-
+  val targetDeviceFamily: Family = {
+    val name = configs.getOrDefault("targetDeviceFamily", "7 series").asInstanceOf[String]
+    name match {
+      case "cyclone v"  => CycloneV
+      case "ultrascale" => UltraScale
+      case "7 series"   => Series7
+      case _            => Generic
+    }
   }
-
-  val dspStrict: Boolean = configs.get("dspStrict").asInstanceOf[Boolean]
-  val verbose: Int       = configs.get("verbose").asInstanceOf[Int]
+  val dspStrict: Boolean = configs.getOrDefault("dspStrict", false).asInstanceOf[Boolean]
   configSource.close()
 
   // global data
-  val logger: Logger =
-    LoggerFactory.getLogger("Chainsaw logger") // global logger
-  var atSimTime = true // indicating current task(sim/synth or impl)
+  val logger: Logger = LoggerFactory.getLogger("Chainsaw logger") // global logger
+  var atSimTime      = true                                       // indicating current task(sim/synth or impl)
 
+  // TODO: should be implemented by the config file
   val naiveSet: mutable.Set[String] =
-    mutable.Set[
-      String
-    ]() // list of generators which should be implemented by its naive version
+    mutable.Set[String](
+    ) // list of generators which should be implemented by its naive version
+
   def setAsNaive(
       generator: Any*
   ): naiveSet.type = // add a generator to the naiveSet
     naiveSet += generator.getClass.getSimpleName.replace("$", "")
 
-  var testFlopoco = false
-  var testVhdl    = false
-
   var testCaseIndex = 0
 
-  // TODO: better dots
   val positiveDot   = "+"
   val complementDot = "-"
   val downArrow     = "↓"
@@ -128,33 +112,6 @@ package object Chainsaw {
   /** -------- paths
     * --------
     */
-
-  // outside Chainsaw
-  val vivadoPath =
-    new File(sys.env.getOrElse("VIVADO", "")) // vivado executable path
-  val vitisPath =
-    new File(sys.env.getOrElse("VITIS", "")) // vitis executable path
-
-  val novasPath    = new File(sys.env.getOrElse("VERDI_HOME", ""), "share/PLI/VCS/LINUX64")
-  val novasPliPath = new File(novasPath, "pli.a")
-  val novasTabPath = new File(novasPath, "novas.tab")
-
-  val flopocoPath = new File(sys.env.getOrElse("FLOPOCO", ""))
-  val quartusPath = new File(sys.env.getOrElse("QUARTUS", ""))
-  val quartusDir  = quartusPath.getParentFile                 // quartus executable dir
-  val pythonPath  = new File(sys.env.getOrElse("PYTHON", "")) // python executable
-
-  // inside Chainsaw
-  val unisimDir =
-    new File("src/main/resources/unisims") // for Xilinx primitives
-  val matlabScriptDir = new File("src/main/resources/matlabScripts")
-
-  val genWorkspace   = new File("genWorkspace")   // RTL
-  val simWorkspace   = new File("simWorkspace")   // waveform
-  val synthWorkspace = new File("synthWorkspace") // log & checkpoint
-
-  val flopocoOutputDir = new File("src/main/resources/flopocoGenerated")
-  val dagOutputDir     = new File("src/main/resources/dfgGenerated")
 
   /** -------- scala type utils
     * --------
@@ -383,6 +340,7 @@ package object Chainsaw {
     def toRealAndImag = (flow.mapFragment(_.toComplexFix.map(_.real)), flow.mapFragment(_.toComplexFix.map(_.imag)))
 
     def real = toRealAndImag._1
+
     def imag = toRealAndImag._2
 
     def exportAsComplex(name: String)(implicit monitoredFlows: ArrayBuffer[ChainsawFlow]) = {
@@ -479,6 +437,7 @@ package object Chainsaw {
     */
   // get name of a class/object
   def className(any: Any) = any.getClass.getSimpleName.replace("$", "")
+
   // get name of a unique "configuration"
   def hashName(any: Any) = any.hashCode().toString.replace("-", "N")
 
@@ -555,4 +514,12 @@ package object Chainsaw {
     * --------
     */
   lazy val matlabEngine = MatlabEngine.startMatlab()
+
+  def doCmd(cmd: String) = DoCmd.doCmd(cmd)
+
+  def doCmd(cmd: String, path: String) = DoCmd.doCmd(cmd, path)
+
+  def doCmds(cmds: Seq[String]) = Process(Seq("bash", "-c", cmds.mkString(" && "))) !
+
+  def doCmds(cmds: Seq[String], path: String) = Process(Seq("bash", "-c", cmds.mkString(" && ")), new File(path)) !
 }

@@ -11,28 +11,25 @@ import java.io.File
 import scala.collection.mutable.ArrayBuffer
 
 case class YosysFlow(
-    designDirs: Seq[File],
-    workspaceDir: File,
-    topModuleName: Option[String],
-    deviceType: Option[Device],
-    optimizeOption: YosysOptimizeOption,
-    blackBoxSet: Option[Set[String]]         = None,
-    memBinaryFile: Option[Map[String, File]] = None
-) extends EdaFlow(
-      designDirs,
-      workspaceDir,
-      topModuleName,
-      deviceType,
-      SYNTH,
-      optimizeOption,
-      blackBoxSet,
-      memBinaryFile
-    ) {
+                      designDirs: Seq[File],
+                      workspaceDir: File,
+                      topModuleName: Option[String],
+                      deviceType: Option[Device],
+                      optimizeOption: YosysOptimizeOption,
+                      blackBoxSet: Option[Set[String]] = None,
+                      memBinaryFile: Option[Map[String, File]] = None
+                    ) extends EdaFlow(
+  designDirs,
+  workspaceDir,
+  topModuleName,
+  deviceType,
+  SYNTH,
+  optimizeOption,
+  blackBoxSet,
+  memBinaryFile
+) {
 
-  require(
-    hasYosys,
-    "to use YosysFlow, please set the environment variable 'YOSYS' to the Yosys executable, e.g. /opt/Yosys/oss-cad-suite/bin"
-  )
+  require(YOSYS.exist(), "to use YosysFlow, please set the environment variable 'YOSYS' to the Yosys executable, e.g. /opt/Yosys/oss-cad-suite/bin")
 
   val yosysLogger = LoggerFactory.getLogger(s"YosysFlow")
 
@@ -40,8 +37,8 @@ case class YosysFlow(
 
   if (genScriptDir.exists()) genScriptDir.delete()
 
-  val logFile     = new File(genScriptDir, "yosys_flow.log")
-  val shellFile   = new File(genScriptDir, "run_yosys.sh")
+  val logFile = new File(genScriptDir, "yosys_flow.log")
+  val shellFile = new File(genScriptDir, "run_yosys.sh")
   val yosysScript = new File(genScriptDir, "yosys_script.ys")
 
   def genYosysScript(): String = {
@@ -67,10 +64,10 @@ case class YosysFlow(
             script += s"synth_xilinx  "
             if (topModuleName.isDefined) script += s"-top ${topModuleName.get}  "
             device.deviceFamily match {
-              case UltraScale     => script += s"-family xcu  "
-              case Series7        => script += s"-family xc7  "
+              case UltraScale => script += s"-family xcu  "
+              case Series7 => script += s"-family xc7  "
               case UltraScalePlus => script += s"-family xcup  "
-              case _              => script += s""
+              case _ => script += s""
             }
             optimizeOption match {
               case yosysOption: YosysGeneralOptimizeOption =>
@@ -90,7 +87,7 @@ case class YosysFlow(
                   case UltraScalePlus =>
                     yosysOption.useUram match {
                       case Some(bool) => if (bool) script += s"-uram  "
-                      case _          =>
+                      case _ =>
                     }
                   case _ =>
                 }
@@ -98,13 +95,13 @@ case class YosysFlow(
             }
             script += s"\n"
           case Altera => script += s"synth_intel\n"
-          case _      => script += s"synth\n"
+          case _ => script += s"synth\n"
         }
       case None =>
         script += s"synth  "
         topModuleName match {
           case Some(name) => script += s"-top ${topModuleName.get}  "
-          case None       => script += s"-auto-top  "
+          case None => script += s"-auto-top  "
         }
         optimizeOption match {
           case yosysOption: YosysGeneralOptimizeOption =>
@@ -152,22 +149,22 @@ case class YosysFlow(
 
 object YosysFlow {
   def fromComponent(
-      design: => Component,
-      customizedConfig: Option[SpinalConfig] = None,
-      includeDirs: Option[Seq[File]]         = None,
-      workspaceDir: File                     = new File(synthWorkspace, "Yosys"),
-      topModuleName: Option[String]          = Some("StreamFifo"),
-      deviceType: Option[edaFlow.Device]     = Some(zcu104),
-      optimizeOption: YosysOptimizeOption = YosysXilinxOptimizeOption(
-        useBram = false,
-        useDsp  = false
-      ),
-      blackBoxSet: Option[Set[String]]         = None,
-      memBinaryFile: Option[Map[String, File]] = None
-  ): YosysFlow = {
+                     design: => Component,
+                     customizedConfig: Option[SpinalConfig] = None,
+                     includeDirs: Option[Seq[File]] = None,
+                     workspaceDir: File = new File(synthWorkspace, "Yosys"),
+                     topModuleName: Option[String] = Some("StreamFifo"),
+                     deviceType: Option[edaFlow.Device] = Some(zcu104),
+                     optimizeOption: YosysOptimizeOption = YosysXilinxOptimizeOption(
+                       useBram = false,
+                       useDsp = false
+                     ),
+                     blackBoxSet: Option[Set[String]] = None,
+                     memBinaryFile: Option[Map[String, File]] = None
+                   ): YosysFlow = {
 
     val rtlResources: ArrayBuffer[File] = ArrayBuffer()
-    val supportedFileTypes              = Seq(".v")
+    val supportedFileTypes = Seq(".v")
 
     if (includeDirs.isDefined) {
       includeDirs.get.foreach { dir =>
