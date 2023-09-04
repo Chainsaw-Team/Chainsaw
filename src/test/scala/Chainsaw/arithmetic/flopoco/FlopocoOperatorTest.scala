@@ -52,9 +52,10 @@ class FlopocoOperatorTest extends ChainsawFlatSpec {
     )
   )
 
-  testIntMultiAdder()
-  testIntMultiplier()
-  testBaseKaratsuba()
-
+  if (FLOPOCO.exist()) {
+    testIntMultiAdder()
+    testIntMultiplier()
+    testBaseKaratsuba()
+  }
 
 }

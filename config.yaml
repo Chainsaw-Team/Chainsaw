@@ -7,7 +7,3 @@ verbose: 1
 targetDeviceFamily: "Cyclone V"
 
 dspStrict: true
-
-flopocoPath: "/home/ltr/flopoco/build/flopoco"
-
-vivadoPath: "/tools/Xilinx/Vivado/2023.1/bin/vivado"

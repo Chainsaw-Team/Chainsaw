@@ -159,3 +159,16 @@ object VivadoUtil {
       carry8: Double  = 0
   ) = new VivadoUtil(lut, ff, dsp, bram36, uram288, carry8)
 }
+
+object VivadoRequirement {
+  def apply(
+      lut: Double     = Double.MaxValue,
+      ff: Double      = Double.MaxValue,
+      dsp: Double     = Double.MaxValue,
+      bram36: Double  = Double.MaxValue,
+      uram288: Double = Double.MaxValue,
+      carry8: Double  = Double.MaxValue
+  ) = new VivadoUtil(lut, ff, dsp, bram36, uram288, carry8)
+
+  def noRequirement = VivadoRequirement()
+}

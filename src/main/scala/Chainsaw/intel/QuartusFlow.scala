@@ -1,6 +1,6 @@
 package Chainsaw.intel
 
-import Chainsaw.{logger, phases, quartusDir}
+import Chainsaw.{QUARTUS, logger, phases}
 import org.apache.commons.io.FileUtils
 import spinal.core._
 
@@ -14,12 +14,14 @@ object Report extends Enumeration {
   val RESOURCE, TIMING = Value
 }
 
-// TODO: better workspace configuration
+// TODO: move this to EdaFlow package
 class QuartusFlow[T <: Component](dut: => T = null, workspace: String = "temp", netlistDir: Option[File] = None) {
 
   val revisionName  = "tempRef"
   val mapReportFile = revisionName + ".map.rpt"
   val staReportFile = revisionName + ".sta.rpt"
+
+  val quartusDir = new File(QUARTUS.path).getParentFile // quartus executable dir
 
   val FAMILY = "Cyclone V"
   val DEVICE = "5CGXFC9D6F27I7"
@@ -94,7 +96,9 @@ class QuartusFlow[T <: Component](dut: => T = null, workspace: String = "temp", 
 
         case Report.TIMING =>
           var index = -1
-          report.zipWithIndex.foreach { case (r, i) => if (r.contains("Slow 1100mV 100C Model Fmax Summary")) index = i }
+          report.zipWithIndex.foreach { case (r, i) =>
+            if (r.contains("Slow 1100mV 100C Model Fmax Summary")) index = i
+          }
           val timingReport = report.zipWithIndex.filter { case (r, i) => i >= index - 1 && i <= index + 6 }.map(_._1)
           timingReport
       }

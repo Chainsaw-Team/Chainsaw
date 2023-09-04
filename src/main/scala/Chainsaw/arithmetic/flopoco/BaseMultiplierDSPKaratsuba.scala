@@ -52,7 +52,7 @@ case class BaseMultiplierDSPKaratsuba
   /** -------- performance
    * --------
    */
-  override def vivadoUtilEstimation: VivadoUtil = ???
+  override def vivadoUtilEstimation: VivadoUtil = VivadoRequirement.noRequirement
 
   /** -------- interfaces
    * --------

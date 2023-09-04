@@ -136,7 +136,7 @@ case class VivadoFlow(
     vivadoLogger.info(s"Running VivadoFlow...")
     // run vivado
     DoCmd.doCmd(
-      s"${vivadoPath.getAbsolutePath} -stack 2000 -nojournal -log ${logFile.getAbsolutePath} -mode batch -source ${tclFile.getAbsolutePath}",
+      s"${VIVADO.path} -stack 2000 -nojournal -log ${logFile.getAbsolutePath} -mode batch -source ${tclFile.getAbsolutePath}",
       genScriptDir.getAbsolutePath
     )
     vivadoLogger.info(s"Finish VivadoFlow...")

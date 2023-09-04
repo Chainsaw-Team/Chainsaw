@@ -73,17 +73,17 @@ abstract class Flopoco(val family: XilinxDeviceFamily, val targetFrequency: Hert
   }
 
   def vdhFile: File = {
-    val ret = new File(flopocoOutputDir, s"$name.vhd")
+    val ret = new File(FLOPOCO.workspace, s"$name.vhd")
     if (!ret.exists()) {
       val optionsLine = s"frequency=${targetFrequency.toInt / 1e6} target=$familyLine verbose=1 outputFile=${ret.getAbsolutePath}"
       val paramsLine = params.map { case (param, value) => s"$param=$value" }.mkString(" ")
-      doCmd(s"$flopocoPath $optionsLine $operatorName $paramsLine")
+      doCmd(s"${FLOPOCO.path} $optionsLine $operatorName $paramsLine")
     }
     ret
   }
 
   def verilogFile: File = {
-    val ret = new File(flopocoOutputDir, s"$name.v")
+    val ret = new File(FLOPOCO.workspace, s"$name.v")
     if (!ret.exists()) {
       doCmds(Seq(
         s"ghdl -a -fsynopsys -fexplicit ${vdhFile.getAbsolutePath}",

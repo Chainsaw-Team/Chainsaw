@@ -34,10 +34,7 @@ case class VcsFlow(
       memBinaryFile  = memBinaryFile
     ) {
 
-  require(
-    hasVcs,
-    "to use VcsFlow, please set the environment variable 'VCS' to the vcs executable, e.g. /opt/Synopsys/vcs201809/bin"
-  )
+  require(VCS.exist(),"to use VcsFlow, please set the environment variable 'VCS' to the vcs executable, e.g. /opt/Synopsys/vcs201809/bin")
 
   val vcsLogger = LoggerFactory.getLogger(s"VcsFlow")
 

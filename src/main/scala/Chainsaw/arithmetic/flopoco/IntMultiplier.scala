@@ -46,7 +46,7 @@ case class IntMultiplier(override val family: XilinxDeviceFamily, override val t
 
   override def implNaiveH = ???
 
-  override def vivadoUtilEstimation = VivadoUtil(dsp = maxDSP)
+  override def vivadoUtilEstimation = VivadoRequirement(dsp = maxDSP)
 
 
 }
