@@ -53,6 +53,7 @@ lazy val Chainsaw = (project in file("."))
     libraryDependencies += djlBackend,
     libraryDependencies += snakeYaml,
     libraryDependencies += rapidwright,
+  libraryDependencies += "org.scalanlp" %% "breeze-viz" % "2.1.0",
 //    libraryDependencies += ndarray
   )
 
