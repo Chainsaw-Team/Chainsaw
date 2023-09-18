@@ -8,31 +8,40 @@ import Chainsaw.edaFlow._
 
 import scala.language.postfixOps
 
-/** A pipelined integer multiplier.
+/** Implements a large unsigned Multiplier using rectangular shaped tiles as appears for Xilinx FPGAs.
   *
   * @param wX
   * size of input X
   * @param wY
   * size of input Y
-  * @param maxDSP
-  * limits the number of DSP-Tiles used in Multiplier
+  * @param useKaratsuba
+  * Uses Karatsuba when set to 1, instead a standard tiling without sharing is used.
+  * @param useRectangularTiles
+  * Uses rectangular tiles when set to 1, otherwise quadratic tiles are used.
   */
-case class IntMultiplier(override val family: XilinxDeviceFamily, override val targetFrequency: HertzNumber, wX: Int, wY: Int, maxDSP: Int)
+case class IntKaratsubaRectangular (
+        override val family: XilinxDeviceFamily,
+        override val targetFrequency: HertzNumber,
+        wX: Int,
+        wY: Int,
+        useKaratsuba: Int,
+        useRectangularTiles: Int
+                                   )
   extends FlopocoOperator(family, targetFrequency) {
 
-  override val operatorName = "IntMultiplier"
+  override val operatorName = "IntKaratsubaRectangular"
 
-  override val entityName: String = "IntMultiplier"
+  override val entityName: String = "IntKaratsubaRectangular"
 
-  override val params = Seq(("wX", wX), ("wY", wY), ("maxDSP", maxDSP))
+  override val params = Seq(("wX", wX), ("wY", wY),("useKaratsuba", useKaratsuba),("useRectangularTiles", useRectangularTiles))
 
   override def inputTypes = Seq(wX, wY).map(NumericType.U)
 
   override def outputTypes = Seq(wX + wY).map(NumericType.U)
 
   /** -------- model
-   * --------
-   */
+    * --------
+    */
   override def impl(testCase: TestCase) = Seq(testCase.data.product)
 
   override def metric(yours: Seq[BigDecimal], golden: Seq[BigDecimal]): Boolean = yours.equals(golden)
@@ -52,7 +61,6 @@ case class IntMultiplier(override val family: XilinxDeviceFamily, override val t
 
   override def implNaiveH = ???
 
-  override def vivadoUtilEstimation = VivadoRequirement(dsp = maxDSP)
+  override def vivadoUtilEstimation = VivadoRequirement.noRequirement
 
 }
-
