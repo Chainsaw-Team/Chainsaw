@@ -17,11 +17,13 @@ import scala.language.postfixOps
  * @param split
  * number of splits
  */
-case class BaseMultiplierDSPKaratsuba
-(override val family: XilinxDeviceFamily, override val targetFrequency: HertzNumber,
- wX: Int, wY: Int, split: Int
-)
-  extends FlopocoOperator(family, targetFrequency) {
+case class BaseMultiplierDSPKaratsuba(
+  override val family: XilinxDeviceFamily,
+  override val targetFrequency: HertzNumber,
+  wX: Int,
+  wY: Int,
+  split: Int
+) extends FlopocoOperator(family, targetFrequency) {
 
   val widthX = wX * split
   val widthY = wY * split
@@ -69,7 +71,7 @@ case class BaseMultiplierDSPKaratsuba
   override def metric(yours: Seq[BigDecimal], golden: Seq[BigDecimal]) = yours.equals(golden)
 
   override def testCases = {
-    val getVector = Seq(BigInt(widthX), BigInt(widthY)).map(BigDecimal(_))
+    def getVector: Seq[BigDecimal] = Seq(BigInt(widthX), BigInt(widthY)).map(BigDecimal(_))
     Seq.fill(1000)(TestCase(getVector))
   }
 }

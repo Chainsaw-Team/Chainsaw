@@ -5,13 +5,18 @@ import Chainsaw.edaFlow._
 import Chainsaw.xilinx._
 import spinal.core.{IntToBuilder, _}
 
+import java.io.File
 import scala.language.postfixOps
 import scala.util.Random
 
-/** bitHeap compressor implemented by FloPoCo, compressing a n X widthIn rectangle into single row
+/** A component adding n integers, bithead based. If wIn=1 it is also a population count.
   *
+  * @param widthIn
+  * input size in bits
+  * @param n
+  * number of inputs to add
   * @param signed
-  *   signedness of input integers
+  * whether inputs are signed
   */
 case class IntMultiAdder(
     override val family: XilinxDeviceFamily,
@@ -64,11 +69,14 @@ case class IntMultiAdder(
 
   override def metric(yours: Seq[BigDecimal], golden: Seq[BigDecimal]): Boolean = yours.equals(golden)
 
-  override def testCases: Seq[TestCase] = {
-    val getVector =
-      if (!signed) Seq.fill(n)(BigInt(widthIn, Random)).map(BigDecimal(_))
-      else Seq.fill(n)(BigInt(widthIn, Random) - (BigInt(1) << (widthIn - 1))).map(BigDecimal(_))
-    Seq.fill(100)(TestCase(getVector))
-  }
+  override def testCases: Seq[TestCase] = Seq.fill(100)(TestCase(randomDataVector))
 
+}
+
+object IntMultiAdder{
+  def main(args: Array[String]): Unit = {
+    println(sys.env.contains("FLOPOCO"))
+    val test = IntMultiAdder(UltraScale, 50 MHz, 8, 8, true)
+    println(test.moduleName)
+  }
 }
