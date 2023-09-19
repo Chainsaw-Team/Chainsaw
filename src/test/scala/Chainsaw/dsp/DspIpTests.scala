@@ -113,7 +113,7 @@ class DspIpTests extends ChainsawFlatSpec {
     // Pipelined FIR with symmetric coefficients
     symmetricCoeffs.foreach(coeff =>
       testOperator(
-        Fir(coeff, coeffType, dataType, symmetric = true),
+        Fir(coeff, coeffType, dataType),
         generatorConfigTable("Fir")
       )
     )
@@ -159,7 +159,7 @@ class DspIpTests extends ChainsawFlatSpec {
     parallels.foreach { parallel =>
       if (parallel == 1)
         testOperator(
-          DynamicDelay(delay, dataType, parallel),
+          DynamicDelay(delay, dataType),
           generatorConfigTable("DynamicDelay")
         )
     }
