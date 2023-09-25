@@ -8,7 +8,6 @@ package Chainsaw.io
 import com.mathworks.engine.MatlabEngine
 import com.mathworks.matlab.types
 import spinal.core._
-
 import java.nio.file.Paths
 import scala.io.Source
 
