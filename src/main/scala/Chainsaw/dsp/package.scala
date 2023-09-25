@@ -125,7 +125,7 @@ package object dsp {
 
   def corrMetric(yours: Signal, golden: Signal, threshold: Double) = {
     exportSignals(inputArrayFile, yours, golden)
-    val pyPath   = new File("goldenModel/utils/corr_metric.py")
+    val pyPath   = new File(pythonProjectDir ,"corr_metric.py")
     val rets     = runPython(pyPath).split(" ")
     val corrcoef = rets(0).toDouble
     val lag      = rets(1).toInt
