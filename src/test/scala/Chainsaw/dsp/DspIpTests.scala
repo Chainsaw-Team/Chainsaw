@@ -60,28 +60,6 @@ class DspIpTests extends ChainsawFlatSpec {
     )
   }
 
-  def testSmallIntegerDiv() = {
-    val divisor       = Seq(3, 5, 7)
-    val enable        = Seq((true, true), (true, false), (false, true))
-    val width         = Seq(8, 12, 16)
-    val architecture  = Seq(0, 1, 2)
-    val targetLatency = Seq(2, 4)
-    divisor.foreach(divisor =>
-      enable.foreach(enable =>
-        width.foreach(width =>
-          architecture.foreach(arch =>
-            targetLatency.foreach(latency =>
-              testOperator(
-                SmallIntegerDiv(divisor, enable._1, enable._2, width, arch, latency),
-                generatorConfigTable("SmallIntegerDiv")
-              )
-            )
-          )
-        )
-      )
-    )
-  }
-
   // most frequently used CORDIC modes(with initValues)
   /*testOperator(
       CordicMagnitudePhase(
