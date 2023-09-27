@@ -208,18 +208,6 @@ class FlopocoOperatorTest extends ChainsawFlatSpec {
     )
   }
 
-  def testFixAtan2(): Unit = {
-    val lsb = Seq(-20, -30)
-    val method = Seq(4, 5)
-    val fre = Seq(200, 400)
-    lsb.foreach(lsb =>
-      method.foreach(method=>
-        fre.foreach(fre=>
-          testOperator(FixAtan2(UltraScale, fre MHz, lsb, method), generatorConfigTable("FixAtan2"))
-        )
-      )
-    )
-  }
 
   def testLZOC(): Unit = {
     val wIn = Seq(16, 24, 32)
@@ -249,45 +237,6 @@ class FlopocoOperatorTest extends ChainsawFlatSpec {
     )
   }
 
-  def testFixFunctionByTable(): Unit ={
-    val lsbIn = Seq(-4, -6)
-    val lsbOut=  Seq(-3, -5)
-    val signedIn = Seq(false, true)
-    val fre = Seq(200, 400)
-
-    signedIn.foreach(signedIn =>
-      lsbIn.foreach(lsbIn=>
-        lsbOut.foreach(lsbOut=>
-          fre.foreach(fre=>
-            testOperator(FixFunctionByTable(UltraScale, fre MHz, exp, signedIn, lsbIn, lsbOut), generatorConfigTable("FixFunctionByTable"))
-          )
-        )
-      )
-    )
-  }
-
-  def testFixRealKCM(): Unit = {
-    val signedIn = Seq(false, true)
-    val integralIn = Seq(6, 8)
-    val fractionalIn = Seq(12, 16)
-    val fractionalOut = Seq(12, 16)
-    val constant = Seq(0.11111, 0.777)
-    val fre = Seq(200, 400)
-
-    signedIn.foreach(signedIn=>
-      integralIn.foreach(integralIn=>
-        fractionalIn.foreach(fractionalIn=>
-          fractionalOut.foreach(fractionalOut=>
-            constant.foreach(constant=>
-              fre.foreach(fre=>
-                testOperator(FixRealKCM(UltraScale, fre MHz, signedIn, integralIn, fractionalIn, fractionalOut, constant), generatorConfigTable("FixRealKCM"))
-              )
-            )
-          )
-        )
-      )
-    )
-  }
 
   def testFixSOPC(): Unit = {
     val lsbIn = Seq(-12, -16)

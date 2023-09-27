@@ -11,7 +11,7 @@ import spinal.lib.fsm._       // for finite state machine dialect
 import spinal.lib.bus._       // for all kinds of bus and regIf
 import spinal.lib.bus.regif._ // for regIf
 import spinal.sim._           // for simulation
-import spinal.core.sim._ // for more simulation
+import spinal.core.sim._      // for more simulation
 
 class DspIpTests extends ChainsawFlatSpec {
 
@@ -40,31 +40,50 @@ class DspIpTests extends ChainsawFlatSpec {
     generatorConfigTable("ComplexMult")
   )
 
-  /** -------- CORDIC
-    * --------
-    */
-
   def testCordic(): Unit = {
-    // CORDIC under all 6 modes
-    val algebraicModes = Seq(CIRCULAR, HYPERBOLIC, LINEAR)
-    val rotationModes  = Seq(ROTATION, VECTORING)
-    algebraicModes.foreach(alg =>
-      rotationModes.foreach(rot =>
+    val optimizeGoal = Seq(0, 1)
+    val functionSelect =
+      Seq(Rotate, Translate, SinAndCos, SinhAndCosh, ArcTan, ArcTanh, SquareRoot, Hypot, SquareDiffSqrt)
+
+    optimizeGoal.foreach(goal =>
+      functionSelect.foreach(func =>
         testOperator(
           Cordic(
-            alg,
-            rot,
-            iteration  = testIteration,
-            fractional = testFraction,
-            amplitudeType = NumericType(1.0, -1.0, -testFraction)
+            iteration      = testIteration,
+            fractional     = testFraction,
+            optimizeGoal   = goal,
+            functionSelect = func
           ),
           generatorConfigTable("Cordic")
         )
       )
     )
+  }
 
-    // most frequently used CORDIC modes(with initValues)
-    /*testOperator(
+  def testSmallIntegerDiv() = {
+    val divisor       = Seq(3, 5, 7)
+    val enable        = Seq((true, true), (true, false), (false, true))
+    val width         = Seq(8, 12, 16)
+    val architecture  = Seq(0, 1, 2)
+    val targetLatency = Seq(2, 4)
+    divisor.foreach(divisor =>
+      enable.foreach(enable =>
+        width.foreach(width =>
+          architecture.foreach(arch =>
+            targetLatency.foreach(latency =>
+              testOperator(
+                SmallIntegerDiv(divisor, enable._1, enable._2, width, arch, latency),
+                generatorConfigTable("SmallIntegerDiv")
+              )
+            )
+          )
+        )
+      )
+    )
+  }
+
+  // most frequently used CORDIC modes(with initValues)
+  /*testOperator(
       CordicMagnitudePhase(
         iteration  = testIteration,
         fractional = testFraction
@@ -91,11 +110,6 @@ class DspIpTests extends ChainsawFlatSpec {
       CordicRotate(iteration = testIteration, fractional = testFraction),
       generatorConfigTable("Cordic")
     )*/
-  }
-
-  /** -------- FIRs
-    * --------
-    */
 
   def testFirs(): Unit = {
 
@@ -113,7 +127,7 @@ class DspIpTests extends ChainsawFlatSpec {
     // Pipelined FIR with symmetric coefficients
     symmetricCoeffs.foreach(coeff =>
       testOperator(
-        Fir(coeff, coeffType, dataType, symmetric = true),
+        Fir(coeff, coeffType, dataType),
         generatorConfigTable("Fir")
       )
     )
@@ -159,7 +173,7 @@ class DspIpTests extends ChainsawFlatSpec {
     parallels.foreach { parallel =>
       if (parallel == 1)
         testOperator(
-          DynamicDelay(delay, dataType, parallel),
+          DynamicDelay(delay, dataType),
           generatorConfigTable("DynamicDelay")
         )
     }
@@ -232,7 +246,7 @@ class DspIpTests extends ChainsawFlatSpec {
   )
 
 //  testComplexMult()
-testCordic()
+  testCordic()
 //  testDelay()
 //  testDds()
 //  testMovingAverage()
