@@ -255,6 +255,29 @@ class FlopocoOperatorTest extends ChainsawFlatSpec {
     )
   }
 
+  def testFixRealKCM(): Unit = {
+    val signedIn = Seq(false, true)
+    val integralIn = Seq(6, 8)
+    val fractionalIn = Seq(12, 16)
+    val fractionalOut = Seq(12, 16)
+    val constant = Seq(0.11111, 0.777)
+    val fre = Seq(200, 400)
+
+    signedIn.foreach(signedIn=>
+      integralIn.foreach(integralIn=>
+        fractionalIn.foreach(fractionalIn=>
+          fractionalOut.foreach(fractionalOut=>
+            constant.foreach(constant=>
+              fre.foreach(fre=>
+                testOperator(FixRealKCM(UltraScale, fre MHz, signedIn, integralIn, fractionalIn, fractionalOut, constant), generatorConfigTable("FixRealKCM"))
+              )
+            )
+          )
+        )
+      )
+    )
+  }
+
   override def generatorConfigTable: Map[String, TestConfig] = Map(
     "IntMultiAdder" -> TestConfig(
       full = true,
@@ -352,13 +375,6 @@ class FlopocoOperatorTest extends ChainsawFlatSpec {
       impl = false
     ),
 
-    "FixAtan2" -> TestConfig(
-      full = true,
-      naive = false,
-      synth = false,
-      impl = false
-    ),
-
     "LZOC" -> TestConfig(
       full = true,
       naive = false,
@@ -367,13 +383,6 @@ class FlopocoOperatorTest extends ChainsawFlatSpec {
     ),
 
     "LZOC3" -> TestConfig(
-      full = true,
-      naive = false,
-      synth = false,
-      impl = false
-    ),
-
-    "FixFunctionByTable" -> TestConfig(
       full = true,
       naive = false,
       synth = false,
@@ -412,8 +421,7 @@ class FlopocoOperatorTest extends ChainsawFlatSpec {
     testFixSinCos()
     testLZOC()
     testLZOC3()
-    // testFixFunctionByTable()
-    // testFixRealKCM()
+    testFixRealKCM()
     testFixSOPC()
   }
 

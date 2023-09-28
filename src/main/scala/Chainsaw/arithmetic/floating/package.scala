@@ -62,14 +62,16 @@ package object floating {
       }
     }
 
-    def isInf: Boolean = {
+    def isZeroSim: Boolean = (float.exponent.toBigInt==0) && (float.mantissa.toBigInt==0)
+
+    def isInfSim: Boolean = {
       float.exponentSize match {
         case 8 => (float.exponent.toBigInt==pow2(8)-1) && (float.mantissa.toBigInt==0)
         case 11 => (float.exponent.toBigInt==pow2(11)-1) && (float.mantissa.toBigInt==0)
       }
     }
 
-    def isNaN: Boolean = {
+    def isNaNSim: Boolean = {
       float.exponentSize match {
         case 8 => (float.exponent.toBigInt==pow2(8)-1) && (float.mantissa.toBigInt!=0)
         case 11 => (float.exponent.toBigInt==pow2(11)-1) && (float.mantissa.toBigInt!=0)

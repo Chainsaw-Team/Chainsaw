@@ -11,7 +11,7 @@ import spinal.lib.fsm._       // for finite state machine dialect
 import spinal.lib.bus._       // for all kinds of bus and regIf
 import spinal.lib.bus.regif._ // for regIf
 import spinal.sim._           // for simulation
-import spinal.core.sim._      // for more simulation
+import spinal.core.sim._ // for more simulation
 
 class DspIpTests extends ChainsawFlatSpec {
 
@@ -40,18 +40,21 @@ class DspIpTests extends ChainsawFlatSpec {
     generatorConfigTable("ComplexMult")
   )
 
+  /** -------- CORDIC
+    * --------
+    */
+
   def testCordic(): Unit = {
     val optimizeGoal = Seq(0, 1)
-    val functionSelect =
-      Seq(Rotate, Translate, SinAndCos, SinhAndCosh, ArcTan, ArcTanh, SquareRoot, Hypot, SquareDiffSqrt)
+    val functionSelect = Seq(Rotate, Translate, SinAndCos, SinhAndCosh, ArcTan, ArcTanh, SquareRoot, Hypot, SquareDiffSqrt)
 
-    optimizeGoal.foreach(goal =>
-      functionSelect.foreach(func =>
+    optimizeGoal.foreach(goal=>
+      functionSelect.foreach(func=>
         testOperator(
           Cordic(
-            iteration      = testIteration,
-            fractional     = testFraction,
-            optimizeGoal   = goal,
+            iteration = testIteration,
+            fractional = testFraction,
+            optimizeGoal = goal,
             functionSelect = func
           ),
           generatorConfigTable("Cordic")
@@ -60,34 +63,9 @@ class DspIpTests extends ChainsawFlatSpec {
     )
   }
 
-  // most frequently used CORDIC modes(with initValues)
-  /*testOperator(
-      CordicMagnitudePhase(
-        iteration  = testIteration,
-        fractional = testFraction
-      ),
-      generatorConfigTable("Cordic")
-    )
-    testOperator(
-      CordicCosSin(iteration = testIteration, fractional = testFraction),
-      generatorConfigTable("Cordic")
-    )
-    testOperator(
-      CordicMultiplication(iteration = testIteration, fractional = testFraction),
-      generatorConfigTable("Cordic")
-    )
-    testOperator(
-      CordicDivision(iteration = testIteration, fractional = testFraction),
-      generatorConfigTable("Cordic")
-    )
-    testOperator(
-      CordicHyperFunction(iteration = testIteration, fractional = testFraction),
-      generatorConfigTable("Cordic")
-    )
-    testOperator(
-      CordicRotate(iteration = testIteration, fractional = testFraction),
-      generatorConfigTable("Cordic")
-    )*/
+  /** -------- FIRs
+    * --------
+    */
 
   def testFirs(): Unit = {
 
@@ -224,8 +202,7 @@ class DspIpTests extends ChainsawFlatSpec {
   )
 
 //  testComplexMult()
-
-  testCordic()
+//testCordic()
 //  testDelay()
 //  testDds()
 //  testMovingAverage()
