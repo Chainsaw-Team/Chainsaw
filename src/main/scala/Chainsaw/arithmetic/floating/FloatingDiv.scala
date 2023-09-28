@@ -14,7 +14,7 @@ case class FloatingDiv(
   targetFrequency: HertzNumber
 ) extends FloatingOperator("FPDiv", "FPDiv", Seq(("wE", exponentSize), ("wF", mantissaSize)), true, 2)
 
-object SinglePrecisonFPDiv {
+object SinglePrecisionFPDiv {
   def apply(family:XilinxDeviceFamily, targetFrequency: HertzNumber) = FloatingDiv(8, 23, family, targetFrequency)
 }
 

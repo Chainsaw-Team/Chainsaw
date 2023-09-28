@@ -511,7 +511,7 @@ class FloatingTest extends AnyFlatSpec {
   }
 
   // floating div
-  SimConfig.withFstWave.compile(SinglePrecisonFPDiv(UltraScale, 200 MHz)).doSim{dut =>
+  SimConfig.withFstWave.compile(SinglePrecisionFPDiv(UltraScale, 200 MHz)).doSim{dut =>
     dut.clockDomain.forkStimulus(2)
     dut.clockDomain.waitSampling()
     var expected: Float = 0.0f
