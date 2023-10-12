@@ -1,19 +1,9 @@
 package Chainsaw
 
-import ai.djl.ndarray.NDList
-import ai.djl.ndarray._
-import ai.djl.ndarray.types._
+import spinal.core.{Data, _}
 
-import java.io.{BufferedReader, File, InputStreamReader}
+import java.io.File
 import scala.language.implicitConversions
-import spinal.core.Data
-import spinal.core._
-import spinal.core.sim._
-import spinal.lib._
-import spinal.lib.fsm._
-
-import java.nio.file.{Files, Paths}
-import scala.collection.mutable.ArrayBuffer
 
 package object dsp {
 
@@ -124,7 +114,7 @@ package object dsp {
   }
 
   def corrMetric(yours: Signal, golden: Signal, threshold: Double) = {
-    exportSignals(inputArrayFile, yours, golden)
+    pythonExporter(inputArrayFile).add(yours, golden)
     val pyPath   = new File(pythonProjectDir ,"corr_metric.py")
     val rets     = runPython(pyPath).split(" ")
     val corrcoef = rets(0).toDouble
@@ -138,7 +128,7 @@ package object dsp {
       samplingFreq: HertzNumber,
       filterType: String
   ): Signal = {
-    val pyPath = new File("goldenModel/utils/design_filter.py")
+    val pyPath = new File(pythonProjectDir, "design_filter.py")
     runPython(
       pyPath,
       s"$tap [${target.map(_.toDouble).mkString(", ")}] ${samplingFreq.toDouble} $filterType"

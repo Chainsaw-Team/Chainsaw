@@ -21,8 +21,8 @@ class pythonIoTest extends org.scalatest.flatspec.AnyFlatSpec {
   "array IO BigDecimal" should "work with more data" in {
     val data = Seq.fill(3)(Seq.fill(4096)(BigDecimal.valueOf(Random.nextDouble())))
     val dataFile = new File(pythonDataPath, "pythonIoTestData.npz")
-    exportSignals(dataFile, data:_*)
-    val dataIn = importSignals(dataFile)
+    pythonExporter(dataFile).add(data: _*).savez()
+    val dataIn = pythonImporter(dataFile).importBigDecimal
     data.zip(dataIn).foreach(d => assert(d._1 == d._2))
   }
 
@@ -30,8 +30,8 @@ class pythonIoTest extends org.scalatest.flatspec.AnyFlatSpec {
     val name = "data1"
     val data = Seq.fill(4096)(BigDecimal.valueOf(Random.nextDouble()))
     val dataFile = new File(pythonDataPath, "pythonIoTestData.npz")
-    exportSignals(dataFile, Map(name -> data))
-    val dataIn = importSignalsNamedDouble(dataFile)
+    pythonExporter(dataFile).add(Map(name -> data)).savez()
+    val dataIn = pythonImporter(dataFile).importNamedBigDecimal
     println(dataIn.keys)
     assert(data == dataIn(name))
   }
@@ -40,10 +40,38 @@ class pythonIoTest extends org.scalatest.flatspec.AnyFlatSpec {
     val name = Seq("data1", "data2", "data3")
     val data = Seq.fill(name.size)(Seq.fill(4096)(BigDecimal.valueOf(Random.nextDouble())))
     val dataFile = new File(pythonDataPath, "pythonIoTestData.npz")
-    exportSignals(dataFile, name.zip(data).toMap)
-    val dataIn = importSignalsNamedDouble(dataFile)
+    pythonExporter(dataFile).add(name.zip(data).toMap).savez()
+    val dataIn = pythonImporter(dataFile).importNamedBigDecimal
     println(dataIn.keys)
     name.indices.foreach(i => assert(data(i) == dataIn(name(i))))
+  }
+
+  "array IO BigDecimal 2d" should "work" in {
+    val rows = 10
+    val cols = 10
+    val name = "data"
+    val data = Seq.fill(rows)(Seq.fill(cols)(BigDecimal.valueOf(Random.nextDouble())))
+    val dataFile = new File(pythonDataPath, "pythonIoTestData.npz")
+    pythonExporter(dataFile).add2d(Map(name -> data)).savez()
+    val dataIn = pythonImporter(dataFile).importNamedBigDecimal2d
+    println("dataIn size1:" + dataIn.values.head.size + " dataIn size2: " + dataIn.values.head.head.size)
+    println("data size1:" + data.size + " data size2: " + data.head.size)
+    data.zip(dataIn(name)).foreach(d => assert(d._1 == d._2))
+  }
+
+  "array IO BigDecimal 2d" should "work with more data" in {
+    val rows = 10
+    val cols = 10
+    val name = Seq("data1", "data2", "data3")
+    val data = Seq.fill(3)(Seq.fill(rows)(Seq.fill(cols)(BigDecimal.valueOf(Random.nextDouble()))))
+    val dataFile = new File(pythonDataPath, "pythonIoTestData.npz")
+    pythonExporter(dataFile).add2d(name.zip(data).toMap).savez()
+    val dataIn = pythonImporter(dataFile).importNamedBigDecimal2d
+    println("dataIn size1:" + dataIn.values.head.size + " dataIn size2: " + dataIn.values.head.head.size)
+    println("data size1:" + data.head.size + " data size2: " + data.head.head.size)
+    name.indices.foreach(i => {
+      data(i).zip(dataIn(name(i))).foreach(d => assert(d._1 == d._2))
+    })
   }
 
   "array IO Double" should "work" in {
@@ -57,8 +85,8 @@ class pythonIoTest extends org.scalatest.flatspec.AnyFlatSpec {
   "array IO Double" should "work with more data" in {
     val data = Seq.fill(3)(Seq.fill(4096)(Random.nextDouble()))
     val dataFile = new File(pythonDataPath, "pythonIoTestData.npz")
-    exportSignalsDouble(dataFile, data: _*)
-    val dataIn = importSignalsDouble(dataFile)
+    pythonExporter(dataFile).addDouble(data: _*).savez()
+    val dataIn = pythonImporter(dataFile).importDouble
     data.zip(dataIn).foreach(d => assert(d._1 == d._2))
   }
 
@@ -66,20 +94,20 @@ class pythonIoTest extends org.scalatest.flatspec.AnyFlatSpec {
     val name = "data"
     val data = Seq.fill(4096)(Random.nextDouble())
     val dataFile = new File(pythonDataPath, "pythonIoTestData.npz")
-    exportSignalsDouble(dataFile, Map(name -> data))
-    val dataIn = importSignalsNamedDouble(dataFile)
+    pythonExporter(dataFile).addDouble(Map(name -> data)).savez()
+    val dataIn = pythonImporter(dataFile).importNamedDouble
     println(dataIn.keys)
     assert(data == dataIn(name))
   }
 
   "array IO Double with name" should "work with more data" in {
-    val names = Seq("data1", "data2", "data3")
-    val data = Seq.fill(names.size)(Seq.fill(10)(Random.nextDouble()))
+    val name = Seq("data1", "data2", "data3")
+    val data = Seq.fill(name.size)(Seq.fill(10)(Random.nextDouble()))
     val dataFile = new File(pythonDataPath, "pythonIoTestData.npz")
-    exportSignalsDouble(dataFile, names.zip(data).toMap)
-    val dataIn = importSignalsNamedDouble(dataFile)
+    pythonExporter(dataFile).addDouble(name.zip(data).toMap).savez()
+    val dataIn = pythonImporter(dataFile).importNamedDouble
     println(dataIn.keys)
-    names.indices.foreach(i => assert(data(i) == dataIn(names(i))))
+    name.indices.foreach(i => assert(data(i) == dataIn(name(i))))
   }
 
   "array IO Double 2d" should "work" in {
@@ -88,8 +116,8 @@ class pythonIoTest extends org.scalatest.flatspec.AnyFlatSpec {
     val name = "data"
     val data = Seq.fill(rows)(Seq.fill(cols)(Random.nextDouble()))
     val dataFile = new File(pythonDataPath, "pythonIoTestData.npz")
-    exportSignalsDouble2d(dataFile, Map(name -> data))
-    val dataIn = importSignalsDouble2d(dataFile, (rows, cols))
+    pythonExporter(dataFile).addDouble2d(Map(name -> data)).savez()
+    val dataIn = pythonImporter(dataFile).importNamedDouble2d
     println("dataIn size1:" + dataIn.values.head.size + " dataIn size2: " + dataIn.values.head.head.size)
     println("data size1:" + data.size + " data size2: " + data.head.size)
     data.zip(dataIn(name)).foreach(d => assert(d._1 == d._2))
@@ -101,37 +129,14 @@ class pythonIoTest extends org.scalatest.flatspec.AnyFlatSpec {
     val name = Seq("data1", "data2", "data3")
     val data = Seq.fill(3)(Seq.fill(rows)(Seq.fill(cols)(Random.nextDouble())))
     val dataFile = new File(pythonDataPath, "pythonIoTestData.npz")
-    exportSignalsDouble2d(dataFile, name.zip(data).toMap)
-    val dataIn = importSignalsDouble2d(dataFile, (rows, cols))
+    pythonExporter(dataFile).addDouble2d(name.zip(data).toMap).savez()
+    val dataIn = pythonImporter(dataFile).importNamedDouble2d
     println("dataIn size1:" + dataIn.values.head.size + " dataIn size2: " + dataIn.values.head.head.size)
     println("data size1:" + data.head.size + " data size2: " + data.head.head.size)
     name.indices.foreach(i => {
       data(i).zip(dataIn(name(i))).foreach(d => assert(d._1 == d._2))
     })
   }
-
-  "convert 2d 1d " should "work" in {
-    val rows = 10
-    val cols = 10
-    val name = Seq("data1", "data2")
-    val matrixData1 = Seq.fill(rows)(Seq.fill(cols)(Random.nextDouble()))
-    val matrixData2 = Seq.fill(rows)(Seq.fill(cols)(Random.nextDouble()))
-    val data = Seq.fill(2)(Seq.fill(100)(Random.nextDouble()))
-    val namedData = name.zip(data).toMap ++ flatten2dSignalsDouble(Map("matrixData1" -> matrixData1, "matrixData2" -> matrixData2))
-    val dataFile = new File(pythonDataPath, "pythonIoTestData.npz")
-    exportSignalsDouble(dataFile, namedData)
-    val dataIn = importSignalsNamedDouble(dataFile)
-    val matrixDataIn = fold2dSignalsDouble(dataIn)
-
-    println("matData1In size1:" + matrixDataIn("matrixData1").size + " matData1In size2: " + matrixDataIn("matrixData1").head.size)
-    println("matData1 size1:" + matrixData1.size + " matData1 size2: " + matrixData1.head.size)
-    println("matData2In size1:" + matrixDataIn("matrixData2").size + " matData2In size2: " + matrixDataIn("matrixData2").head.size)
-    println("matData2 size1:" + matrixData2.size + " matData2 size2: " + matrixData2.head.size)
-    matrixData1.zip(matrixDataIn("matrixData1")).foreach(d => assert(d._1 == d._2))
-    matrixData2.zip(matrixDataIn("matrixData2")).foreach(d => assert(d._1 == d._2))
-    name.indices.foreach(i => assert(data(i) == dataIn(name(i))))
-  }
-
 
   val dataLenLevel =  (10 until 20 by 1).map(_.toDouble) ++
     (BigDecimal(20) until BigDecimal(24) by 0.25).map(_.toDouble)
@@ -151,7 +156,7 @@ class pythonIoTest extends org.scalatest.flatspec.AnyFlatSpec {
         val data = Seq.fill(len.floor.toInt)(BigDecimal.valueOf(Random.nextDouble()))
         val dataFile = new File(pythonDataPath, s"pythonIoTestData_${len.floor.toInt}.npz")
         exportSignal(dataFile, data)
-        val dataIn = importSignals(dataFile).head
+        val dataIn = importSignal(dataFile)
         assert(data == dataIn)
 
         val elapsedTime = System.currentTimeMillis() - startTime
@@ -205,11 +210,6 @@ class pythonIoTest extends org.scalatest.flatspec.AnyFlatSpec {
 
     println(s"len $saveResultLen")
     println(s"len $saveResultTime")
-  }
-
-  "array IO" should "check whether data size exceed ram size" in {
-    // TODO: unable to test
-    val test = importSignalsDouble(new File(pythonDataPath, "pythonIoTestData_1048576.npz"))
   }
 
 }
