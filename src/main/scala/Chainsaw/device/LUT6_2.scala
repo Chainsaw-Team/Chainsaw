@@ -5,7 +5,7 @@ import spinal.core._
 import LUTUtils._
 import scala.language.postfixOps
 import Chainsaw._
-import Chainsaw.xilinx._
+import Chainsaw.edaFlow.vivado._
 
 case class LUT6_2(init: BigInt) extends Unisim {
   val generic: Generic = new Generic {

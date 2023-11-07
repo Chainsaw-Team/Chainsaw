@@ -1,10 +1,10 @@
 package Chainsaw.memory
 
-import Chainsaw._            // for basic templates
-import Chainsaw.dsp._        // for dsp operators
-import Chainsaw.arithmetic._ // for arithmetic operators
-import Chainsaw.crypto._     // for crypto operators
-import Chainsaw.xilinx._     // for Xilinx FPGA Flow
+import Chainsaw._                // for basic templates
+import Chainsaw.dsp._            // for dsp operators
+import Chainsaw.arithmetic._     // for arithmetic operators
+import Chainsaw.crypto._         // for crypto operators
+import Chainsaw.edaFlow.vivado._ // for Xilinx FPGA Flow
 
 import spinal.core._
 import spinal.lib._
@@ -13,7 +13,7 @@ import spinal.lib.bus._       // for all kinds of bus and regIf
 import spinal.lib.bus.regif._ // for regIf
 import spinal.sim._           // for simulation
 import spinal.core.sim._      // for more simulation
-import Chainsaw.xilinx._
+import Chainsaw.edaFlow._
 
 import Chainsaw.memory.RamPortType._
 
@@ -103,7 +103,7 @@ case class MwNrRam(m: Int, n: Int, mode: MwNrMode) extends Component {
 
 case class mWnRDUT(m: Int, n: Int, mode: MwNrMode) extends Component {
   val ramClockDomain    = ClockDomain.external("ram", config = ClockDomainConfig(resetKind = BOOT))
-  val globalClockDomain = ClockDomain.external("global", config = xilinxCDConfig)
+  val globalClockDomain = ClockDomain.external("global", config = xilinxDefaultCDConfig)
 
   val globalClokingArea = new ClockingArea(globalClockDomain) {
     val io = new Bundle {
@@ -133,6 +133,6 @@ case class mWnRDUT(m: Int, n: Int, mode: MwNrMode) extends Component {
 
 object MwNrRam {
   def main(args: Array[String]): Unit = {
-    VivadoImpl(MwNrRam(2, 2, PURELOGIC), "ram2w2r")
+    VivadoTask.implModule(MwNrRam(2, 2, PURELOGIC), "MwNrRam")
   }
 }

@@ -1,7 +1,7 @@
 package Chainsaw.memory
 
 import Chainsaw._
-import Chainsaw.xilinx.VivadoUtil
+import Chainsaw.edaFlow.vivado.VivadoUtil
 import spinal.core._
 import spinal.lib._
 import spinal.lib.fsm._
@@ -9,9 +9,7 @@ import spinal.lib.fsm._
 import scala.language.postfixOps
 import scala.util.Random
 
-case class FlowWidthConverter(widthIn: Int, widthOut: Int, widthEle: Int)
-    extends ChainsawInfiniteGenerator
-    with Duty {
+case class FlowWidthConverter(widthIn: Int, widthOut: Int, widthEle: Int) extends ChainsawInfiniteGenerator with Duty {
 
   // based on registers, for small size
   // based on lcm and ping-pong buffer
@@ -39,8 +37,8 @@ case class FlowWidthConverter(widthIn: Int, widthOut: Int, widthEle: Int)
     val regsPing, regsPong = Reg(Bits(regCount * widthEle bits))
 
     val combValid, combReady = Bool()
-    val counterIn  = Counter(stateCount = regCount / widthIn, inc = validIn)
-    val counterOut = Counter(stateCount = regCount / widthOut, inc = combValid)
+    val counterIn            = Counter(stateCount = regCount / widthIn, inc = validIn)
+    val counterOut           = Counter(stateCount = regCount / widthOut, inc = combValid)
 
     val pingRead, pingWrite = RegInit(False)
     pingWrite.toggleWhen(counterIn.willOverflow)
@@ -81,7 +79,7 @@ case class FlowWidthConverter(widthIn: Int, widthOut: Int, widthEle: Int)
 
       val regOutPing: Bits = regsPing(readStart, readWidth)
       val regOutPong: Bits = regsPong(readStart, readWidth)
-      val ret = Mux(pingRead.d(readLatency), regOutPing, regOutPong)
+      val ret              = Mux(pingRead.d(readLatency), regOutPing, regOutPong)
 
       // TODO: generate last based on lastIn
       combValid := (isActive(FULL) || isActive(HALF))

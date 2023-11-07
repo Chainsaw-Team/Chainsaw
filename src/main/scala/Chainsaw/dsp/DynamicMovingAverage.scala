@@ -2,7 +2,7 @@ package Chainsaw.dsp
 
 import Chainsaw.NumericExt._
 import Chainsaw._
-import Chainsaw.xilinx._
+import Chainsaw.edaFlow.vivado._
 import spinal.core._
 
 import scala.language.postfixOps
@@ -79,6 +79,6 @@ case class DynamicMovingAverage(size: Int, dataType: NumericType)
     // get mean
     dataOut.head := (sum mult scalingFactor).d(2).fixTo(dataType(), roundType = RoundType.FLOOR)
 
-    lastOut      := lastIn.validAfter(latency())
+    lastOut := lastIn.validAfter(latency())
   }
 }

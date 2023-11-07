@@ -14,27 +14,22 @@ object TestVivadoUtils {
       design: => Component,
       optimizeOption: VivadoOptimizeOption,
       customizedConfig: Option[SpinalConfig] = None,
-      includeDirs: Option[Seq[File]]         = None,
+      includeDirs: Seq[File]                 = Seq[File](),
       workspaceDir: File                     = new File(synthWorkspace, "Vivado"),
       topModuleName: String,
-      deviceType: edaFlow.Device       = zcu104,
+      device: ChainsawDevice           = zcu104,
       taskType: EdaFlowType            = SYNTH,
       xdcFile: Option[File]            = None,
       blackBoxSet: Option[Set[String]] = None
   ) = {
-    VivadoFlow
-      .fromComponent(
-        design           = design,
-        customizedConfig = customizedConfig,
-        includeDirs      = includeDirs,
-        workspaceDir     = workspaceDir,
-        topModuleName    = topModuleName,
-        optimizeOption   = optimizeOption,
-        deviceType       = deviceType,
-        taskType         = taskType,
-        xdcFile          = xdcFile,
-        blackBoxSet      = blackBoxSet
-      )
+    VivadoFlow(
+      designInput    = ChainsawEdaFullInput(design, includeDirs, workspaceDir, topModuleName, customizedConfig),
+      device         = device,
+      taskType       = taskType,
+      optimizeOption = optimizeOption,
+      xdcFile        = xdcFile,
+      blackBoxSet    = blackBoxSet
+    )
       .startFlow()
   }
 }

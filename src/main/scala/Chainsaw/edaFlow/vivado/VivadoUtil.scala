@@ -72,6 +72,71 @@ case class VivadoUtil(
       .map { case (name, value) => s"$name = $value" }
       .mkString(" ")
   }
+
+  /** -------- DSE methods
+    * --------
+    */
+  // TODO: reimplement this by open-source libraries
+  import ilog.concert._
+  import ilog.cplex._
+  def solveBestScheme(
+      schemes: Seq[VivadoUtil],
+      solveVars: Seq[Int]
+  ): Array[Int] = {
+    val cplex = new IloCplex()
+
+    val upBounds = schemes
+      .map(scheme => solveVars.map(v => scheme.getValues(v)))
+      .map { consumes =>
+        consumes
+          .zip(solveVars.map(v => this.getValues(v)))
+          .map { case (consume, budget) => budget / consume }
+          .min
+      }
+
+    val weights =
+      solveVars.map(i => schemes.map(scheme => scheme.getValues(i).toInt).toArray)
+    val budgets = solveVars.map(i => this.getValues(i))
+
+    val variables: Array[IloIntVar] =
+      upBounds
+        .flatMap(upBound => cplex.intVarArray(1, 0, upBound.toInt))
+        .toArray
+
+    var equation = ""
+    weights.zip(budgets).foreach { case (weight, budget) =>
+      equation += weight
+        .zip(Seq.tabulate(weights.length)(i => s"x$i"))
+        .map { case (i, str) => s"$i * $str" }
+        .mkString(" + ") + s" <= $budget\n"
+      cplex.addLe(cplex.scalProd(variables, weight), budget)
+    }
+
+    cplex.addMaximize(
+      cplex.scalProd(variables, Array.fill(variables.length)(1))
+    )
+    cplex.solve()
+
+    val ret = variables.map(cplex.getValue).map(_.toInt)
+    val takes = ret
+      .zip(schemes)
+      .map { case (i, solution) => s"take $i X $solution" }
+      .mkString("\n")
+    val util =
+      ret.zip(schemes).map { case (i, solution) => solution * i }.reduce(_ + _)
+    val utilInAll =
+      s"LUT: ${util.lut} / ${this.lut}, DSP: ${util.dsp} / ${this.dsp}"
+
+    logger.info(
+      s"\n----schemes search report----" +
+        s"\nconstraints:\n$equation" +
+        s"maximize: \n${variables.indices.map(i => s"x$i").mkString(" + ")}" +
+        s"\nresults: \n$takes" +
+        s"\nutils: \n$utilInAll"
+    )
+    ret
+  }
+
 }
 
 object VivadoUtil {
@@ -94,4 +159,17 @@ object VivadoUtil {
       uram288: Double = 0,
       carry8: Double  = 0
   ) = new VivadoUtil(lut, ff, dsp, bram36, uram288, carry8)
+}
+
+object VivadoRequirement {
+  def apply(
+      lut: Double     = Double.MaxValue,
+      ff: Double      = Double.MaxValue,
+      dsp: Double     = Double.MaxValue,
+      bram36: Double  = Double.MaxValue,
+      uram288: Double = Double.MaxValue,
+      carry8: Double  = Double.MaxValue
+  ) = new VivadoUtil(lut, ff, dsp, bram36, uram288, carry8)
+
+  def noRequirement = VivadoRequirement()
 }

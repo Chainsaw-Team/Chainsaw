@@ -1,5 +1,6 @@
 package Chainsaw.edaFlow
 
+import Chainsaw.edaFlow.EdaFlowUtils.ParseReportUtils
 import org.slf4j._
 
 import java.io.File
@@ -33,7 +34,7 @@ package object yosys {
       useUram: Option[Boolean] = None
   ) extends YosysOptimizeOption
 
-  case class YosysReport(logFile: File, targetDevice: Option[Device]) extends Report {
+  case class YosysReport(logFile: File, targetDevice: ChainsawDevice) extends Report {
     def genInfosReport(): Unit = {
       val parseLogger = LoggerFactory.getLogger(s"Get utilization information in log file which generating by Yosys")
 
@@ -43,44 +44,7 @@ package object yosys {
 
       parseLogger.info(s"Parsing utilization information in ${logFile.getName}")
       val parseItem = targetDevice match {
-        case Some(value) =>
-          value.vendor match {
-            case Xilinx =>
-              Seq(
-                "BUFG",
-                "CARRY4",
-                "CARRY8",
-                "FDCE",
-                "FDRE",
-                "LUT2",
-                "LUT3",
-                "LUT4",
-                "LUT5",
-                "LUT6",
-                "MUXF7",
-                "IBUF",
-                "OBUF",
-                "RAM32M"
-              )
-            case _ =>
-              Seq(
-                "BUFG",
-                "CARRY4",
-                "CARRY8",
-                "FDCE",
-                "FDRE",
-                "LUT2",
-                "LUT3",
-                "LUT4",
-                "LUT5",
-                "LUT6",
-                "MUXF7",
-                "IBUF",
-                "OBUF",
-                "RAM32M"
-              )
-          }
-        case None =>
+        case generic: GenericDevice =>
           Seq(
             "_ANDNOT_",
             "_DFFE_PP0P_ ",
@@ -96,6 +60,43 @@ package object yosys {
             "_XNOR_",
             "_XOR_"
           )
+        case xilinx: XilinxDevice =>
+          Seq(
+            "BUFG",
+            "CARRY4",
+            "CARRY8",
+            "FDCE",
+            "FDRE",
+            "LUT2",
+            "LUT3",
+            "LUT4",
+            "LUT5",
+            "LUT6",
+            "MUXF7",
+            "IBUF",
+            "OBUF",
+            "RAM32M"
+          )
+        case altera: AlteraDevice =>
+          Seq(
+            "BUFG",
+            "CARRY4",
+            "CARRY8",
+            "FDCE",
+            "FDRE",
+            "LUT2",
+            "LUT3",
+            "LUT4",
+            "LUT5",
+            "LUT6",
+            "MUXF7",
+            "IBUF",
+            "OBUF",
+            "RAM32M"
+          )
+        case _ =>
+          Seq()
+
       }
       val parseValues = parseItem.map { item =>
         ParseReportUtils.getIntAfterHeader(header = item, separator = ':', report = report)

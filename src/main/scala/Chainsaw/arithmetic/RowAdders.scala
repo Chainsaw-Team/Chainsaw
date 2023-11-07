@@ -3,7 +3,7 @@ package Chainsaw.arithmetic
 import Chainsaw._
 import Chainsaw.device.LUT5to2.toLUT5_2Format
 import Chainsaw.device.{CARRY8, LUT5to2, LUT6_2, LUTUtils}
-import Chainsaw.xilinx.VivadoUtil
+import Chainsaw.edaFlow.vivado.VivadoUtil
 import spinal.core._
 import spinal.lib._
 

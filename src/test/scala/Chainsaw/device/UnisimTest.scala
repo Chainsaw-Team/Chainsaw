@@ -1,7 +1,7 @@
 package Chainsaw.device
 
 import Chainsaw._
-import Chainsaw.xilinx._
+import Chainsaw.edaFlow.vivado._
 import org.scalatest.flatspec.AnyFlatSpec
 import spinal.core._
 import spinal.core.sim._
@@ -28,7 +28,8 @@ class UnisimTest extends AnyFlatSpec {
 
   "LUT6" should "synth" in {
     if (hasVivado)
-      VivadoSynth(Lut6Dut(BigInt(0)), "lut6")
+      VivadoTask
+        .synth(Lut6Dut(BigInt(0)), "lut6")
         .requireUtil(VivadoUtil(lut = 1), PreciseRequirement)
   }
 
@@ -49,7 +50,8 @@ class UnisimTest extends AnyFlatSpec {
   // TODO: add DUT
   it should "synth" in {
     if (hasVivado)
-      VivadoSynth(CARRY8(), "carry8")
+      VivadoTask
+        .synth(CARRY8(), "carry8")
         .requireUtil(VivadoUtil(carry8 = 1), PreciseRequirement)
   }
 

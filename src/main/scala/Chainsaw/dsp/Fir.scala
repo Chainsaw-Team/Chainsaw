@@ -2,7 +2,7 @@ package Chainsaw.dsp
 
 import Chainsaw._
 import Chainsaw.io.pythonIo.runPythonModel
-import Chainsaw.xilinx.VivadoUtil
+import Chainsaw.edaFlow.vivado.VivadoUtil
 import spinal.core._
 
 import scala.language.postfixOps

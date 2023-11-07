@@ -1,7 +1,7 @@
 package Chainsaw.memory
 
 import Chainsaw._
-import Chainsaw.xilinx._
+import Chainsaw.edaFlow.vivado._
 import spinal.core._
 import spinal.lib._
 import spinal.lib.fsm._

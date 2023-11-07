@@ -4,7 +4,7 @@ import Chainsaw._
 import Chainsaw.dsp._
 import Chainsaw.arithmetic._
 import Chainsaw.crypto._
-import Chainsaw.xilinx._
+import Chainsaw.edaFlow.vivado._
 import spinal.core._
 import spinal.lib._
 import spinal.lib.fsm._
@@ -46,6 +46,6 @@ case class RamByXilinxBram(
 }
 
 object RamByXilinxBram extends App {
-  VivadoSynth(RamByXilinxBram(1, 1, 64, 16384), "bram")
-  VivadoImpl(RamByXilinxBram(1, 1, 64, 16384), "bram")
+  VivadoTask.synth(RamByXilinxBram(1, 1, 64, 16384), "bram")
+  VivadoTask.implModule(RamByXilinxBram(1, 1, 64, 16384), "bram")
 }

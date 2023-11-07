@@ -1,7 +1,7 @@
 package Chainsaw.arithmetic
 
 import Chainsaw._
-import Chainsaw.xilinx.VivadoUtil
+import Chainsaw.edaFlow.vivado.VivadoUtil
 import cc.redberry.rings.scaladsl._
 import spinal.core._
 
@@ -38,7 +38,7 @@ class BcmAlgo(
 
   override def widthY = theConstant.bitLength
 
-  override def dspCost = 0
+  override def dspCost = 0.0
 
   /** -------- width calculation
     * --------
@@ -83,7 +83,7 @@ class BcmAlgo(
         val dataSlice = inter.map(_ - weight) // inclusive slice
         (dataSlice, ArithInfo(dataSlice.length, weight, c == '1'))
       }
-      .filterNot(_._1.isEmpty) // skip empty slices
+      .filterNot(_._1.isEmpty)                                   // skip empty slices
       .map { case (slice, info) => (slice, info << slice.head) } // true weight
 
   val slices = sliceAndInfos.map(_._1)
@@ -154,21 +154,20 @@ class BcmAlgo(
   val widthCoeff                                         = constantDigits.length
   var upperBound, lowerBound, dataForUpper, dataForLower = BigInt(0)
   if (multiplierType == MsbMultiplier) {
-    (0 until widthIn).foreach {
-      i => // accumulate the error bit by bit(low to high), as they are independent
-        val widthDropped = (widthNotInvolved - i) min widthCoeff max 0
+    (0 until widthIn).foreach { i => // accumulate the error bit by bit(low to high), as they are independent
+      val widthDropped = (widthNotInvolved - i) min widthCoeff max 0
 
-        val constantDropped = // the constant which a bit should have been multiplied by (its weight)
-          if (useCsd) Csd(constantDigits.reverse).takeLow(widthDropped).evaluate
-          else theConstant.toBitValue().takeLow(widthDropped)
+      val constantDropped = // the constant which a bit should have been multiplied by (its weight)
+        if (useCsd) Csd(constantDigits.reverse).takeLow(widthDropped).evaluate
+        else theConstant.toBitValue().takeLow(widthDropped)
 
-        if (constantDropped >= BigInt(0)) {
-          upperBound += constantDropped << i
-          dataForUpper += BigInt(1)     << i
-        } else {
-          lowerBound += constantDropped << i
-          dataForLower += BigInt(1)     << i
-        }
+      if (constantDropped >= BigInt(0)) {
+        upperBound += constantDropped << i
+        dataForUpper += BigInt(1)     << i
+      } else {
+        lowerBound += constantDropped << i
+        dataForLower += BigInt(1)     << i
+      }
     }
 
     upperBound = (upperBound >> widthNotOutputted) + 1

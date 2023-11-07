@@ -1,22 +1,24 @@
 package Chainsaw
 
-import Chainsaw.xilinx.VivadoUtil
+import Chainsaw.edaFlow.EdaFlowUtils.EdaDirectoryUtils._
+import Chainsaw.edaFlow.vivado.VivadoUtil
 import org.apache.commons.io.FileUtils
 import spinal.core._
 
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Calendar
+import scala.collection.mutable.ArrayBuffer
 import scala.io.Source
 import scala.util.Try
 
 package object edaFlow {
 
   sealed trait Vendor
-  sealed trait Family
-
   object Xilinx extends Vendor
   object Altera extends Vendor
+
+  sealed trait Family
 
   sealed trait XilinxDeviceFamily extends Family
   object UltraScale extends XilinxDeviceFamily
@@ -27,17 +29,26 @@ package object edaFlow {
 
   object CycloneV extends AlteraDeviceFamily
 
-  object Generic extends Family
+  sealed trait GenericFamily extends Family
 
-  class Device(val vendor: Vendor, val deviceFamily: Family, val familyPart: String) {}
+  object Generic extends GenericFamily
 
-  case class XilinxDevice(
+  case class ChainsawDevice(
+      vendor: Vendor,
+      deviceFamily: Family,
+      familyPart: String,
+      fMax: HertzNumber,
+      xdcFile: Option[File],
+      budget: VivadoUtil = VivadoUtil()
+  ) {}
+
+  class XilinxDevice(
       family: XilinxDeviceFamily,
       part: String,
       fMax: HertzNumber,
       xdcFile: Option[File],
       budget: VivadoUtil = VivadoUtil()
-  ) extends Device(Xilinx, family, part) {
+  ) extends ChainsawDevice(Xilinx, family, part, fMax, xdcFile, budget) {
 
     def bramCapacity = budget.bram36 * 36 * 1024 / pow2(20).toDouble
 
@@ -47,19 +58,59 @@ package object edaFlow {
 
   }
 
-  val vu9p = XilinxDevice(
+  class AlteraDevice(
+      family: AlteraDeviceFamily,
+      part: String,
+      fMax: HertzNumber,
+      xdcFile: Option[File],
+      budget: VivadoUtil = VivadoUtil()
+  ) extends ChainsawDevice(Altera, family, part, fMax, xdcFile, budget) {
+
+    def bramCapacity = budget.bram36 * 36 * 1024 / pow2(20).toDouble
+
+    def uramCapacity = budget.uram288 * 288 * 1024 / pow2(20).toDouble
+
+    def onChipStorage = bramCapacity + uramCapacity
+
+  }
+
+  class GenericDevice(
+      family: GenericFamily,
+      part: String,
+      fMax: HertzNumber,
+      xdcFile: Option[File],
+      budget: VivadoUtil = VivadoUtil()
+  ) extends ChainsawDevice(Xilinx, family, part, fMax, xdcFile, budget) {
+
+    def bramCapacity = budget.bram36 * 36 * 1024 / pow2(20).toDouble
+
+    def uramCapacity = budget.uram288 * 288 * 1024 / pow2(20).toDouble
+
+    def onChipStorage = bramCapacity + uramCapacity
+
+  }
+
+  val vu9p = new XilinxDevice(
     UltraScale,
     "xcvu9p-flga2104-2-i",
     600 MHz,
     None,
     budget = VivadoUtil(lut = 1182240, ff = 2364480, dsp = 6840, bram36 = 2160, uram288 = 960, carry8 = 147780)
   )
-  val zcu104  = XilinxDevice(UltraScale, "xczu7ev-ffvc1156-2-e", 200 MHz, None)
-  val u250    = XilinxDevice(UltraScale, "XCU250-FIGD2104-2L-E".toLowerCase, 600 MHz, None)
-  val u200    = XilinxDevice(UltraScale, "XCU200-FSGD2104-2-E".toLowerCase, 600 MHz, None, budget = vu9p.budget)
-  val kcu1500 = XilinxDevice(UltraScale, "xcku115-flvb2104-2-e", 800 MHz, None)
+  val zcu104  = new XilinxDevice(UltraScale, "xczu7ev-ffvc1156-2-e", 200 MHz, None)
+  val u250    = new XilinxDevice(UltraScale, "XCU250-FIGD2104-2L-E".toLowerCase, 600 MHz, None)
+  val u200    = new XilinxDevice(UltraScale, "XCU200-FSGD2104-2-E".toLowerCase, 600 MHz, None, budget = vu9p.budget)
+  val kcu1500 = new XilinxDevice(UltraScale, "xcku115-flvb2104-2-e", 800 MHz, None)
+  val a7100t = new XilinxDevice(
+    Series7,
+    "XC7A100T-CSG324-1".toLowerCase(),
+    100 MHz,
+    Some(new File(xdcFileDir, "NexysA7100T/NexysA7100T-activatedPins.xdc")),
+    budget = VivadoUtil(lut = 32600, ff = 65200, dsp = 240)
+  )
+  val generic = new GenericDevice(Generic, "", 600 MHz, None)
 
-  val xilinxCDConfig = ClockDomainConfig( // recommended by Xilinx UG901
+  val xilinxDefaultCDConfig = ClockDomainConfig( // recommended by Xilinx UG901
     clockEdge              = RISING,
     resetKind              = ASYNC,
     resetActiveLevel       = HIGH,
@@ -67,112 +118,126 @@ package object edaFlow {
     clockEnableActiveLevel = HIGH
   )
 
+  val xilinxDefaultSpinalConfig = SpinalConfig(mode = Verilog, defaultConfigForClockDomains = xilinxDefaultCDConfig)
+
+  abstract class ChainsawEdaFlowInput[T <: Module](
+      design: => T,
+      val designDirs: Seq[File],
+      val workspaceDir: File,
+      val topModuleName: String,
+      val customizedConfig: Option[SpinalConfig] = None
+  ) {
+    def module = design
+
+    def getRtlDir(supportedFileTypes: Seq[String] = Seq(".v", ".sv")): Seq[File]
+  }
+
+  class ChainsawEdaModuleInput[T <: Module](
+      design: => T,
+      workspaceDir: File,
+      topModuleName: String,
+      customizedConfig: Option[SpinalConfig] = None
+  ) extends ChainsawEdaFlowInput(design, Seq[File](), workspaceDir, topModuleName, customizedConfig) {
+
+    var finishRtlDirGen                 = false
+    val rtlResources: ArrayBuffer[File] = ArrayBuffer()
+
+    def getRtlDir(supportedFileTypes: Seq[String] = Seq(".v", ".sv")): Seq[File] = {
+      if (!finishRtlDirGen) {
+        rtlResources ++= genRtlSourcesFromComponent(
+          design,
+          customizedConfig,
+          topModuleName,
+          workspaceDir,
+          supportedFileTypes
+        )
+        finishRtlDirGen = true
+      }
+      rtlResources
+    }
+  }
+
+  object ChainsawEdaModuleInput {
+    def apply[T <: Module](
+        design: => T,
+        workspaceDir: File,
+        topModuleName: String,
+        customizedConfig: Option[SpinalConfig] = None
+    ) = new ChainsawEdaModuleInput(design, workspaceDir, topModuleName, customizedConfig)
+  }
+
+  class ChainsawEdaDirInput(
+      designDirs: Seq[File],
+      workspaceDir: File,
+      topModuleName: String
+  ) extends ChainsawEdaFlowInput(null, Seq[File](), workspaceDir, topModuleName, None) {
+
+    var finishRtlDirGen                 = false
+    val rtlResources: ArrayBuffer[File] = ArrayBuffer()
+
+    def getRtlDir(supportedFileTypes: Seq[String] = Seq(".v", ".sv")): Seq[File] = {
+      if (!finishRtlDirGen) {
+        rtlResources ++= parseRtlDirFor(designDirs, supportedFileTypes)
+        finishRtlDirGen = true
+      }
+      rtlResources
+    }
+  }
+
+  object ChainsawEdaDirInput {
+    def apply[T <: Module](
+        designDirs: Seq[File],
+        workspaceDir: File,
+        topModuleName: String
+    ) = new ChainsawEdaDirInput(designDirs, workspaceDir, topModuleName)
+  }
+
+  class ChainsawEdaFullInput[T <: Module](
+      design: => T,
+      designDirs: Seq[File],
+      workspaceDir: File,
+      topModuleName: String,
+      customizedConfig: Option[SpinalConfig] = None
+  ) extends ChainsawEdaFlowInput(design, designDirs, workspaceDir, topModuleName, customizedConfig) {
+
+    var finishRtlDirGen                 = false
+    val rtlResources: ArrayBuffer[File] = ArrayBuffer()
+
+    def getRtlDir(supportedFileTypes: Seq[String] = Seq(".v", ".sv")): Seq[File] = {
+      if (!finishRtlDirGen) {
+        rtlResources ++= parseRtlDirFor(designDirs, supportedFileTypes)
+        rtlResources ++= genRtlSourcesFromComponent(
+          design,
+          customizedConfig,
+          topModuleName,
+          workspaceDir,
+          supportedFileTypes
+        )
+        finishRtlDirGen = true
+      }
+      rtlResources
+    }
+  }
+
+  object ChainsawEdaFullInput {
+    def apply[T <: Module](
+        design: => T,
+        designDirs: Seq[File],
+        workspaceDir: File,
+        topModuleName: String,
+        customizedConfig: Option[SpinalConfig] = None
+    ) = new ChainsawEdaFullInput(design, designDirs, workspaceDir, topModuleName, customizedConfig)
+  }
+
   trait EdaOptimizeOption
 
   trait Report
 
-  object ParseReportUtils {
-
-    // regEx functions
-    private val intFind    = "[0-9]\\d*"
-    private val doubleFind = "-?(?:[1-9]\\d*\\.\\d*|0\\.\\d*[1-9]\\d*|0\\.0+|0)"
-
-    def getPatternAfterHeader(
-        header: String,
-        pattern: String,
-        separator: Char = '|',
-        report: String
-    ) = {
-      val regex =
-        s"\\$separator?\\s*$header\\s*\\$separator?\\s*($pattern)\\s*\\$separator?"
-      Try(regex.r.findFirstMatchIn(report).get.group(1))
-    }
-
-    def getIntAfterHeader(header: String, separator: Char = '|', report: String): Int =
-      getPatternAfterHeader(header, intFind, separator, report).getOrElse("-1").toInt
-
-    def getDoubleAfterHeader(header: String, separator: Char = ':', report: String): Double =
-      getPatternAfterHeader(header, doubleFind, separator, report)
-        .getOrElse("-1")
-        .toDouble
-  }
-
-  object EdaDirectoryUtils {
-    def genTargetWorkspace(target: String, topModuleName: Option[String], workspaceDir: File): File = {
-      topModuleName match {
-        case Some(name) => new File(workspaceDir, s"gen${target}_$name")
-        case None =>
-          val dateFormat = new SimpleDateFormat("yyyyMMdd")
-          val cla        = Calendar.getInstance()
-          cla.setTimeInMillis(System.currentTimeMillis())
-          val date   = dateFormat.format(cla.getTime)
-          val hour   = cla.get(Calendar.HOUR_OF_DAY).toString
-          val min    = cla.get(Calendar.MINUTE).toString
-          val second = cla.get(Calendar.SECOND).toString
-          new File(workspaceDir, s"gen${target}_InferredTop_${date}_${hour}_${min}_$second")
-      }
-    }
-
-    def genRtlSourcesFromComponent(
-        design: => Component,
-        customizedConfig: Option[SpinalConfig] = None,
-        topModuleName: Option[String],
-        workspaceDir: File,
-        fileTypeFilter: Seq[String]
-    ): Seq[File] = {
-
-      val genRtlDir = genTargetWorkspace("Rtl", topModuleName, workspaceDir)
-      if (genRtlDir.exists()) genRtlDir.delete()
-
-      val config = customizedConfig match {
-        case Some(value) => value
-        case None => // for general Component
-          val config = SpinalConfig(
-            defaultConfigForClockDomains = xilinxCDConfig,
-            targetDirectory              = s"${genRtlDir.getAbsolutePath}/",
-            oneFilePerComponent          = true
-          )
-          config.addTransformationPhase(new phases.FfIo)
-      }
-
-      config.generateVerilog(design)
-      if (customizedConfig.isDefined) FileUtils.copyDirectory(new File(config.targetDirectory), genRtlDir)
-      if (config.oneFilePerComponent) {
-        val lstFile = Source.fromFile(
-          new File(
-            genRtlDir
-              .listFiles()
-              .toSeq
-              .map(_.getAbsolutePath)
-              .filter(path => path endsWith ".lst")
-              .head
-          )
-        )
-
-        lstFile
-          .getLines()
-          .map { line => new File(line) }
-          .map(_.getAbsolutePath)
-          .toSeq
-          .map(new File(_))
-
-      } else {
-        val designDir = new File(config.targetDirectory)
-        designDir
-          .listFiles()
-          .toSeq
-          .map(_.getAbsolutePath)
-          .filter(path => fileTypeFilter.exists(fileType => path endsWith fileType))
-          .map(new File(_))
-      }
-    }
-  }
-
   abstract class EdaFlow(
       designDirs: Seq[File],
       workspaceDir: File,
-      topModuleName: Option[String],
-      deviceType: Option[Device],
+      topModuleName: String,
+      device: ChainsawDevice,
       taskType: EdaFlowType,
       optimizeOption: EdaOptimizeOption,
       blackBoxSet: Option[Set[String]],

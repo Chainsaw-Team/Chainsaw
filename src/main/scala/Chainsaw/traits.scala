@@ -1,6 +1,6 @@
 package Chainsaw
 
-import Chainsaw.xilinx.VivadoUtil
+import Chainsaw.edaFlow.vivado.VivadoUtil
 
 trait HardAlgo {
   def vivadoUtilEstimation: VivadoUtil
