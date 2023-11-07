@@ -1,7 +1,7 @@
 package Chainsaw.arithmetic
 
 import Chainsaw._
-import Chainsaw.xilinx.{VivadoUtil}
+import Chainsaw.edaFlow.vivado.VivadoUtil
 import breeze.numerics.ceil
 import spinal.core._
 
@@ -34,10 +34,7 @@ trait MultAttribute {
 
 /** unified behavioral model of unsigned multiplier
   */
-trait UnsignedMultiplier
-    extends ChainsawOperatorGenerator
-    with MultAttribute
-    with FixedLatency {
+trait UnsignedMultiplier extends ChainsawOperatorGenerator with MultAttribute with FixedLatency {
 
   override def inputTypes =
     if (isConstantMult || multiplierType == SquareMultiplier)

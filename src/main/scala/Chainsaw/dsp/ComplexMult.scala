@@ -1,7 +1,7 @@
 package Chainsaw.dsp
 
 import Chainsaw._
-import Chainsaw.xilinx.VivadoUtil
+import Chainsaw.edaFlow.vivado.VivadoUtil
 import spinal.core._
 
 import scala.language.postfixOps
@@ -20,7 +20,7 @@ case class ComplexMult(dataType: NumericType, coeffType: NumericType)
 
   override def name = s"ComplexMult_${dataType}_$coeffType"
 
-  val retType       = (dataType * coeffType).withCarry(1)
+  val retType = (dataType * coeffType).withCarry(1)
 
   override def inputTypes = Seq(dataType, dataType, coeffType, coeffType)
 

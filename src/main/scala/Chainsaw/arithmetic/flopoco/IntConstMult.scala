@@ -2,7 +2,7 @@ package Chainsaw.arithmetic.flopoco
 
 import Chainsaw._
 import Chainsaw.edaFlow._
-import Chainsaw.xilinx._
+import Chainsaw.edaFlow.vivado._
 import spinal.core.{IntToBuilder, _}
 import spinal.lib.cpu.riscv.impl.Utils.M
 
@@ -12,24 +12,25 @@ import scala.util.Random
 /** Integer multiplier of an unsigned number by a constant using a shift-and-add tree
   *
   * @param wIn
-  * input size in bits
+  *   input size in bits
   * @param const
-  * constant to multiply by
+  *   constant to multiply by
   */
-case class IntConstMult (
-  override val family: XilinxDeviceFamily,
-  override val targetFrequency: HertzNumber,
-  wIn: Int,
-  const: Int
-)extends FlopocoOperator(family, targetFrequency) {
+case class IntConstMult(
+    override val family: XilinxDeviceFamily,
+    override val targetFrequency: HertzNumber,
+    wIn: Int,
+    const: Int
+) extends FlopocoOperator(family, targetFrequency) {
+
   /** -------- params for FloPoCo generation
     * --------
     */
-  override val operatorName: String = "IntConstMult"
-  override val entityName:String = "IntConstMult"
+  override val operatorName: String       = "IntConstMult"
+  override val entityName: String         = "IntConstMult"
   override val params: Seq[(String, Any)] = Seq(("wIn", wIn), ("n", const))
 
-  val wOut = log2Up((pow2(wIn)-1)*const+1)
+  val wOut = log2Up((pow2(wIn) - 1) * const + 1)
   override def implH = new ChainsawOperatorModule(this) {
     val box = new FlopocoBlackBox(hasClk = true) {
       val X = in Bits (wIn bits)

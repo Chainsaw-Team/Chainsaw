@@ -1,7 +1,7 @@
 package Chainsaw.arithmetic
 
 import Chainsaw._
-import Chainsaw.xilinx._
+import Chainsaw.edaFlow.vivado.VivadoUtil
 import spinal.core._
 
 import scala.language.postfixOps

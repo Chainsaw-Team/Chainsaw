@@ -4,7 +4,7 @@ import Chainsaw.NumericExt._
 import Chainsaw._
 import Chainsaw.intel.QuartusFlow
 import Chainsaw.io.pythonIo._
-import Chainsaw.xilinx._
+import Chainsaw.edaFlow.vivado._
 import optimus.optimization._
 import optimus.optimization.enums.SolverLib
 import optimus.optimization.model.MPFloatVar

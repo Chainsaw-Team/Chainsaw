@@ -1,6 +1,6 @@
 package Chainsaw.arithmetic
 
-import Chainsaw.xilinx.VivadoUtil
+import Chainsaw.edaFlow.vivado.VivadoUtil
 import Chainsaw._
 import Chainsaw.device.LUT2
 import spinal.core._

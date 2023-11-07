@@ -1,6 +1,9 @@
 package Chainsaw.edaFlow
 
+import Chainsaw._
+import Chainsaw.edaFlow.EdaFlowUtils.ParseReportUtils
 import org.slf4j.LoggerFactory
+import spinal.core._
 
 import java.io.File
 import scala.io.Source
@@ -22,22 +25,55 @@ package object vivado {
       maxDsp: Int                  = -1
   ) extends EdaOptimizeOption
 
-  case class VivadoReport(logFile: File, deviceType: Device) extends Report {
+  case class VivadoReport(logFile: File, device: ChainsawDevice) extends Report {
 
-    def genInfosReport(): Unit = {
+    val log    = Source.fromFile(logFile)
+    val lines  = log.getLines.toSeq
+    val report = lines.mkString("\n")
+
+    val ConstraintPeriod = ParseReportUtils.getDoubleAfterHeader(header = "Requirement", report = report)
+    val Slack            = ParseReportUtils.getDoubleAfterHeader(header = s"Slack\\s*\\(\\w*\\)", report = report)
+    val Frequency        = 1.0 / (ConstraintPeriod - Slack) * 1e9
+
+    val utilization = device.deviceFamily match {
+      case UltraScale => getUltrascaleWithHierarchy
+      case Series7    => VivadoUtil() // TODO: implement a method for Series7
+    }
+
+    def getUltrascaleWithHierarchy: VivadoUtil = {
+      val start = lines.lastIndexWhere(_.contains("Utilization by Hierarchy"))
+      var tab   = 0
+      val topLine = lines
+        .drop(start)
+        .dropWhile { line =>
+          if (line.startsWith("+")) tab += 1
+          tab < 2
+        }(1) // TODO: extract info of sub-modules
+      val segments = topLine.split("\\|").map(_.trim)
+      val lut      = segments(4).toInt // logic LUT only
+      val ff       = segments(7).toInt
+      val bram36   = segments(8).toInt
+      val uram288  = segments(10).toInt
+      val dsp      = segments(11).toInt
+      val carry8   = ParseReportUtils.getIntAfterHeader(header = "CARRY8", report = report)
+      // TODO: carry extraction
+      VivadoUtil(
+        lut     = lut,
+        ff      = ff,
+        dsp     = dsp,
+        bram36  = bram36,
+        uram288 = uram288,
+        carry8  = carry8
+      )
+    }
+
+    def showInfosReport(): Unit = {
       val parseLogger =
         LoggerFactory.getLogger(s"Get utilization and timing information in log file which generating by Vivado")
 
-      val log    = Source.fromFile(logFile)
-      val lines  = log.getLines.toSeq
-      val report = lines.mkString("\n")
-
       parseLogger.info(s"Parsing utilization information in ${logFile.getName}")
 
-      val ConstraintPeriod = ParseReportUtils.getDoubleAfterHeader(header = "Requirement", report = report)
-      val Slack            = ParseReportUtils.getDoubleAfterHeader(header = s"Slack\\s*\\(\\w*\\)", report = report)
-      val Frequency        = 1.0 / (ConstraintPeriod - Slack) * 1e9
-
+      // cell usage
       val parseItem = Seq(
         "Frequency",
         "CARRY4",
@@ -78,10 +114,44 @@ package object vivado {
           .getOrElse(s"")
       }
 
-      if (errorInfo.isEmpty)
+      if (errorInfo.isEmpty) {
         parseLogger.info(s"Parsing result:\n$header$body")
-      else
+      } else
         parseLogger.error(s"Find Error:\n$errorInfo")
     }
+
+    def requireFmax(fmaxRequirement: HertzNumber): Unit = {
+      assert(
+        this.Frequency >= fmaxRequirement.toDouble,
+        s"\ncritical path failed: \n\tyours:  ${Frequency / 1e6} MHz, \n\ttarget: ${fmaxRequirement.toDouble / 1e6} MHz"
+      )
+      logger.info(
+        s"\ncritical path met: \n\tyours:  ${Frequency / 1e6} MHz, \n\ttarget: ${fmaxRequirement.toDouble / 1e6} MHz"
+      )
+    }
+
+    def requireUtil(
+        utilRequirement: VivadoUtil,
+        utilRequirementStrategy: UtilRequirementStrategy
+    ): Unit = {
+      val pass = utilRequirementStrategy match {
+        case DefaultRequirement =>
+          val relaxedRequirement = (utilRequirement * 1.05) // 5% tolerant
+            .withFf(Double.MaxValue) // don't care ff
+            .withCarry(Double.MaxValue)
+          if (this.utilization.ff > 2 * this.utilization.lut)
+            logger.warn(s"ff > 2 * lut, this may lead to extra clb consumption")
+          this.utilization <= relaxedRequirement
+        case PreciseRequirement => this.utilization <= utilRequirement
+        case NoRequirement      => true
+      }
+
+      assert(
+        pass,
+        s"\nutil failed: \n\tyours:  $utilization, \n\ttarget: $utilRequirement"
+      )
+      logger.info(s"\nutil met: \n\tyours:  $utilization, \n\ttarget: $utilRequirement")
+    }
+
   }
 }

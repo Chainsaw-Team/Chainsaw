@@ -2,7 +2,7 @@ package Chainsaw.arithmetic.bitheap
 
 import Chainsaw._
 import Chainsaw.arithmetic._
-import Chainsaw.xilinx.VivadoUtil
+import Chainsaw.edaFlow.vivado.VivadoUtil
 import spinal.core._
 import java.io.File
 import scala.language.postfixOps

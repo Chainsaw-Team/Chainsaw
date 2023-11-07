@@ -2,7 +2,7 @@ package Chainsaw.dsp
 
 import Chainsaw.NumericExt._
 import Chainsaw._
-import Chainsaw.xilinx.VivadoUtil
+import Chainsaw.edaFlow.vivado.VivadoUtil
 import breeze.numerics._
 import breeze.numerics.constants.Pi
 import spinal.core._

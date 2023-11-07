@@ -4,13 +4,11 @@ import Chainsaw._
 import spinal.core._
 import spinal.lib._
 import Chainsaw._
-import Chainsaw.xilinx._
+import Chainsaw.edaFlow.vivado._
 
 import scala.language.postfixOps
 
-case class P2S(p: Int, s: Int, bitWidth: Int)
-    extends ChainsawFrameGenerator
-    with FixedLatency {
+case class P2S(p: Int, s: Int, bitWidth: Int) extends ChainsawFrameGenerator with FixedLatency {
   require(p % s == 0)
 
   override def name = s"P2S_s${s}_p${p}_w$bitWidth"

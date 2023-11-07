@@ -3,25 +3,23 @@ package Chainsaw.arithmetic
 import Chainsaw._
 import Chainsaw.device.LUT5to2.toLUT5_2Format
 import Chainsaw.device.{CARRY8, LUT5to2, LUT6_2, LUTUtils}
-import Chainsaw.xilinx._
+import Chainsaw.edaFlow.vivado.VivadoUtil
 import spinal.core._
 import spinal.lib._
 
 /** the abstract class of general parallel compressor(gpc) which define almost all information need, but some
- * information needs to be defined in the subclass according to the specific compressor
- */
+  * information needs to be defined in the subclass according to the specific compressor
+  */
 abstract class Gpc extends CompressorGenerator {
 
   /** this method is used to get the name of gpc
-   *
-   * @return
-   * the name of gpc
-   */
+    *
+    * @return
+    *   the name of gpc
+    */
   def name =
-    s"${className(this)}_${
-      if (shouldDoComplement) hashName(getComplementHeap)
-      else "noComplement"
-    }"
+    s"${className(this)}_${if (shouldDoComplement) hashName(getComplementHeap)
+    else "noComplement"}"
 
   // column in
   override def inputTypes =
@@ -51,8 +49,8 @@ abstract class Gpc extends CompressorGenerator {
 }
 
 /** -------- built by Xilinx primitives
- * --------
- */
+  * --------
+  */
 
 case class Compressor6to3(override val complementHeap: Seq[Seq[Boolean]] = null) extends Gpc {
 
@@ -69,7 +67,7 @@ case class Compressor6to3(override val complementHeap: Seq[Seq[Boolean]] = null)
       BigInt("fee8e880e8808000", 16)
     )
     val inverseList = getComplementHeap.head.padTo(6, true).map(!_)
-    val dataBitsIn = dataIn.head.raw.asBools
+    val dataBitsIn  = dataIn.head.raw.asBools
     val lutOuts = lutValues
       .map(LUTUtils.getValueWithInverse(_, inverseList))
       .map(LUT6_2.process(dataBitsIn, _).last)
@@ -253,7 +251,7 @@ case class Compressor5to3(override val complementHeap: Seq[Seq[Boolean]] = null)
     )
 
     val dataBitsIn = dataIn.head.raw.asBools
-    val lutOuts = lut5to2s.flatMap(_.process(dataBitsIn.padTo(5, False): _*)).tail
+    val lutOuts    = lut5to2s.flatMap(_.process(dataBitsIn.padTo(5, False): _*)).tail
     dataOut.head := lutOuts.reverse.asBits().asUInt.toAFix
   }
 }
@@ -270,7 +268,7 @@ case class Compressor3to2(override val complementHeap: Seq[Seq[Boolean]] = null)
     val lutValues = BigInt("96969696e8e8e8e8", 16)
     val inverseList =
       getComplementHeap.head.padTo(3, true).map(!_) ++ Seq.fill(3)(false)
-    val dataBitsIn = dataIn.head.raw.asBools // low to high
+    val dataBitsIn    = dataIn.head.raw.asBools // low to high
     val inversedValue = LUTUtils.getValueWithInverse(lutValues, inverseList)
     val lutOuts =
       LUT6_2.process(dataBitsIn ++ Seq(False, False, True), inversedValue)
@@ -335,25 +333,25 @@ case class Compressor1415to5(override val complementHeap: Seq[Seq[Boolean]] = nu
       .map(seq => (seq(0), seq(1)))
 
     val carryChain = CARRY8()
-    val selects = lutOuts.map(_._2)
+    val selects    = lutOuts.map(_._2)
     val data =
       (0 until 4).map(i => if (inverseList(i).take(4).last) ~lutBitsIns(i).take(4).last else lutBitsIns(i).take(4).last)
 
     (0 until 8).foreach { j =>
       if (j < 4) {
         carryChain.DI(j) := data(j)
-        carryChain.S(j) := selects(j)
+        carryChain.S(j)  := selects(j)
       } else {
         carryChain.DI(j) := False
-        carryChain.S(j) := False
+        carryChain.S(j)  := False
       }
     }
     val cIn =
       if (getComplementHeap.head.take(5).padTo(6, true).take(5).last) dataBitsIn.head.take(5).padTo(5, False).last
       else ~dataBitsIn.head.take(5).padTo(5, False).last
-    carryChain.CI := cIn
+    carryChain.CI     := cIn
     carryChain.CI_TOP := False
-    dataOut.head := (carryChain.CO(3) ## carryChain.O.takeLow(4)).asUInt.toAFix
+    dataOut.head      := (carryChain.CO(3) ## carryChain.O.takeLow(4)).asUInt.toAFix
   }
 }
 
@@ -447,7 +445,7 @@ case class Compressor1406to5(override val complementHeap: Seq[Seq[Boolean]] = nu
       .map(seq => (seq(0), seq(1)))
 
     val carryChain = CARRY8()
-    val selects = lutOuts.map(_._2)
+    val selects    = lutOuts.map(_._2)
     val data = Seq(
       if (inverseList(0).take(5).last) ~lutBitsIns(0).take(5).last else lutBitsIns(0).take(5).last,
       lutOuts(1)._1,
@@ -458,18 +456,18 @@ case class Compressor1406to5(override val complementHeap: Seq[Seq[Boolean]] = nu
     (0 until 8).foreach { j =>
       if (j < 4) {
         carryChain.DI(j) := data(j)
-        carryChain.S(j) := selects(j)
+        carryChain.S(j)  := selects(j)
       } else {
         carryChain.DI(j) := False
-        carryChain.S(j) := False
+        carryChain.S(j)  := False
       }
     }
     val cIn =
       if (getComplementHeap.head.take(6).padTo(6, true).last) dataBitsIn.head.take(6).padTo(6, False).last
       else ~dataBitsIn.head.take(6).padTo(6, False).last
-    carryChain.CI := cIn
+    carryChain.CI     := cIn
     carryChain.CI_TOP := False
-    dataOut.head := (carryChain.CO(3) ## carryChain.O.takeLow(4)).asUInt.toAFix
+    dataOut.head      := (carryChain.CO(3) ## carryChain.O.takeLow(4)).asUInt.toAFix
   }
 }
 
@@ -562,7 +560,7 @@ case class Compressor1325to5(override val complementHeap: Seq[Seq[Boolean]] = nu
       .map(seq => (seq(0), seq(1)))
 
     val carryChain = CARRY8()
-    val selects = lutOuts.map(_._2)
+    val selects    = lutOuts.map(_._2)
     val data = Seq(
       if (inverseList(0).take(4).last) ~lutBitsIns(0).take(4).last else lutBitsIns(0).take(4).last,
       lutOuts(1)._1,
@@ -573,18 +571,18 @@ case class Compressor1325to5(override val complementHeap: Seq[Seq[Boolean]] = nu
     (0 until 8).foreach { j =>
       if (j < 4) {
         carryChain.DI(j) := data(j)
-        carryChain.S(j) := selects(j)
+        carryChain.S(j)  := selects(j)
       } else {
         carryChain.DI(j) := False
-        carryChain.S(j) := False
+        carryChain.S(j)  := False
       }
     }
     val cIn =
       if (getComplementHeap.head.take(5).padTo(5, true).last) dataBitsIn.head.take(5).padTo(5, False).last
       else ~dataBitsIn.head.take(5).padTo(5, False).last
-    carryChain.CI := cIn
+    carryChain.CI     := cIn
     carryChain.CI_TOP := False
-    dataOut.head := (carryChain.CO(3) ## carryChain.O.takeLow(4)).asUInt.toAFix
+    dataOut.head      := (carryChain.CO(3) ## carryChain.O.takeLow(4)).asUInt.toAFix
   }
 }
 
@@ -677,7 +675,7 @@ case class Compressor623to5(override val complementHeap: Seq[Seq[Boolean]] = nul
       .map(seq => (seq(0), seq(1)))
 
     val carryChain = CARRY8()
-    val selects = lutOuts.map(_._2)
+    val selects    = lutOuts.map(_._2)
     val data = Seq(
       if (inverseList.head.take(2).last) ~lutBitsIns.head.take(2).last else lutBitsIns.head.take(2).last,
       if (inverseList(1).take(2).last) ~lutBitsIns(1).take(2).last else lutBitsIns(1).take(2).last,
@@ -688,18 +686,18 @@ case class Compressor623to5(override val complementHeap: Seq[Seq[Boolean]] = nul
     (0 until 8).foreach { j =>
       if (j < 4) {
         carryChain.DI(j) := data(j)
-        carryChain.S(j) := selects(j)
+        carryChain.S(j)  := selects(j)
       } else {
         carryChain.DI(j) := False
-        carryChain.S(j) := False
+        carryChain.S(j)  := False
       }
     }
     val cIn =
       if (getComplementHeap.head.take(3).padTo(3, true).last) dataBitsIn.head.take(3).padTo(3, False).last
       else ~dataBitsIn.head.take(3).padTo(3, False).last
-    carryChain.CI := cIn
+    carryChain.CI     := cIn
     carryChain.CI_TOP := False
-    dataOut.head := (carryChain.CO(3) ## carryChain.O.takeLow(4)).asUInt.toAFix
+    dataOut.head      := (carryChain.CO(3) ## carryChain.O.takeLow(4)).asUInt.toAFix
   }
 }
 
@@ -798,7 +796,7 @@ case class Compressor606to5(override val complementHeap: Seq[Seq[Boolean]] = nul
       .map(seq => (seq(0), seq(1)))
 
     val carryChain = CARRY8()
-    val selects = lutOuts.map(_._2)
+    val selects    = lutOuts.map(_._2)
     val data = Seq(
       if (inverseList.head.take(5).last) ~lutBitsIns.head.take(5).last else lutBitsIns.head.take(5).last,
       lutOuts(1)._1,
@@ -809,18 +807,18 @@ case class Compressor606to5(override val complementHeap: Seq[Seq[Boolean]] = nul
     (0 until 8).foreach { j =>
       if (j < 4) {
         carryChain.DI(j) := data(j)
-        carryChain.S(j) := selects(j)
+        carryChain.S(j)  := selects(j)
       } else {
         carryChain.DI(j) := False
-        carryChain.S(j) := False
+        carryChain.S(j)  := False
       }
     }
     val cIn =
       if (getComplementHeap.head.take(6).padTo(6, true).last) dataBitsIn.head.take(6).padTo(6, False).last
       else ~dataBitsIn.head.take(6).padTo(6, False).last
-    carryChain.CI := cIn
+    carryChain.CI     := cIn
     carryChain.CI_TOP := False
-    dataOut.head := (carryChain.CO(3) ## carryChain.O.takeLow(4)).asUInt.toAFix
+    dataOut.head      := (carryChain.CO(3) ## carryChain.O.takeLow(4)).asUInt.toAFix
   }
 }
 
@@ -913,7 +911,7 @@ case class Compressor615to5(override val complementHeap: Seq[Seq[Boolean]] = nul
       .map(seq => (seq(0), seq(1)))
 
     val carryChain = CARRY8()
-    val selects = lutOuts.map(_._2)
+    val selects    = lutOuts.map(_._2)
     val data = Seq(
       if (inverseList.head.take(4).last) ~lutBitsIns.head.take(4).last else lutBitsIns.head.take(4).last,
       if (inverseList(1).take(4).last) ~lutBitsIns(1).take(4).last else lutBitsIns(1).take(4).last,
@@ -924,18 +922,18 @@ case class Compressor615to5(override val complementHeap: Seq[Seq[Boolean]] = nul
     (0 until 8).foreach { j =>
       if (j < 4) {
         carryChain.DI(j) := data(j)
-        carryChain.S(j) := selects(j)
+        carryChain.S(j)  := selects(j)
       } else {
         carryChain.DI(j) := False
-        carryChain.S(j) := False
+        carryChain.S(j)  := False
       }
     }
     val cIn =
       if (getComplementHeap.head.take(5).padTo(5, true).last) dataBitsIn.head.take(5).padTo(5, False).last
       else ~dataBitsIn.head.take(5).padTo(5, False).last
-    carryChain.CI := cIn
+    carryChain.CI     := cIn
     carryChain.CI_TOP := False
-    dataOut.head := (carryChain.CO(3) ## carryChain.O.takeLow(4)).asUInt.toAFix
+    dataOut.head      := (carryChain.CO(3) ## carryChain.O.takeLow(4)).asUInt.toAFix
   }
 }
 
@@ -1064,7 +1062,7 @@ case class Compressor14051415to9(override val complementHeap: Seq[Seq[Boolean]] 
       .map(seq => (seq(0), seq(1)))
 
     val carryChain = CARRY8()
-    val selects = lutOuts.map(_._2)
+    val selects    = lutOuts.map(_._2)
     val data =
       (0 until 4).map(i =>
         if (inverseList(i).take(4).last) ~lutBitsIns(i).take(4).last else lutBitsIns(i).take(4).last
@@ -1078,14 +1076,14 @@ case class Compressor14051415to9(override val complementHeap: Seq[Seq[Boolean]] 
 
     (0 until 8).foreach { j =>
       carryChain.DI(j) := data(j)
-      carryChain.S(j) := selects(j)
+      carryChain.S(j)  := selects(j)
     }
     val cIn =
       if (getComplementHeap.head.take(5).padTo(5, true).last) dataBitsIn.head.take(5).padTo(5, False).last
       else ~dataBitsIn.head.take(5).padTo(5, False).last
-    carryChain.CI := cIn
+    carryChain.CI     := cIn
     carryChain.CI_TOP := False
-    dataOut.head := (carryChain.CO(7) ## carryChain.O).asUInt.toAFix
+    dataOut.head      := (carryChain.CO(7) ## carryChain.O).asUInt.toAFix
   }
 }
 
@@ -1213,7 +1211,7 @@ case class Compressor13241415to9(override val complementHeap: Seq[Seq[Boolean]] 
       .map(seq => (seq(0), seq(1)))
 
     val carryChain = CARRY8()
-    val selects = lutOuts.map(_._2)
+    val selects    = lutOuts.map(_._2)
     val data =
       (0 until 4).map(i =>
         if (inverseList(i).take(4).last) ~lutBitsIns(i).take(4).last else lutBitsIns(i).take(4).last
@@ -1227,14 +1225,14 @@ case class Compressor13241415to9(override val complementHeap: Seq[Seq[Boolean]] 
 
     (0 until 8).foreach { j =>
       carryChain.DI(j) := data(j)
-      carryChain.S(j) := selects(j)
+      carryChain.S(j)  := selects(j)
     }
     val cIn =
       if (getComplementHeap.head.take(5).padTo(5, true).last) dataBitsIn.head.take(5).padTo(5, False).last
       else ~dataBitsIn.head.take(5).padTo(5, False).last
-    carryChain.CI := cIn
+    carryChain.CI     := cIn
     carryChain.CI_TOP := False
-    dataOut.head := (carryChain.CO(7) ## carryChain.O).asUInt.toAFix
+    dataOut.head      := (carryChain.CO(7) ## carryChain.O).asUInt.toAFix
   }
 }
 
@@ -1370,7 +1368,7 @@ case class Compressor06051415to9(override val complementHeap: Seq[Seq[Boolean]] 
       .map(seq => (seq(0), seq(1)))
 
     val carryChain = CARRY8()
-    val selects = lutOuts.map(_._2)
+    val selects    = lutOuts.map(_._2)
     val data =
       (0 until 4).map(i =>
         if (inverseList(i).take(4).last) ~lutBitsIns(i).take(4).last else lutBitsIns(i).take(4).last
@@ -1384,14 +1382,14 @@ case class Compressor06051415to9(override val complementHeap: Seq[Seq[Boolean]] 
 
     (0 until 8).foreach { j =>
       carryChain.DI(j) := data(j)
-      carryChain.S(j) := selects(j)
+      carryChain.S(j)  := selects(j)
     }
     val cIn =
       if (getComplementHeap.head.take(5).padTo(5, true).last) dataBitsIn.head.take(5).padTo(5, False).last
       else ~dataBitsIn.head.take(5).padTo(5, False).last
-    carryChain.CI := cIn
+    carryChain.CI     := cIn
     carryChain.CI_TOP := False
-    dataOut.head := (carryChain.CO(7) ## carryChain.O).asUInt.toAFix
+    dataOut.head      := (carryChain.CO(7) ## carryChain.O).asUInt.toAFix
   }
 }
 
@@ -1554,7 +1552,7 @@ case class Compressor14050623to9(override val complementHeap: Seq[Seq[Boolean]] 
       .map(seq => (seq(0), seq(1)))
 
     val carryChain = CARRY8()
-    val selects = lutOuts.map(_._2)
+    val selects    = lutOuts.map(_._2)
     val data = Seq(
       if (inverseList.head.take(2).last) ~lutBitsIns.head.take(2).last else lutBitsIns.head.take(2).last,
       if (inverseList(1).take(2).last) ~lutBitsIns(1).take(2).last else lutBitsIns(1).take(2).last,
@@ -1568,14 +1566,14 @@ case class Compressor14050623to9(override val complementHeap: Seq[Seq[Boolean]] 
 
     (0 until 8).foreach { j =>
       carryChain.DI(j) := data(j)
-      carryChain.S(j) := selects(j)
+      carryChain.S(j)  := selects(j)
     }
     val cIn =
       if (getComplementHeap.head.take(3).padTo(3, true).last) dataBitsIn.head.take(3).padTo(3, False).last
       else ~dataBitsIn.head.take(3).padTo(3, False).last
-    carryChain.CI := cIn
+    carryChain.CI     := cIn
     carryChain.CI_TOP := False
-    dataOut.head := (carryChain.CO(7) ## carryChain.O).asUInt.toAFix
+    dataOut.head      := (carryChain.CO(7) ## carryChain.O).asUInt.toAFix
   }
 }
 
@@ -1737,7 +1735,7 @@ case class Compressor13240623to9(override val complementHeap: Seq[Seq[Boolean]] 
       .map(seq => (seq(0), seq(1)))
 
     val carryChain = CARRY8()
-    val selects = lutOuts.map(_._2)
+    val selects    = lutOuts.map(_._2)
     val data = Seq(
       if (inverseList.head.take(2).last) ~lutBitsIns.head.take(2).last else lutBitsIns.head.take(2).last,
       if (inverseList(1).take(2).last) ~lutBitsIns(1).take(2).last else lutBitsIns(1).take(2).last,
@@ -1751,14 +1749,14 @@ case class Compressor13240623to9(override val complementHeap: Seq[Seq[Boolean]] 
 
     (0 until 8).foreach { j =>
       carryChain.DI(j) := data(j)
-      carryChain.S(j) := selects(j)
+      carryChain.S(j)  := selects(j)
     }
     val cIn =
       if (getComplementHeap.head.take(3).padTo(3, true).last) dataBitsIn.head.take(3).padTo(3, False).last
       else ~dataBitsIn.head.take(3).padTo(3, False).last
-    carryChain.CI := cIn
+    carryChain.CI     := cIn
     carryChain.CI_TOP := False
-    dataOut.head := (carryChain.CO(7) ## carryChain.O).asUInt.toAFix
+    dataOut.head      := (carryChain.CO(7) ## carryChain.O).asUInt.toAFix
   }
 }
 
@@ -1928,7 +1926,7 @@ case class Compressor06050623to9(override val complementHeap: Seq[Seq[Boolean]] 
       .map(seq => (seq(0), seq(1)))
 
     val carryChain = CARRY8()
-    val selects = lutOuts.map(_._2)
+    val selects    = lutOuts.map(_._2)
     val data = Seq(
       if (inverseList.head.take(2).last) ~lutBitsIns.head.take(2).last else lutBitsIns.head.take(2).last,
       if (inverseList(1).take(2).last) ~lutBitsIns(1).take(2).last else lutBitsIns(1).take(2).last,
@@ -1942,14 +1940,14 @@ case class Compressor06050623to9(override val complementHeap: Seq[Seq[Boolean]] 
 
     (0 until 8).foreach { j =>
       carryChain.DI(j) := data(j)
-      carryChain.S(j) := selects(j)
+      carryChain.S(j)  := selects(j)
     }
     val cIn =
       if (getComplementHeap.head.take(3).padTo(3, true).last) dataBitsIn.head.take(3).padTo(3, False).last
       else ~dataBitsIn.head.take(3).padTo(3, False).last
-    carryChain.CI := cIn
+    carryChain.CI     := cIn
     carryChain.CI_TOP := False
-    dataOut.head := (carryChain.CO(7) ## carryChain.O).asUInt.toAFix
+    dataOut.head      := (carryChain.CO(7) ## carryChain.O).asUInt.toAFix
   }
 }
 
@@ -2112,7 +2110,7 @@ case class Compressor14050615to9(override val complementHeap: Seq[Seq[Boolean]] 
       .map(seq => (seq(0), seq(1)))
 
     val carryChain = CARRY8()
-    val selects = lutOuts.map(_._2)
+    val selects    = lutOuts.map(_._2)
     val data = Seq(
       if (inverseList.head.take(4).last) ~lutBitsIns.head.take(4).last else lutBitsIns.head.take(4).last,
       if (inverseList(1).take(4).last) ~lutBitsIns(1).take(4).last else lutBitsIns(1).take(4).last,
@@ -2126,14 +2124,14 @@ case class Compressor14050615to9(override val complementHeap: Seq[Seq[Boolean]] 
 
     (0 until 8).foreach { j =>
       carryChain.DI(j) := data(j)
-      carryChain.S(j) := selects(j)
+      carryChain.S(j)  := selects(j)
     }
     val cIn =
       if (getComplementHeap.head.take(5).padTo(5, true).last) dataBitsIn.head.take(5).padTo(5, False).last
       else ~dataBitsIn.head.take(5).padTo(5, False).last
-    carryChain.CI := cIn
+    carryChain.CI     := cIn
     carryChain.CI_TOP := False
-    dataOut.head := (carryChain.CO(7) ## carryChain.O).asUInt.toAFix
+    dataOut.head      := (carryChain.CO(7) ## carryChain.O).asUInt.toAFix
   }
 }
 
@@ -2295,7 +2293,7 @@ case class Compressor13240615to9(override val complementHeap: Seq[Seq[Boolean]] 
       .map(seq => (seq(0), seq(1)))
 
     val carryChain = CARRY8()
-    val selects = lutOuts.map(_._2)
+    val selects    = lutOuts.map(_._2)
     val data = Seq(
       if (inverseList.head.take(4).last) ~lutBitsIns.head.take(4).last else lutBitsIns.head.take(4).last,
       if (inverseList(1).take(4).last) ~lutBitsIns(1).take(4).last else lutBitsIns(1).take(4).last,
@@ -2309,14 +2307,14 @@ case class Compressor13240615to9(override val complementHeap: Seq[Seq[Boolean]] 
 
     (0 until 8).foreach { j =>
       carryChain.DI(j) := data(j)
-      carryChain.S(j) := selects(j)
+      carryChain.S(j)  := selects(j)
     }
     val cIn =
       if (getComplementHeap.head.take(5).padTo(5, true).last) dataBitsIn.head.take(5).padTo(5, False).last
       else ~dataBitsIn.head.take(5).padTo(5, False).last
-    carryChain.CI := cIn
+    carryChain.CI     := cIn
     carryChain.CI_TOP := False
-    dataOut.head := (carryChain.CO(7) ## carryChain.O).asUInt.toAFix
+    dataOut.head      := (carryChain.CO(7) ## carryChain.O).asUInt.toAFix
   }
 }
 
@@ -2486,7 +2484,7 @@ case class Compressor06050615to9(override val complementHeap: Seq[Seq[Boolean]] 
       .map(seq => (seq(0), seq(1)))
 
     val carryChain = CARRY8()
-    val selects = lutOuts.map(_._2)
+    val selects    = lutOuts.map(_._2)
     val data = Seq(
       if (inverseList.head.take(4).last) ~lutBitsIns.head.take(4).last else lutBitsIns.head.take(4).last,
       if (inverseList(1).take(4).last) ~lutBitsIns(1).take(4).last else lutBitsIns(1).take(4).last,
@@ -2500,14 +2498,14 @@ case class Compressor06050615to9(override val complementHeap: Seq[Seq[Boolean]] 
 
     (0 until 8).foreach { j =>
       carryChain.DI(j) := data(j)
-      carryChain.S(j) := selects(j)
+      carryChain.S(j)  := selects(j)
     }
     val cIn =
       if (getComplementHeap.head.take(5).padTo(5, true).last) dataBitsIn.head.take(5).padTo(5, False).last
       else ~dataBitsIn.head.take(5).padTo(5, False).last
-    carryChain.CI := cIn
+    carryChain.CI     := cIn
     carryChain.CI_TOP := False
-    dataOut.head := (carryChain.CO(7) ## carryChain.O).asUInt.toAFix
+    dataOut.head      := (carryChain.CO(7) ## carryChain.O).asUInt.toAFix
   }
 }
 
@@ -2636,7 +2634,7 @@ case class Compressor14141406to9(override val complementHeap: Seq[Seq[Boolean]] 
       .map(seq => (seq(0), seq(1)))
 
     val carryChain = CARRY8()
-    val selects = lutOuts.map(_._2)
+    val selects    = lutOuts.map(_._2)
     val data = Seq(
       if (inverseList.head.take(5).last) ~lutBitsIns.head.take(5).last else lutBitsIns.head.take(5).last,
       lutOuts(1)._1,
@@ -2647,14 +2645,14 @@ case class Compressor14141406to9(override val complementHeap: Seq[Seq[Boolean]] 
 
     (0 until 8).foreach { j =>
       carryChain.DI(j) := data(j)
-      carryChain.S(j) := selects(j)
+      carryChain.S(j)  := selects(j)
     }
     val cIn =
       if (getComplementHeap.head.take(6).padTo(6, true).last) dataBitsIn.head.take(6).padTo(6, False).last
       else ~dataBitsIn.head.take(6).padTo(6, False).last
-    carryChain.CI := cIn
+    carryChain.CI     := cIn
     carryChain.CI_TOP := False
-    dataOut.head := (carryChain.CO(7) ## carryChain.O).asUInt.toAFix
+    dataOut.head      := (carryChain.CO(7) ## carryChain.O).asUInt.toAFix
   }
 }
 
@@ -2817,7 +2815,7 @@ case class Compressor06141406to9(override val complementHeap: Seq[Seq[Boolean]] 
       .map(seq => (seq(0), seq(1)))
 
     val carryChain = CARRY8()
-    val selects = lutOuts.map(_._2)
+    val selects    = lutOuts.map(_._2)
     val data = Seq(
       if (inverseList.head.take(5).last) ~lutBitsIns.head.take(5).last else lutBitsIns.head.take(5).last,
       lutOuts(1)._1,
@@ -2831,14 +2829,14 @@ case class Compressor06141406to9(override val complementHeap: Seq[Seq[Boolean]] 
 
     (0 until 8).foreach { j =>
       carryChain.DI(j) := data(j)
-      carryChain.S(j) := selects(j)
+      carryChain.S(j)  := selects(j)
     }
     val cIn =
       if (getComplementHeap.head.take(6).padTo(6, true).last) dataBitsIn.head.take(6).padTo(6, False).last
       else ~dataBitsIn.head.take(6).padTo(6, False).last
-    carryChain.CI := cIn
+    carryChain.CI     := cIn
     carryChain.CI_TOP := False
-    dataOut.head := (carryChain.CO(7) ## carryChain.O).asUInt.toAFix
+    dataOut.head      := (carryChain.CO(7) ## carryChain.O).asUInt.toAFix
   }
 }
 
@@ -3001,7 +2999,7 @@ case class Compressor06221406to9(override val complementHeap: Seq[Seq[Boolean]] 
       .map(seq => (seq(0), seq(1)))
 
     val carryChain = CARRY8()
-    val selects = lutOuts.map(_._2)
+    val selects    = lutOuts.map(_._2)
     val data = Seq(
       if (inverseList.head.take(5).last) ~lutBitsIns.head.take(5).last else lutBitsIns.head.take(5).last,
       lutOuts(1)._1,
@@ -3015,14 +3013,14 @@ case class Compressor06221406to9(override val complementHeap: Seq[Seq[Boolean]] 
 
     (0 until 8).foreach { j =>
       carryChain.DI(j) := data(j)
-      carryChain.S(j) := selects(j)
+      carryChain.S(j)  := selects(j)
     }
     val cIn =
       if (getComplementHeap.head.take(6).padTo(6, true).last) dataBitsIn.head.take(6).padTo(6, False).last
       else ~dataBitsIn.head.take(6).padTo(6, False).last
-    carryChain.CI := cIn
+    carryChain.CI     := cIn
     carryChain.CI_TOP := False
-    dataOut.head := (carryChain.CO(7) ## carryChain.O).asUInt.toAFix
+    dataOut.head      := (carryChain.CO(7) ## carryChain.O).asUInt.toAFix
   }
 }
 
@@ -3150,7 +3148,7 @@ case class Compressor14141325to9(override val complementHeap: Seq[Seq[Boolean]] 
       .map(seq => (seq(0), seq(1)))
 
     val carryChain = CARRY8()
-    val selects = lutOuts.map(_._2)
+    val selects    = lutOuts.map(_._2)
     val data = Seq(
       if (inverseList(0).take(4).last) ~lutBitsIns(0).take(4).last else lutBitsIns(0).take(4).last,
       lutOuts(1)._1,
@@ -3161,14 +3159,14 @@ case class Compressor14141325to9(override val complementHeap: Seq[Seq[Boolean]] 
 
     (0 until 8).foreach { j =>
       carryChain.DI(j) := data(j)
-      carryChain.S(j) := selects(j)
+      carryChain.S(j)  := selects(j)
     }
     val cIn =
       if (getComplementHeap.head.take(5).padTo(5, true).last) dataBitsIn.head.take(5).padTo(5, False).last
       else ~dataBitsIn.head.take(5).padTo(5, False).last
-    carryChain.CI := cIn
+    carryChain.CI     := cIn
     carryChain.CI_TOP := False
-    dataOut.head := (carryChain.CO(7) ## carryChain.O).asUInt.toAFix
+    dataOut.head      := (carryChain.CO(7) ## carryChain.O).asUInt.toAFix
   }
 }
 
@@ -3330,7 +3328,7 @@ case class Compressor06141325to9(override val complementHeap: Seq[Seq[Boolean]] 
       .map(seq => (seq(0), seq(1)))
 
     val carryChain = CARRY8()
-    val selects = lutOuts.map(_._2)
+    val selects    = lutOuts.map(_._2)
     val data = Seq(
       if (inverseList(0).take(4).last) ~lutBitsIns(0).take(4).last else lutBitsIns(0).take(4).last,
       lutOuts(1)._1,
@@ -3344,14 +3342,14 @@ case class Compressor06141325to9(override val complementHeap: Seq[Seq[Boolean]] 
 
     (0 until 8).foreach { j =>
       carryChain.DI(j) := data(j)
-      carryChain.S(j) := selects(j)
+      carryChain.S(j)  := selects(j)
     }
     val cIn =
       if (getComplementHeap.head.take(5).padTo(5, true).last) dataBitsIn.head.take(5).padTo(5, False).last
       else ~dataBitsIn.head.take(5).padTo(5, False).last
-    carryChain.CI := cIn
+    carryChain.CI     := cIn
     carryChain.CI_TOP := False
-    dataOut.head := (carryChain.CO(7) ## carryChain.O).asUInt.toAFix
+    dataOut.head      := (carryChain.CO(7) ## carryChain.O).asUInt.toAFix
   }
 }
 
@@ -3513,7 +3511,7 @@ case class Compressor06221325to9(override val complementHeap: Seq[Seq[Boolean]] 
       .map(seq => (seq(0), seq(1)))
 
     val carryChain = CARRY8()
-    val selects = lutOuts.map(_._2)
+    val selects    = lutOuts.map(_._2)
     val data = Seq(
       if (inverseList(0).take(4).last) ~lutBitsIns(0).take(4).last else lutBitsIns(0).take(4).last,
       lutOuts(1)._1,
@@ -3527,14 +3525,14 @@ case class Compressor06221325to9(override val complementHeap: Seq[Seq[Boolean]] 
 
     (0 until 8).foreach { j =>
       carryChain.DI(j) := data(j)
-      carryChain.S(j) := selects(j)
+      carryChain.S(j)  := selects(j)
     }
     val cIn =
       if (getComplementHeap.head.take(5).padTo(5, true).last) dataBitsIn.head.take(5).padTo(5, False).last
       else ~dataBitsIn.head.take(5).padTo(5, False).last
-    carryChain.CI := cIn
+    carryChain.CI     := cIn
     carryChain.CI_TOP := False
-    dataOut.head := (carryChain.CO(7) ## carryChain.O).asUInt.toAFix
+    dataOut.head      := (carryChain.CO(7) ## carryChain.O).asUInt.toAFix
   }
 }
 
@@ -3670,7 +3668,7 @@ case class Compressor14140606to9(override val complementHeap: Seq[Seq[Boolean]] 
       .map(seq => (seq(0), seq(1)))
 
     val carryChain = CARRY8()
-    val selects = lutOuts.map(_._2)
+    val selects    = lutOuts.map(_._2)
     val data = Seq(
       if (inverseList.head.take(5).last) ~lutBitsIns.head.take(5).last else lutBitsIns.head.take(5).last,
       lutOuts(1)._1,
@@ -3681,14 +3679,14 @@ case class Compressor14140606to9(override val complementHeap: Seq[Seq[Boolean]] 
 
     (0 until 8).foreach { j =>
       carryChain.DI(j) := data(j)
-      carryChain.S(j) := selects(j)
+      carryChain.S(j)  := selects(j)
     }
     val cIn =
       if (getComplementHeap.head.take(6).padTo(6, true).last) dataBitsIn.head.take(6).padTo(6, False).last
       else ~dataBitsIn.head.take(6).padTo(6, False).last
-    carryChain.CI := cIn
+    carryChain.CI     := cIn
     carryChain.CI_TOP := False
-    dataOut.head := (carryChain.CO(7) ## carryChain.O).asUInt.toAFix
+    dataOut.head      := (carryChain.CO(7) ## carryChain.O).asUInt.toAFix
   }
 }
 
@@ -3858,7 +3856,7 @@ case class Compressor06220606to9(override val complementHeap: Seq[Seq[Boolean]] 
       .map(seq => (seq(0), seq(1)))
 
     val carryChain = CARRY8()
-    val selects = lutOuts.map(_._2)
+    val selects    = lutOuts.map(_._2)
     val data = Seq(
       if (inverseList.head.take(5).last) ~lutBitsIns.head.take(5).last else lutBitsIns.head.take(5).last,
       lutOuts(1)._1,
@@ -3872,14 +3870,14 @@ case class Compressor06220606to9(override val complementHeap: Seq[Seq[Boolean]] 
 
     (0 until 8).foreach { j =>
       carryChain.DI(j) := data(j)
-      carryChain.S(j) := selects(j)
+      carryChain.S(j)  := selects(j)
     }
     val cIn =
       if (getComplementHeap.head.take(6).padTo(6, true).last) dataBitsIn.head.take(6).padTo(6, False).last
       else ~dataBitsIn.head.take(6).padTo(6, False).last
-    carryChain.CI := cIn
+    carryChain.CI     := cIn
     carryChain.CI_TOP := False
-    dataOut.head := (carryChain.CO(7) ## carryChain.O).asUInt.toAFix
+    dataOut.head      := (carryChain.CO(7) ## carryChain.O).asUInt.toAFix
   }
 }
 
@@ -4049,7 +4047,7 @@ case class Compressor06140606to9(override val complementHeap: Seq[Seq[Boolean]] 
       .map(seq => (seq(0), seq(1)))
 
     val carryChain = CARRY8()
-    val selects = lutOuts.map(_._2)
+    val selects    = lutOuts.map(_._2)
     val data = Seq(
       if (inverseList.head.take(5).last) ~lutBitsIns.head.take(5).last else lutBitsIns.head.take(5).last,
       lutOuts(1)._1,
@@ -4063,14 +4061,14 @@ case class Compressor06140606to9(override val complementHeap: Seq[Seq[Boolean]] 
 
     (0 until 8).foreach { j =>
       carryChain.DI(j) := data(j)
-      carryChain.S(j) := selects(j)
+      carryChain.S(j)  := selects(j)
     }
     val cIn =
       if (getComplementHeap.head.take(6).padTo(6, true).last) dataBitsIn.head.take(6).padTo(6, False).last
       else ~dataBitsIn.head.take(6).padTo(6, False).last
-    carryChain.CI := cIn
+    carryChain.CI     := cIn
     carryChain.CI_TOP := False
-    dataOut.head := (carryChain.CO(7) ## carryChain.O).asUInt.toAFix
+    dataOut.head      := (carryChain.CO(7) ## carryChain.O).asUInt.toAFix
   }
 }
 

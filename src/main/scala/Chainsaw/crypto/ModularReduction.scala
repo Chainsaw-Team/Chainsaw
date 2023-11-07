@@ -1,6 +1,6 @@
 package Chainsaw.crypto
 
-import Chainsaw.xilinx.VivadoUtil
+import Chainsaw.edaFlow.vivado.VivadoUtil
 import Chainsaw._
 import spinal.core.{U, _}
 
@@ -36,10 +36,7 @@ trait ModularReductionAttribute {
   }
 }
 
-trait ModularReduction
-    extends ChainsawOperatorGenerator
-    with ModularReductionAttribute
-    with FixedLatency {
+trait ModularReduction extends ChainsawOperatorGenerator with ModularReductionAttribute with FixedLatency {
 
   override def inputTypes = {
     val widths = if (isConstant) Seq(widthIn) else Seq(widthIn, widthM)

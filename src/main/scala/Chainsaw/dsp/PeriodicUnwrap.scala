@@ -1,7 +1,7 @@
 package Chainsaw.dsp
 import Chainsaw._
 import Chainsaw.io.pythonIo._
-import Chainsaw.xilinx._
+import Chainsaw.edaFlow.vivado._
 import spinal.core._
 
 import java.io.File

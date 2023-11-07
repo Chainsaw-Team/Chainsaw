@@ -7,7 +7,7 @@ import spinal.lib.fsm._
 
 import scala.util.Random
 import Chainsaw._
-import Chainsaw.xilinx._
+import Chainsaw.edaFlow.vivado._
 
 import scala.collection.mutable.ArrayBuffer
 
@@ -66,8 +66,7 @@ abstract class CarrySelectAddition extends FastAdditionAlgo {
 
 }
 
-case class AamAddition(width: Int, blockWidth: Int)
-    extends CarrySelectAddition {
+case class AamAddition(width: Int, blockWidth: Int) extends CarrySelectAddition {
 
   override def impl(a: BigInt, b: BigInt, cin: BigInt) = {
     val (aWords, bWords) = getWords(a, b)
@@ -95,8 +94,7 @@ case class AamAddition(width: Int, blockWidth: Int)
     VivadoUtil(lut = (3 * blockCount + 1) * blockWidth)
 }
 
-case class CaiAddition(width: Int, blockWidth: Int)
-    extends CarrySelectAddition {
+case class CaiAddition(width: Int, blockWidth: Int) extends CarrySelectAddition {
 
   override def impl(a: BigInt, b: BigInt, cin: BigInt) = {
     val (aWords, bWords) = getWords(a, b)
@@ -121,8 +119,7 @@ case class CaiAddition(width: Int, blockWidth: Int)
     VivadoUtil(lut = (2.5 * blockCount + 1) * blockWidth)
 }
 
-class CcaAddition(val width: Int, val blockWidth: Int)
-    extends CarrySelectAddition {
+class CcaAddition(val width: Int, val blockWidth: Int) extends CarrySelectAddition {
 
   override def impl(a: BigInt, b: BigInt, cin: BigInt) = {
     val (aWords, bWords) = getWords(a, b)
