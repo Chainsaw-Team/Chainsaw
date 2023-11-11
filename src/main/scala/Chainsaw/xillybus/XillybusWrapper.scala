@@ -6,6 +6,9 @@ import spinal.lib._
 import scala.language.postfixOps
 
 /** pcie-related signals on a board, which are necessary for a xillybus IP
+ *
+ *
+ *
   */
 case class PcieBundle() extends Bundle {
   val perstn, refclk = in Bool ()

@@ -80,7 +80,7 @@ trait floatingFlopoco {
       .head
       .split(" ")(1)
     src.close()
-    println(s"latency = $latency, moduleName = $moduleName")
+//    println(s"latency = $latency, moduleName = $moduleName")
     (latency, moduleName)
   }
 
