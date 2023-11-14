@@ -22,6 +22,8 @@ import scala.collection.mutable.Map
 class Dfg extends DirectedWeightedPseudograph[DfgVertex, DfgEdge](classOf[DfgEdge]) with Area {
 
   implicit val background: Dfg = this
+  var useFloating              = false
+  var useStream                = false
 
   def vertexSeq: Seq[DfgVertex] = vertexSet().asScala.toList
   def edgeSeq: Seq[DfgEdge]     = edgeSet().asScala.toList
@@ -30,12 +32,6 @@ class Dfg extends DirectedWeightedPseudograph[DfgVertex, DfgEdge](classOf[DfgEdg
   val floatingOutputs = mutable.Map[Output, Floating]()
   val fixedInputs     = mutable.Map[Input, AFix]()
   val fixedOutputs    = mutable.Map[Output, AFix]()
-
-  def compile(): Unit = {
-    new Area {}
-  }
-
-  def run(data: Seq[Double]): Unit = {}
 
   def isRecursive: Boolean = new CycleDetector(this).detectCycles()
 
@@ -73,5 +69,11 @@ class Dfg extends DirectedWeightedPseudograph[DfgVertex, DfgEdge](classOf[DfgEdg
       addEdge(edgeIn.source, edgeOut.target, new DfgEdge(edgeIn.delay + edgeOut.delay, edgeIn.outId, edgeOut.inId))
       removeVertex(v)
     }
+  }
+
+  def build() = {
+
+    DfgBuildFloating(this)
+
   }
 }

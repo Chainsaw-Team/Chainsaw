@@ -6,111 +6,70 @@ import FixOperators._
 import spinal.core._
 import spinal.core.internals.PhaseContext
 import spinal.lib.experimental.math.Floating
+import spinal.core._
+import spinal.core.sim._
+import spinal.lib._
+import spinal.lib.sim._
+import spinal.lib.fsm._
+import spinal.lib.bus._
+import Chainsaw.arithmetic.floating._
 
-object Demo0 extends App {
-
-  val accGraph = new Dfg {
-    val i   = SIn()
-    val acc = SOut()
-    acc := (i + acc.d(1)) // caution, := will take effect before +
-  }
-
-  // visualization
-  accGraph.exportDrawIo("accGraph")
-  // simulation
-  val stimulus = (0 until 10).map(i => Seq(i.toFloat))
-  accGraph.runFloating(stimulus).foreach(println)
-}
-
-object Demo1 extends App {
-
-  val adderGraph = new Dfg {
-    val is  = Seq.fill(4)(SIn())
-    val o   = SOut()
-    val im0 = (is(0) + is(1)).d()
-    val im1 = (is(2) + is(3)).d()
-    o := (im0 + im1).d()
-  }
-
-  adderGraph.exportDrawIo("adderGraph")
-
-  val stimulus = (0 until 10).map(i => Seq.fill(4)(i.toFloat))
-  adderGraph.runFloating(stimulus).foreach(println)
-}
+import scala.collection.mutable.ArrayBuffer
 
 case class SystolicDfg() extends Dfg {
-  val coeffs = Seq.fill(6)(1.0.toFloat)
-  val i      = SIn()
-  val o      = SOut()
+  val coeffs: Seq[Float] = Seq.fill(6)(1.0.toFloat)
+  val i: Signal          = SIn()
+  val o: Signal          = SOut()
 
-  val delayLine = Seq.iterate(i, coeffs.length)(_.d(2))
-  val scaled    = delayLine.zip(coeffs).map { case (signal, coeff) => signal * coeff }
+  private val delayLine   = Seq.iterate(i, coeffs.length)(_.d(2))
+  val scaled: Seq[Signal] = delayLine.zip(coeffs).map { case (signal, coeff) => signal * coeff }
   o := scaled.reduce((a: Signal, b: Signal) => (a + b).d())
 }
 
 object SystolicDfg extends App {
 
-  def inVirtualGlob[T](func: => T): T = {
-
-    val virtualGlob = new GlobalData(SpinalConfig())
-    virtualGlob.phaseContext = new PhaseContext(SpinalConfig())
-    GlobalData.set(virtualGlob)
-    val ret = func
-    ret
-  }
-
-  inVirtualGlob {
-    val dfg = SystolicDfg()
-    dfg.exportDrawIo("systolicGraph")
-//    val stimulus = (0 until 20).map(i => Seq(1.0f))
-//    dfg.runFloating(stimulus).foreach(println)
-
-  }
-}
-
-object Demo2Component extends App { // systolic FIR
-
   SpinalConfig().generateVerilog {
     new Component {
+      val systolicGraph = SystolicDfg()
+      val dataIn        = in(systolicGraph.floatingInputs.values.head)
+      val dataOut       = out(systolicGraph.floatingOutputs.values.head)
+      systolicGraph.build()
+      systolicGraph.exportDrawIo("systolicGraph")
+    }
+  }
 
-      val coeffs = Seq.fill(6)(1.0.toFloat)
+  val ret = DfgTest(SystolicDfg(), Seq.fill(20)(Seq(1.0f)))
+  ret.foreach(vec => println(vec.head))
+}
 
-      val systolicGraph = new Dfg {
-        val i = SIn()
-        val o = SOut()
+object DfgWrapper {
 
-        val delayLine = Seq.iterate(i, coeffs.length)(_.d(2))
-        val scaled    = delayLine.zip(coeffs).map { case (signal, coeff) => signal * coeff }
-        o := scaled.reduce((a: Signal, b: Signal) => (a + b).d())
-      }
-
-      val dataIn  = in(Floating(8, 23))
-      val dataOut = out(Floating(8, 23))
-
-      systolicGraph.i.floating := dataIn
-      dataOut                  := systolicGraph.o.floating
+  def apply(dfg: => Dfg) = {
+    new Component {
+      val graph   = dfg
+      val dataIn  = in(Vec(graph.floatingInputs.values)) // TODO: order?
+      val dataOut = out(Vec(graph.floatingOutputs.values))
+      graph.build()
 
     }
   }
 }
 
-object Demo3 extends App { // sorting network
+object DfgTest {
+  def apply(dfg: => Dfg, stimulus: Seq[Seq[Float]]) = {
+    val ret = ArrayBuffer[Seq[Float]]()
+    SimConfig.withFstWave.compile(DfgWrapper(dfg)).doSim { dut =>
+      import dut.{clockDomain, dataIn, dataOut}
+      dataIn.foreach { port => port #= 0.0 }
+      clockDomain.forkStimulus(2)
 
-  val bitonicGraph = new Dfg {
-    val sel    = SIn(NumericType.Bool())
-    val i0, i1 = SIn(NumericType.SFix(3, 15))
+      stimulus.map { inputs =>
+        inputs.zip(dataIn).foreach { case (input, port) => port #= input }
+        clockDomain.waitSampling()
+        ret += dataOut.map(_.toFloat)
+      }
+    }
+    ret
 
-    val o0, o1   = SOut()
-    val (t0, t1) = Switch(sel, i0, i1)
-    o0 := t0.d()
-    o1 := t1.d(1)
   }
-
-  val stimulus = (0 until 20).map(i => Seq(0.0f, 1.0f, 2.0f))
-  bitonicGraph.runFloating(stimulus).foreach(println)
-
-}
-
-object Demo4 extends App { // adder graph
-
 }

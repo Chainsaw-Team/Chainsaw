@@ -1,6 +1,6 @@
 package Chainsaw
 
-import Chainsaw.xilinx.VivadoUtil
+import Chainsaw.edaFlow.vivado.VivadoUtil
 import org.apache.commons.io.FileUtils
 import spinal.core._
 
