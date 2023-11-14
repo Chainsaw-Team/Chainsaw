@@ -2,7 +2,7 @@ package Chainsaw.dsp
 
 import Chainsaw._
 import Chainsaw.memory.DynamicTimeOut
-import Chainsaw.xilinx._
+import Chainsaw.edaFlow.vivado._
 import spinal.core._
 import spinal.lib._
 
@@ -10,9 +10,9 @@ import scala.language.postfixOps
 import scala.util.Random
 
 /** input = (x, c), output = xz^-c^
- */
+  */
 case class DynamicDelay(delayMax: Int, dataType: NumericType)
-  extends ChainsawDynamicInfiniteGenerator
+    extends ChainsawDynamicInfiniteGenerator
     with DynamicLatency {
 
   override def name = s"DynamicDelay_$delayMax"

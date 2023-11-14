@@ -16,29 +16,30 @@ import org.slf4j._
 import spinal.lib.DoCmd
 
 case class VcsFlow(
-    workspaceDir: File,
-    topModuleName: Option[String],
+    designInput: ChainsawEdaDirInput,
     compileOption: VcsCompileOption,
     customizedConfig: Option[SpinalConfig]   = None,
-    includeDirs: Option[Seq[File]]           = None,
     macroFile: Option[Seq[File]]             = None,
     memBinaryFile: Option[Map[String, File]] = None
 ) extends EdaFlow(
-      designDirs     = includeDirs.getOrElse(Seq[File]()),
-      workspaceDir   = workspaceDir,
-      topModuleName  = topModuleName,
-      deviceType     = None,
+      designDirs     = designInput.designDirs,
+      workspaceDir   = designInput.workspaceDir,
+      topModuleName  = designInput.topModuleName,
+      device         = generic,
       taskType       = SIM,
       optimizeOption = compileOption,
       blackBoxSet    = None,
       memBinaryFile  = memBinaryFile
     ) {
 
-  require(VCS.exist(),"to use VcsFlow, please set the environment variable 'VCS' to the vcs executable, e.g. /opt/Synopsys/vcs201809/bin")
+  require(
+    VCS.exist(),
+    "to use VcsFlow, please set the environment variable 'VCS' to the vcs executable, e.g. /opt/Synopsys/vcs201809/bin"
+  )
 
   val vcsLogger = LoggerFactory.getLogger(s"VcsFlow")
 
-  val vcsWorkDir    = EdaDirectoryUtils.genTargetWorkspace(target = "ByVcsFlow", topModuleName, workspaceDir)
+  val vcsWorkDir    = new File(designInput.workspaceDir, s"genByVcsFlow_${designInput.topModuleName}")
   var compileFlag   = ArrayBuffer[String]()
   var elaborateFlag = ArrayBuffer[String]()
   var runSimFlag    = ArrayBuffer[String]()
@@ -47,7 +48,7 @@ case class VcsFlow(
     case Some(value) => value
     case None => // for general Component
       val config = SpinalConfig(
-        defaultConfigForClockDomains = xilinxCDConfig,
+        defaultConfigForClockDomains = xilinxDefaultCDConfig,
         targetDirectory              = s"${vcsWorkDir.getAbsolutePath}/rtl/",
         oneFilePerComponent          = true
       )
@@ -59,44 +60,41 @@ case class VcsFlow(
     val fileList               = new File(vcsWorkDir, "includeFileList.f")
     val coverageHierConfigFile = new File(vcsWorkDir, "cov_config.cfg")
 
-    if (includeDirs.isDefined) {
-      // generate fileList by includeDirs(if exist)
-      val flattenDirs        = ArrayBuffer[String]()
-      val supportedFileTypes = Seq(".v", ".sv")
-      includeDirs.get.foreach { dir =>
-        if (dir.getAbsolutePath.endsWith(".f") || dir.getAbsolutePath.endsWith(".lst")) {
-          val listFile = Source.fromFile(dir)
-          listFile
-            .getLines()
-            .map { line => new File(line) }
-            .map(_.getAbsolutePath)
-            .toSeq
-            .foreach(path => flattenDirs.append(path))
-        } else {
-          if (supportedFileTypes.exists(filrType => dir.getAbsolutePath.endsWith(filrType)))
-            flattenDirs.append(dir.getAbsolutePath)
-        }
+    // generate fileList by includeDirs(if exist)
+    val flattenDirs        = ArrayBuffer[String]()
+    val supportedFileTypes = Seq(".v", ".sv")
+    designInput.designDirs.foreach { dir =>
+      if (dir.getAbsolutePath.endsWith(".f") || dir.getAbsolutePath.endsWith(".lst")) {
+        val listFile = Source.fromFile(dir)
+        listFile
+          .getLines()
+          .map { line => new File(line) }
+          .map(_.getAbsolutePath)
+          .toSeq
+          .foreach(path => flattenDirs.append(path))
+      } else {
+        if (supportedFileTypes.exists(filrType => dir.getAbsolutePath.endsWith(filrType)))
+          flattenDirs.append(dir.getAbsolutePath)
       }
-      FileUtils.write(fileList, flattenDirs.mkString("\n"))
-
-      // for coverage
-      FileUtils.write(
-        coverageHierConfigFile,
-        flattenDirs
-          .filter(dir => dir.endsWith(".v") || dir.endsWith(".sv"))
-          .map(matchDir => s"-file $matchDir")
-          .mkString("\n")
-      )
-
     }
+    FileUtils.write(fileList, flattenDirs.mkString("\n"))
+
+    // for coverage
+    FileUtils.write(
+      coverageHierConfigFile,
+      flattenDirs
+        .filter(dir => dir.endsWith(".v") || dir.endsWith(".sv"))
+        .map(matchDir => s"-file $matchDir")
+        .mkString("\n")
+    )
 
     compileFlag.append(s"-j${compileOption.parallelNumber}")
     compileFlag.append("-V")
     compileFlag.append("-notice")
     compileFlag.append(s"-kdb")
-    if (includeDirs.isDefined) compileFlag.append(s"-f ${fileList.getAbsolutePath}")
+    if (designInput.designDirs.nonEmpty) compileFlag.append(s"-f ${fileList.getAbsolutePath}")
     if (macroFile.isDefined) compileFlag.append(s"-f ${macroFile.get.map(_.getAbsoluteFile).mkString(" ")}")
-    if (topModuleName.isDefined) compileFlag.append(s"-top ${topModuleName.get}")
+    compileFlag.append(s"-top ${designInput.topModuleName}")
 
     elaborateFlag.append("-LDFLAGS -Wl,--no-as-needed")
     elaborateFlag.append(s"-j${compileOption.parallelNumber}")
@@ -129,11 +127,12 @@ case class VcsFlow(
         elaborateFlag.append(s"-cm line+cond+fsm+tgl+path+branch+assert")
         runSimFlag.append(s"-cm line+cond+fsm+tgl+path+branch+assert")
     }
-    if (includeDirs.isDefined) elaborateFlag.append(s"-cm_assert_hier ${coverageHierConfigFile.getAbsolutePath}")
+    if (designInput.designDirs.nonEmpty)
+      elaborateFlag.append(s"-cm_assert_hier ${coverageHierConfigFile.getAbsolutePath}")
     elaborateFlag.append(s"-cm_dir ${vcsWorkDir.getAbsolutePath}/cov.vdb")
     elaborateFlag.append(s"-cm_name cov_${vcsWorkDir.getName}")
     elaborateFlag.append(s"-cm_log cm_compile.log")
-    if (topModuleName.isDefined) elaborateFlag.append(s"-top ${topModuleName.get}")
+    elaborateFlag.append(s"-top ${designInput.topModuleName}")
     if (compileOption.incrementCompile) elaborateFlag.append("-M")
     if (compileOption.enableMemHierarchy) elaborateFlag.append("+memcbk")
     if (compileOption.noTimingCheck) elaborateFlag.append("+notimingcheck")

@@ -11,7 +11,6 @@ import Chainsaw._
 import Chainsaw.dsp._
 import Chainsaw.arithmetic._
 import Chainsaw.crypto._
-import Chainsaw.xilinx._
 
 import ai.djl.ndarray._
 import ai.djl.ndarray.types._
@@ -37,7 +36,7 @@ object PythonModelExample extends App {
     Runtime.getRuntime.exec(
       "/home/ltr/anaconda3/bin/python /home/ltr/IdeaProjects/Chainsaw/goldenModel/corrMetric.py"
     ); // 执行py文件
-  val in   = new BufferedReader(new InputStreamReader(process.getInputStream))
+  val in = new BufferedReader(new InputStreamReader(process.getInputStream))
 
   var line = in.readLine()
   while (line != null) {

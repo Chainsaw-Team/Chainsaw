@@ -11,7 +11,7 @@ import spinal.lib.fsm._       // for finite state machine dialect
 import spinal.lib.bus._       // for all kinds of bus and regIf
 import spinal.lib.bus.regif._ // for regIf
 import spinal.sim._           // for simulation
-import spinal.core.sim._ // for more simulation
+import spinal.core.sim._      // for more simulation
 
 class DspIpTests extends ChainsawFlatSpec {
 
@@ -40,31 +40,28 @@ class DspIpTests extends ChainsawFlatSpec {
     generatorConfigTable("ComplexMult")
   )
 
-  /** -------- CORDIC
-    * --------
-    */
-
   def testCordic(): Unit = {
-    // CORDIC under all 6 modes
-    val algebraicModes = Seq(CIRCULAR, HYPERBOLIC, LINEAR)
-    val rotationModes  = Seq(ROTATION, VECTORING)
-    algebraicModes.foreach(alg =>
-      rotationModes.foreach(rot =>
+    val optimizeGoal = Seq(0, 1)
+    val functionSelect =
+      Seq(Rotate, Translate, SinAndCos, SinhAndCosh, ArcTan, ArcTanh, SquareRoot, Hypot, SquareDiffSqrt)
+
+    optimizeGoal.foreach(goal =>
+      functionSelect.foreach(func =>
         testOperator(
           Cordic(
-            alg,
-            rot,
-            iteration  = testIteration,
-            fractional = testFraction,
-            amplitudeType = NumericType(1.0, -1.0, -testFraction)
+            iteration      = testIteration,
+            fractional     = testFraction,
+            optimizeGoal   = goal,
+            functionSelect = func
           ),
           generatorConfigTable("Cordic")
         )
       )
     )
+  }
 
-    // most frequently used CORDIC modes(with initValues)
-    /*testOperator(
+  // most frequently used CORDIC modes(with initValues)
+  /*testOperator(
       CordicMagnitudePhase(
         iteration  = testIteration,
         fractional = testFraction
@@ -91,11 +88,6 @@ class DspIpTests extends ChainsawFlatSpec {
       CordicRotate(iteration = testIteration, fractional = testFraction),
       generatorConfigTable("Cordic")
     )*/
-  }
-
-  /** -------- FIRs
-    * --------
-    */
 
   def testFirs(): Unit = {
 
@@ -232,7 +224,8 @@ class DspIpTests extends ChainsawFlatSpec {
   )
 
 //  testComplexMult()
-testCordic()
+
+  testCordic()
 //  testDelay()
 //  testDds()
 //  testMovingAverage()

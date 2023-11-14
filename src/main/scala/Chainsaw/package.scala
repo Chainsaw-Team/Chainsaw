@@ -57,6 +57,7 @@ package object Chainsaw {
   val simWorkspace   = new File("simWorkspace")   // waveform
   val synthWorkspace = new File("synthWorkspace") // log & checkpoint
 
+  val xdcFileDir   = new File("src/main/resources/xdc")
   val unisimDir    = new File("src/main/resources/unisims") // for Xilinx primitives
   val dagOutputDir = new File("src/main/resources/dfgGenerated")
 
@@ -160,6 +161,13 @@ package object Chainsaw {
     def toBitValue(width: Int = -1) = {
       if (width == -1) BitValue(bi, bi.bitLength)
       else BitValue(bi, width)
+    }
+
+    def toBinaryString(width: Int = -1): String = {
+      val bigIntBinaryString =
+        if (bi.toString(2).head == '-') ((BigInt(1) << width) + bi).toString(2).reverse.padTo(width, '1').reverse
+        else bi.toString(2).reverse.padTo(width, '0').reverse
+      bigIntBinaryString
     }
   }
 
@@ -377,7 +385,7 @@ package object Chainsaw {
     * --------
     */
 
-  import xilinx._
+  import edaFlow.vivado._
 
   /** generators in naiveList are set as naive in this box
     */
@@ -396,8 +404,9 @@ package object Chainsaw {
     try {
       val report = edaFlowType match {
         case SYNTH =>
-          VivadoSynth(gen.implH, gen.name, ChainsawSpinalConfig(gen))
-        case IMPL => VivadoImpl(gen.implH, gen.name, ChainsawSpinalConfig(gen))
+          VivadoTask.synth(gen.implH, gen.name, customizedConfig = ChainsawSpinalConfig(gen))
+        case IMPL =>
+          VivadoTask.implModule(gen.implH, gen.name, customizedConfig = ChainsawSpinalConfig(gen))
       }
 
       report.requireUtil(gen.vivadoUtilEstimation, requirementStrategy)

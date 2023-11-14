@@ -1,27 +1,24 @@
 package Chainsaw.memory
 
 import Chainsaw._
-import Chainsaw.xilinx._
+import Chainsaw.edaFlow.vivado._
 import spinal.core._
 
 import scala.language.postfixOps
 
 // TODO: a unified test for RAMs
 
-
 /** multi-ported RAM based on SingleRAM/DoubleRAM
- */
+  */
 case class GeneralRam(
-                       width: Int,
-                       depth: Int,
-                       readPort: Int,
-                       writePort: Int,
-                       readLatency: Int,
-                       w2rLatency: Int,
-                       ramType: RamType
-                     ) extends Component {
-
-}
+    width: Int,
+    depth: Int,
+    readPort: Int,
+    writePort: Int,
+    readLatency: Int,
+    w2rLatency: Int,
+    ramType: RamType
+) extends Component {}
 
 /** 1W1R RAM with arbitrary width and depth
   */
@@ -80,4 +77,3 @@ case class DoubleRam(width: Int, depth: Int, readLatency: Int, w2rLatency: Int) 
     )
   )
 }
-

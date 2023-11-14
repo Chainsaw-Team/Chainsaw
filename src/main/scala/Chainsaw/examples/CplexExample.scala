@@ -1,6 +1,6 @@
 package Chainsaw.examples
 
-import Chainsaw.xilinx.VivadoUtil
+import Chainsaw.edaFlow.vivado.VivadoUtil
 import ilog.concert._
 import ilog.cplex._
 

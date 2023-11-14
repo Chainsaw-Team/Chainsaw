@@ -11,19 +11,14 @@ import scala.collection.mutable
 class VcsFlowTest extends AnyFunSuite {
   test("test vcsFlow for StreamFifo") {
     VcsFlow(
-      new File(simWorkspace, "vcs"),
-      Some("StreamFifo"),
+      new ChainsawEdaDirInput(Seq[File](), new File(simWorkspace, "vcs"), "StreamFifo"),
       compileOption = VcsCompileOption(
         Seq(FullCoverage),
         parallelNumber     = 8,
         incrementCompile   = true,
         enableMemHierarchy = true,
         noTimingCheck      = true
-      ),
-      None,
-      None,
-      None,
-      None
+      )
     ).getSpinalSimConfig()
       .compile(
         rtl = new StreamFifo(

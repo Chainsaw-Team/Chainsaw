@@ -1,7 +1,7 @@
 package Chainsaw
 
 import Chainsaw.phases._
-import Chainsaw.xilinx._
+import Chainsaw.edaFlow._
 import spinal.core._
 
 /** customized elaboration configuration for ChainsawGenerator
@@ -9,7 +9,7 @@ import spinal.core._
 object ChainsawSpinalConfig {
   def apply(gen: ChainsawBaseGenerator) = {
     val base = SpinalConfig(
-      defaultConfigForClockDomains = xilinxCDConfig,
+      defaultConfigForClockDomains = xilinxDefaultCDConfig,
       targetDirectory              = "./tmpRtl/",
       oneFilePerComponent          = !atSimTime
     )
@@ -22,7 +22,7 @@ object ChainsawSpinalConfig {
 
     if (!atSimTime) base.addTransformationPhase(new phases.FfIo)
 //    base.addTransformationPhase(new DrawHierarchy)
-    base.addTransformationPhase(new GenericEstimation)
+//    base.addTransformationPhase(new GenericEstimation)
 
     logger.info("add retiming")
     base
@@ -30,7 +30,7 @@ object ChainsawSpinalConfig {
 
   def apply() = {
     val base = SpinalConfig(
-      defaultConfigForClockDomains = xilinxCDConfig,
+      defaultConfigForClockDomains = xilinxDefaultCDConfig,
       targetDirectory              = "./tmpRtl/",
       oneFilePerComponent          = true
     )

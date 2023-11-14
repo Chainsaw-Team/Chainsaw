@@ -6,13 +6,11 @@ import spinal.lib._
 import spinal.lib.fsm._
 
 import Chainsaw._
-import Chainsaw.xilinx._
 
 import spinal.core.internals._
 
 /** padding for generators with unaligned data
- *
- */
+  */
 class IoAlign extends Phase {
   override def impl(pc: PhaseContext): Unit = {
 
@@ -32,7 +30,7 @@ class IoAlign extends Phase {
       module.validIn.setAsDirectionLess().allowDirectionLessIo
       module.lastIn.setAsDirectionLess().allowDirectionLessIo
       module.validIn := newFlowIn.valid
-      module.lastIn := newFlowIn.last
+      module.lastIn  := newFlowIn.last
       module.dataIn.zip(newFlowIn.fragment).zip(gen.inputTimes) foreach { case ((input, newInput), time) =>
         input.setAsDirectionLess().allowDirectionLessIo //allowDirectionLessIo is to disable the io Bundle linting
         newInput.setName(input.getName() + "_wrap")

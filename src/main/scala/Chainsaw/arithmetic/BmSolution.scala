@@ -1,7 +1,7 @@
 package Chainsaw.arithmetic
 
 import Chainsaw._
-import Chainsaw.xilinx.VivadoUtil
+import Chainsaw.edaFlow.vivado.VivadoUtil
 import breeze.numerics.ceil
 
 // TODO: include Bcm as part of the search space
@@ -97,8 +97,7 @@ case class BmSolution(
   }
 }
 
-/** description of a decomposition for multiplication, which supports
-  * rectangular n-split Karatsuba
+/** description of a decomposition for multiplication, which supports rectangular n-split Karatsuba
   *
   * @param baseSize
   *   size of sub-multiplier
