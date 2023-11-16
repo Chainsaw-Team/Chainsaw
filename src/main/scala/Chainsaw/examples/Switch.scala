@@ -8,7 +8,7 @@ import spinal.lib.fsm._
 import spinal.lib.bus._
 
 import Chainsaw._
-import Chainsaw.xilinx._
+import Chainsaw.edaFlow.vivado._
 case class Switch() extends ChainsawOperatorGenerator with FixedLatency {
   override def implH: ChainsawOperatorModule = new ChainsawOperatorModule(this) {
     val Seq(a, b)         = dataIn

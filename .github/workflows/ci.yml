@@ -5,7 +5,7 @@ on:
   push:
     branches: [master]
   # CI runs every hour
-  schedule: [cron: "0 * * * *"]
+  # schedule: [cron: "0 * * * *"]
 
 jobs:
   ci-check:

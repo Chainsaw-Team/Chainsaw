@@ -2,7 +2,7 @@ package Chainsaw.arithmetic.bitheap
 
 import Chainsaw.{ChainsawFlatSpec, _}
 import Chainsaw.arithmetic._
-import Chainsaw.xilinx._
+import Chainsaw.edaFlow.vivado._
 import breeze.numerics.constants.c
 import spinal.core._
 import spinal.core.sim._
@@ -280,7 +280,7 @@ class BitHeapTests extends ChainsawFlatSpec {
       logger.info("passed")
     }
 
-    if (hasVivado) VivadoSynth(Add200_6(), "synthAdd200_6")
+    if (hasVivado) VivadoTask.synth(Add200_6(), "synthAdd200_6")
   }
 
   behavior of "BitHeaps"

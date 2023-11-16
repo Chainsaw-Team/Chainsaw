@@ -9,14 +9,13 @@ import spinal.core.internals._
 import scala.language.postfixOps
 import Chainsaw.phases._
 import Chainsaw._
-import Chainsaw.xilinx._
 
 case class DriverExample(exampleId: Int) extends Component {
 
-  val a, b, c, d = in UInt (8 bits)
-  val addr = in UInt (2 bits)
-  val ctrl0, ctrl1 = in Bool()
-  val r = out UInt (8 bits)
+  val a, b, c, d   = in UInt (8 bits)
+  val addr         = in UInt (2 bits)
+  val ctrl0, ctrl1 = in Bool ()
+  val r            = out UInt (8 bits)
 
   exampleId match {
     case 0 =>
@@ -51,15 +50,16 @@ case class DriverExample(exampleId: Int) extends Component {
       }
 
       val driversRegs = r.genericWalk(func = func, iter = getPreviousRegs)
-      val driversAll = r.genericWalk(func = func)
+      val driversAll  = r.genericWalk(func = func)
       driversAll.foreach(println)
       println("-----")
       driversRegs.foreach(println)
 
-      def inc = (e: Expression) => e match {
-        case baseType: BaseType if baseType.isReg => 1.0
-        case _ => 0.0
-      }
+      def inc = (e: Expression) =>
+        e match {
+          case baseType: BaseType if baseType.isReg => 1.0
+          case _                                    => 0.0
+        }
 
       def returnLatency = (e: Expression, latency: Double) => (e, latency)
 
@@ -73,7 +73,6 @@ case class DriverExample(exampleId: Int) extends Component {
       r := ((a + (a << 4)).resize(8 bits) + mid).resize(8 bits)
       r.getAllPathsFrom(a).map(_.mkString(" -> ")).foreach(println)
   }
-
 
 }
 

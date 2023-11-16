@@ -9,7 +9,6 @@ import org.jgrapht.graph._
 import spinal.core._
 import spinal.core.internals._
 import Chainsaw._
-import Chainsaw.xilinx._
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
@@ -20,12 +19,10 @@ class SpinalEdge(val graph: ExpressionGraph) extends DefaultWeightedEdge {
 }
 
 /** graph of SpinalHDL internals
- *
- */
-class ExpressionGraph extends
-  DirectedWeightedPseudograph[ScalaLocated, SpinalEdge](classOf[SpinalEdge]) {
+  */
+class ExpressionGraph extends DirectedWeightedPseudograph[ScalaLocated, SpinalEdge](classOf[SpinalEdge]) {
 
-  val inputs = mutable.HashSet[ScalaLocated]()
+  val inputs  = mutable.HashSet[ScalaLocated]()
   val outputs = mutable.HashSet[ScalaLocated]()
 
   def addEdge(src: ScalaLocated, des: ScalaLocated, weight: Double): Unit = {
@@ -49,7 +46,10 @@ class ExpressionGraph extends
   def printConnectivity(): Unit = {
     val sets = new alg.connectivity.ConnectivityInspector(this).connectedSets().asScala
     logger.info(s"connectivity size:\n\t ${sets.map(_.size()).mkString(" ")}")
-    sets.sortBy(_.size()).init.foreach(isolated => logger.info(s"isolated set:\n\t ${isolated.asScala.mkString("\n\t")}"))
+    sets
+      .sortBy(_.size())
+      .init
+      .foreach(isolated => logger.info(s"isolated set:\n\t ${isolated.asScala.mkString("\n\t")}"))
   }
 
 }

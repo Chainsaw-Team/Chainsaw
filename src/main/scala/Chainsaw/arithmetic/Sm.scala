@@ -2,13 +2,12 @@ package Chainsaw.arithmetic
 
 import Chainsaw._
 import Chainsaw.device._
-import Chainsaw.xilinx.{VivadoUtil, _}
+import Chainsaw.edaFlow.vivado.VivadoUtil
 import spinal.core._
 
 import scala.language.postfixOps
 
-/** efficient short multipliers, which are the building blocks of long
-  * multipliers
+/** efficient short multipliers, which are the building blocks of long multipliers
   */
 case class Sm(multiplierType: MultiplierType) extends UnsignedMultiplier {
 
@@ -69,8 +68,7 @@ case class Sm(multiplierType: MultiplierType) extends UnsignedMultiplier {
   override def fmaxEstimation = 800 MHz
 }
 
-/** efficients size implemented by Vivado + retiming, which consume no LUT at
-  * all
+/** efficients size implemented by Vivado + retiming, which consume no LUT at all
   */
 case class BaseDspMult(widthX: Int, widthY: Int) extends UnsignedMultiplier {
 
@@ -100,7 +98,7 @@ case class BaseDspMult(widthX: Int, widthY: Int) extends UnsignedMultiplier {
             val prodLow          = (xWord * yLow).d(2)
             val prodHigh         = (xWord.d() * yHigh.d()).d()
             val sum              = (prodLow.takeHigh(16).asUInt +^ prodHigh).d()
-            val whole = sum @@ prodLow.takeLow(24).asUInt.d() // latency = 3
+            val whole            = sum @@ prodLow.takeLow(24).asUInt.d() // latency = 3
             whole << (i * 16)
           }
           .map(_.resize(96 bits))

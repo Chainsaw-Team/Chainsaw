@@ -1,7 +1,7 @@
 package Chainsaw.arithmetic.flopoco
 
 import Chainsaw._
-import Chainsaw.xilinx._
+import Chainsaw.edaFlow.vivado._
 import spinal.core._
 import spinal.lib._
 import Chainsaw.edaFlow._

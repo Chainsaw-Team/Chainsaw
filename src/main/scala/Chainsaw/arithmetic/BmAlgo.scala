@@ -1,7 +1,7 @@
 package Chainsaw.arithmetic
 
 import Chainsaw._
-import Chainsaw.xilinx.VivadoUtil
+import Chainsaw.edaFlow.vivado.VivadoUtil
 
 import scala.util.Random
 
@@ -167,8 +167,8 @@ class BmAlgo(val bmSolution: BmSolution) extends HardAlgo with MultAttribute {
                         i
                       ).arithInfo.weight
                     )
-                    val combinedA = add(aWords(i), aWords(j))
-                    val combinedB = add(bWords(i), bWords(j), isConstantMult)
+                    val combinedA     = add(aWords(i), aWords(j))
+                    val combinedB     = add(bWords(i), bWords(j), isConstantMult)
                     val (aMsb, aMain) = splitMSB(combinedA)
                     val (bMsb, bMain) = splitMSB(combinedB)
                     // sub-multiplication
@@ -357,7 +357,7 @@ class BmAlgo(val bmSolution: BmSolution) extends HardAlgo with MultAttribute {
   val eff = 1.0 // TODO: vary for different sizes
 
   override def clbCost =
-    (splitCost + fixCost + (mergeCost + cmultCost) / eff).toInt
+    (splitCost + fixCost + (mergeCost + cmultCost) / eff).toInt.toDouble
 
   override def dspCost = multCost
 

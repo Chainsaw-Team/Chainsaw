@@ -1,5 +1,6 @@
 package Chainsaw
 
+import Chainsaw.edaFlow._
 import Chainsaw.edaFlow.vcs._
 import spinal.core._
 import spinal.core.sim._
@@ -41,8 +42,7 @@ case class ChainsawTest(
         if (withWave) ret.withFstWave else ret
       case VCS =>
         VcsFlow(
-          new File(simWorkspace, "vcs"),
-          topModuleName = None,
+          ChainsawEdaDirInput(Seq[File](), new File(simWorkspace, "vcs"), gen.name),
           compileOption = VcsCompileOption(
             enableCoverageType = Seq(FullCoverage),
             parallelNumber     = 8,
@@ -51,7 +51,6 @@ case class ChainsawTest(
             noTimingCheck      = true
           ),
           customizedConfig = Some(spinalConfig),
-          includeDirs      = None,
           macroFile        = None,
           memBinaryFile    = None
         ).getSpinalSimConfig(withWave).workspaceName(testName)
@@ -158,6 +157,10 @@ case class ChainsawTest(
             val nullCycle = (lastValidCycle * (1 - duty.dutyRation)).ceil.toInt
             inputSegmentsWithInvalid += ((getInterrupt(nullCycle), false))
           }
+        // TODO: need to fix, because this block is added for CORDIC
+        case fixLatency: FixedLatency =>
+          val nullCycle = fixLatency.latency()
+          inputSegmentsWithInvalid += ((getInterrupt(nullCycle), false))
         case _ =>
       }
 

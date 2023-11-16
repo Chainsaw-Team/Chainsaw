@@ -1,18 +1,16 @@
 package Chainsaw.arithmetic
 
 import Chainsaw._
-import Chainsaw.xilinx.VivadoUtil
+import Chainsaw.edaFlow.vivado.VivadoUtil
 import spinal.core._
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
 /** unified multiplier design interface, following algos are supported:
-  *   - 1. divide-and-conquer based implementation of big multiplier [[BmAlgo]],
-  *     [[Bm]]
+  *   - 1. divide-and-conquer based implementation of big multiplier [[BmAlgo]], [[Bm]]
   *
-  *   - 2. bit heap compression based implementation of big constant multiplier
-  *     [[BcmAlgo]] [[Bcm]]
+  *   - 2. bit heap compression based implementation of big constant multiplier [[BcmAlgo]] [[Bcm]]
   *
   *   - 3. RNS-based implementation of mid multiplier
   *
@@ -59,8 +57,7 @@ object MultSearch {
     Sm(FullMultiplier)   // taking advantage of dsps' pre-adder/post-adder
   )
 
-  /** get the best BmSolutions for variable multiplications by branch and bound
-    * + dynamic programming algorithm
+  /** get the best BmSolutions for variable multiplications by branch and bound + dynamic programming algorithm
     *
     * @param width
     *   width of the multiplier

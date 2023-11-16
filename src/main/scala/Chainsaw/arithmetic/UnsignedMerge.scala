@@ -1,13 +1,10 @@
 package Chainsaw.arithmetic
 
 import Chainsaw._
-import Chainsaw.xilinx._
+import Chainsaw.edaFlow.vivado._
 import spinal.core.U
 
-trait UnsignedMerge
-    extends ChainsawOperatorGenerator
-    with Unaligned
-    with FixedLatency {
+trait UnsignedMerge extends ChainsawOperatorGenerator with Unaligned with FixedLatency {
 
   def arithInfos: Seq[ArithInfo]
 
