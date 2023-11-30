@@ -3,12 +3,14 @@ package Chainsaw.examples
 import Chainsaw._
 import spinal.core._
 import spinal.core.sim._
+import spinal.lib.experimental.math.Floating
 import spinal.lib.sim._
 import spinal.lib.{Stream, _}
 
 import scala.collection.mutable
 import scala.language.postfixOps
 import scala.util.Random
+import Chainsaw.arithmetic.floating._
 
 case class DelayLineWithBackPressure() extends Component {
   val dataIn  = slave Stream AFix.U(8 bits)
@@ -24,6 +26,7 @@ case class StreamForkAndJoinExample() extends Component {
 
   val Seq(c0, c1) = StreamFork(c, 2, synchronous = true).map(_.m2sPipe())
 
+  // datapath, datapath delay =
   val sum0 = a.payload +| c0.payload
   val sum1 = b.payload +| c1.payload
 
@@ -78,6 +81,52 @@ class StreamMuxSafe[T <: Data](dataType: T, portCount: Int) extends Component {
   io.select.ready := io.inputs.map(_.ready).reduce(_ && _)
 }
 
+object StreamPokeFloating {
+  def apply(
+             stream: Stream[Floating],
+             clockDomain: ClockDomain,
+             data: Seq[Float],
+             bandwidth: Double = 0.5,
+             depth: Int        = Int.MaxValue
+           ): Unit = {
+
+    val unusedData = mutable.Stack(data: _*)
+    val dataFifo   = mutable.Queue[Float]()
+
+    var validLast = false
+    var empty     = true
+
+    def fireLast = validLast && stream.ready.toBoolean
+
+    def iter() = {
+      // source -> FIFO
+      if (unusedData.nonEmpty) {
+        val poke = Random.nextDouble() < bandwidth
+        if (poke) dataFifo.enqueue(unusedData.pop())
+      }
+      if (fireLast) empty = true
+      // FIFO -> DUT
+      if (empty) { // update data
+        if (dataFifo.nonEmpty) {
+          stream.payload #= dataFifo.dequeue()
+          stream.valid   #= true
+          validLast = true
+          empty     = false
+        } else {
+          stream.payload.randomize()
+          stream.valid #= false
+          validLast = false
+        }
+      }
+      if (dataFifo.length > depth) simFailure("source buffer overflow")
+    }
+
+    stream.valid #= false
+    clockDomain.onSamplings(iter())
+
+  }
+}
+
 object StreamPoke {
   def apply(
       stream: Stream[AFix],
@@ -121,6 +170,19 @@ object StreamPoke {
     stream.valid #= false
     clockDomain.onSamplings(iter())
 
+  }
+}
+
+object StreamPeekFloating {
+  def apply(
+             stream: Stream[Floating],
+             clockDomain: ClockDomain,
+             scoreboard: ScoreboardInOrder[Float],
+             bandwidth: Double = 0.5
+           ): Unit = {
+    stream.ready #= false
+    StreamReadyRandomizer(stream, clockDomain).factor = bandwidth.toFloat
+    StreamMonitor(stream, clockDomain) { payload =>scoreboard.pushDut(payload.toFloat)}
   }
 }
 

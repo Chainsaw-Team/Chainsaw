@@ -22,40 +22,24 @@ import scala.collection.mutable.Map
 class Dfg extends DirectedWeightedPseudograph[DfgVertex, DfgEdge](classOf[DfgEdge]) with Area {
 
   implicit val background: Dfg = this
+
+  // attributes
   var useFloating              = false
   var useStream                = false
 
   def vertexSeq: Seq[DfgVertex] = vertexSet().asScala.toList
   def edgeSeq: Seq[DfgEdge]     = edgeSet().asScala.toList
 
-  val floatingInputs  = mutable.Map[Input, Floating]()
-  val floatingOutputs = mutable.Map[Output, Floating]()
-  val fixedInputs     = mutable.Map[Input, AFix]()
-  val fixedOutputs    = mutable.Map[Output, AFix]()
+  // linked hash map keep keys in insertion order
+  val floatingSignalMap = mutable.LinkedHashMap[Io, Stream[Floating]]()
+  val fixedSignalMap = mutable.LinkedHashMap[Io, Stream[AFix]]()
+
+  def floatingInputs  = floatingSignalMap.filter(_._1.isInstanceOf[Input])
+  def floatingOutputs = floatingSignalMap.filter(_._1.isInstanceOf[Output])
+  def fixedInputs     = fixedSignalMap.filter(_._1.isInstanceOf[Input])
+  def fixedOutputs    = fixedSignalMap.filter(_._1.isInstanceOf[Output])
 
   def isRecursive: Boolean = new CycleDetector(this).detectCycles()
-
-  private def implFloating: DfgImplFloating = DfgImplFloating(this)
-
-  /** do simulation using single-precision floating-point number
-    * @param stimulus
-    * @return
-    */
-  def runFloating(stimulus: Seq[Seq[Float]]): mutable.Seq[Seq[Float]] = {
-    val ret = ArrayBuffer[Seq[Float]]()
-    SimConfig.withFstWave.compile(implFloating).doSim { dut =>
-      import dut.{clockDomain, dataIn, dataOut}
-      dataIn.foreach { port => port #= 0.0 }
-      clockDomain.forkStimulus(2)
-
-      stimulus.map { inputs =>
-        inputs.zip(dataIn).foreach { case (input, port) => port #= input }
-        clockDomain.waitSampling()
-        ret += dataOut.map(_.toFloat)
-      }
-    }
-    ret
-  }
 
   def exportDrawIo(name: String): Unit = DfgToDrawIo(this, name)
 

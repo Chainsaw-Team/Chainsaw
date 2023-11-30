@@ -1,5 +1,8 @@
 package Chainsaw.dfg
 import Chainsaw.NumericType
+import spinal.core.AFix
+import spinal.lib
+import spinal.lib.experimental.math.Floating
 
 case class Signal(v: DfgVertex, outId: Int) {
   def :=(src: Signal)(implicit dfg: Dfg) = {
@@ -14,8 +17,11 @@ case class Signal(v: DfgVertex, outId: Int) {
     Signal(noOp, 0)
   }
 
-  def floating = this.v.asInstanceOf[Io].floating
-  def fixed    = this.v.asInstanceOf[Io].fixed
+  // TODO: floating stream etc.
+
+  def floating: Floating = this.v.asInstanceOf[Io].floating
+  def floatingStream: lib.Stream[Floating] = this.v.asInstanceOf[Io].floatingStream
+  def fixed: AFix = this.v.asInstanceOf[Io].fixed
 }
 
 object S {

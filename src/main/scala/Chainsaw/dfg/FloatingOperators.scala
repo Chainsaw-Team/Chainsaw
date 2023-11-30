@@ -3,6 +3,7 @@ import Chainsaw.NumericType
 import Chainsaw.arithmetic.floating._
 import Chainsaw.edaFlow.UltraScale
 import spinal.core._
+import spinal.lib.experimental.math.Floating
 
 import scala.collection.immutable
 
@@ -19,11 +20,11 @@ class FloatingAdd(implicit dfg: Dfg) extends FloatingBinaryOperator {
   override val name: String          = "FloatingAdd"
   override val executionTime: Double = 1.0
 
-  override def impl(inputs: Seq[Bits]): Seq[Bits] = {
+  override def implFloating(inputs: Seq[Floating]): Seq[Floating] = {
     val op = SinglePrecisionFPAdd(UltraScale, 10 MHz)
-    op.x.assignFromBits(inputs(0))
-    op.y.assignFromBits(inputs(1))
-    Seq(op.z.asBits)
+    op.x := inputs(0)
+    op.y := inputs(1)
+    Seq(op.z)
   }
 }
 
@@ -31,11 +32,11 @@ class FloatingSub(implicit dfg: Dfg) extends FloatingBinaryOperator {
   override val name: String          = "FloatingSub"
   override val executionTime: Double = 1.0
 
-  override def impl(inputs: Seq[Bits]): Seq[Bits] = {
+  override def implFloating(inputs: Seq[Floating]): Seq[Floating] = {
     val op = SinglePrecisionFPSub(UltraScale, 10 MHz)
-    op.x.assignFromBits(inputs(0))
-    op.y.assignFromBits(inputs(1))
-    Seq(op.z.asBits)
+    op.x := inputs(0)
+    op.y := inputs(1)
+    Seq(op.z)
   }
 }
 
@@ -43,11 +44,11 @@ class FloatingMult(implicit dfg: Dfg) extends FloatingBinaryOperator {
   override val name: String          = "FloatingMult"
   override val executionTime: Double = 5.0
 
-  override def impl(inputs: Seq[Bits]): Seq[Bits] = {
+  override def implFloating(inputs: Seq[Floating]): Seq[Floating] = {
     val op = SinglePrecisionFPMult(UltraScale, 10 MHz)
-    op.x.assignFromBits(inputs(0))
-    op.y.assignFromBits(inputs(1))
-    Seq(op.z.asBits)
+    op.x := inputs(0)
+    op.y := inputs(1)
+    Seq(op.z)
   }
 }
 
@@ -55,11 +56,11 @@ class FloatingDiv(implicit dfg: Dfg) extends FloatingBinaryOperator {
   override val name: String          = "FloatingDiv"
   override val executionTime: Double = 20.0
 
-  override def impl(inputs: Seq[Bits]): Seq[Bits] = {
+  override def implFloating(inputs: Seq[Floating]): Seq[Floating] = {
     val op = SinglePrecisonFPDiv(UltraScale, 10 MHz)
-    op.x.assignFromBits(inputs(0))
-    op.y.assignFromBits(inputs(1))
-    Seq(op.z.asBits)
+    op.x := inputs(0)
+    op.y := inputs(1)
+    Seq(op.z)
   }
 }
 
@@ -71,8 +72,9 @@ class Switch2(implicit dfg: Dfg) extends Operator {
 
   override val name: String          = "Switch2"
   override val executionTime: Double = 2.0
-  override def impl(inputs: Seq[Bits]): Seq[Bits] = {
-    val switch = inputs(0).asBool
+
+  override def implFloating(inputs: Seq[Floating]): Seq[Floating] = {
+    val switch = inputs(0).asBits.asBool
     Seq(
       Mux(switch, inputs(2), inputs(1)),
       Mux(switch, inputs(1), inputs(2))
@@ -88,8 +90,9 @@ class Mux2(implicit dfg: Dfg) extends Operator {
 
   override val name: String          = "Mux2"
   override val executionTime: Double = 2.0
-  override def impl(inputs: Seq[Bits]): Seq[Bits] = {
-    val switch = inputs(0).asBool
+
+  override def implFloating(inputs: Seq[Floating]): Seq[Floating] = {
+    val switch = inputs(0).asBits.asBool
     Seq(Mux(switch, inputs(1), inputs(2)))
   }
 }

@@ -5,6 +5,12 @@ import spinal.core.{AFix, Bits}
 import spinal.lib.experimental.math.Floating
 
 import scala.collection.JavaConverters._
+import spinal.core._
+import spinal.core.sim._
+import spinal.lib._
+import spinal.lib.sim._
+import spinal.lib.fsm._
+import spinal.lib.bus._
 
 abstract class DfgVertex(implicit dfg: Dfg) {
 
@@ -18,7 +24,8 @@ abstract class DfgVertex(implicit dfg: Dfg) {
 
   override def toString: String = name // TODO: get name by reflection
 
-  def impl(inputs: Seq[Bits]): Seq[Bits]
+  def implFloating(inputs: Seq[Floating]): Seq[Floating] = ???
+  def implFixed(inputs: Seq[AFix]): Seq[AFix] = ???
 
   def inCount = inputTypes.length
 
@@ -44,35 +51,31 @@ class NoOp(dataType: NumericType)(implicit dfg: Dfg) extends DfgVertex {
   override val delay: Int            = 0
   override val executionTime: Double = 0.0
 
-  override def impl(inputs: Seq[Bits]): Seq[Bits] = inputs
+  override def implFloating(inputs: Seq[Floating]): Seq[Floating] = inputs
 }
 
 abstract class Io(dataType: NumericType)(implicit dfg: Dfg) extends NoOp(dataType) {
-  def floating: Floating
-  def fixed: AFix
+
+  def floatingStream: Stream[Floating] = dfg.floatingSignalMap(this)
+  def floatingFlow: Flow[Floating] = floatingStream.asFlow
+  def floating: Floating = floatingStream.payload
+
+  def fixedStream: Stream[AFix] = dfg.fixedSignalMap(this)
+
+  def fixedFlow: Flow[AFix] = fixedStream.asFlow
+  def fixed: AFix = fixedStream.payload
+
+  dfg.floatingSignalMap += this -> Stream(Floating(8, 23)).setName(this.name)
+  dfg.fixedSignalMap += this -> Stream(dataType()).setName(this.name)
 
 }
 
 class Input(dataType: NumericType)(implicit dfg: Dfg) extends Io(dataType) {
   override val name: String = "I"
-
-  dfg.floatingInputs += this    -> Floating(8, 23)
-  dfg.fixedInputs += this -> dataType()
-
-  override def floating: Floating = dfg.floatingInputs(this)
-
-  override def fixed: AFix = dfg.fixedInputs(this)
 }
 
 class Output(dataType: NumericType)(implicit dfg: Dfg) extends Io(dataType) {
   override val name: String = "O"
-
-  dfg.floatingOutputs += this    -> Floating(8, 23)
-  dfg.fixedOutputs += this -> dataType()
-
-  override def floating: Floating = dfg.floatingOutputs(this)
-
-  override def fixed: AFix = dfg.fixedOutputs(this)
 }
 
 class Constant(val value: Float, dataType: NumericType)(implicit dfg: Dfg) extends NoOp(dataType) {
