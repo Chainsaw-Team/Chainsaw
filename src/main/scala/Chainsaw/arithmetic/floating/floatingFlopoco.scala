@@ -1,7 +1,7 @@
 package Chainsaw.arithmetic.floating
 
 import Chainsaw.edaFlow.{Series7, UltraScale, UltraScalePlus, XilinxDeviceFamily}
-import Chainsaw.xilinx.XilinxDevice
+import Chainsaw.edaFlow.XilinxDevice
 import Chainsaw.{ChainsawBaseGenerator, FLOPOCO, doCmd, doCmds, logger}
 import spinal.core.sim.SimConfig
 import spinal.core.{HertzNumber, IntToBuilder}
@@ -80,7 +80,7 @@ trait floatingFlopoco {
       .head
       .split(" ")(1)
     src.close()
-    println(s"latency = $latency, moduleName = $moduleName")
+//    println(s"latency = $latency, moduleName = $moduleName")
     (latency, moduleName)
   }
 

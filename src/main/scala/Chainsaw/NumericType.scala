@@ -4,16 +4,18 @@ import Chainsaw.NumericExt._
 import breeze.math.Complex
 import spinal.core._
 import spinal.core.internals.PhaseContext
+import spinal.lib.experimental.math.Floating
 
 import scala.language.postfixOps
 import scala.util.Random
 
 /** an extension of AFix
- */
+  */
 case class NumericType(val maxRaw: BigInt, val minRaw: BigInt, val exp: Int) {
 
-  /** to do NumericType arithmetic, we need to create a temporary GlobalData object, or current GlobalData will be corrupted
-   */
+  /** to do NumericType arithmetic, we need to create a temporary GlobalData object, or current GlobalData will be
+    * corrupted
+    */
   private def inVirtualGlob[T](func: => T): T = {
     val old = GlobalData.get
 
@@ -27,7 +29,7 @@ case class NumericType(val maxRaw: BigInt, val minRaw: BigInt, val exp: Int) {
   }
 
   /** do something in a virtual component
-   */
+    */
   private def inVirtualComponent[T](func: => T) = {
     inVirtualGlob {
       val com = new Module {
@@ -40,8 +42,8 @@ case class NumericType(val maxRaw: BigInt, val minRaw: BigInt, val exp: Int) {
   val afixType = HardType(new AFix(maxRaw, minRaw, exp))
 
   /** -------- get core attributes from AFix in virtual global data, to assure the consistency with SpinalHDL
-   * --------
-   */
+    * --------
+    */
 
   val (bitWidth, fractional, tempIntegral, signed, maxValue, minValue, step) =
     inVirtualGlob {
@@ -59,12 +61,15 @@ case class NumericType(val maxRaw: BigInt, val minRaw: BigInt, val exp: Int) {
 
   val integral = tempIntegral - (if (signed) 1 else 0) // exclude sign bit
 
-  def qFormat =
-    QFormat(if (signed) bitWidth - 1 else bitWidth, fractional, signed)
+  def qFormat = QFormat(if (signed) bitWidth - 1 else bitWidth, fractional, signed)
+
+  def isCount = signed == false && fractional == 0 && bitWidth != 1
+
+  def isBool = signed == false && fractional == 0 && bitWidth == 1
 
   /** -------- methods using global data
-   * --------
-   */
+    * --------
+    */
   def apply() = afixType()
 
   def asComplex =
@@ -157,11 +162,11 @@ case class NumericType(val maxRaw: BigInt, val minRaw: BigInt, val exp: Int) {
     s"${if (signed) "S" else "U"}Q${integral}_$fractional".replace("-", "N")
 
   def same(
-            your: BigDecimal,
-            golden: BigDecimal,
-            absTolerance: Double,
-            relativeTolerance: Double
-          ) = {
+      your: BigDecimal,
+      golden: BigDecimal,
+      absTolerance: Double,
+      relativeTolerance: Double
+  ) = {
     val ret =
       (your - golden).abs <= step || (your - golden).abs <= absTolerance || (your - golden).abs / (golden.abs + step) <= relativeTolerance
     if (!ret)
@@ -173,6 +178,8 @@ case class NumericType(val maxRaw: BigInt, val minRaw: BigInt, val exp: Int) {
 }
 
 object NumericType {
+
+  // factories
   def apply(integral: Int, fractional: Int, signed: Boolean): NumericType = {
     val maxRaw = BigInt(2).pow(integral + fractional) - 1
     val minRaw =
@@ -184,10 +191,10 @@ object NumericType {
     new NumericType(maxRaw, minRaw, exp)
 
   def apply(
-             maxValue: BigDecimal,
-             minValue: BigDecimal,
-             exp: Int
-           ): NumericType = {
+      maxValue: BigDecimal,
+      minValue: BigDecimal,
+      exp: Int
+  ): NumericType = {
     val step = BigDecimal(2).pow(exp)
     // TODO: ceil & floor for BigDecimal
     val maxRaw = (maxValue / step).toBigInt()
@@ -207,5 +214,7 @@ object NumericType {
     NumericType(integral, fractional, signed = true)
 
   def Bool() = NumericType(1, 0, signed = false)
+
+  def Float() = NumericType(0, 31, signed = true) // placeholder
 
 }

@@ -37,6 +37,7 @@ package object vivado {
 
     val utilization = device.deviceFamily match {
       case UltraScale => getUltrascaleWithHierarchy
+      case UltraScalePlus => getUltrascaleWithHierarchy
       case Series7    => VivadoUtil() // TODO: implement a method for Series7
     }
 
