@@ -7,7 +7,7 @@ import spinal.sim._
 import spinal.lib.fsm._
 import spinal.lib.bus._
 import Chainsaw._
-import Chainsaw.xilinx._
+import Chainsaw.edaFlow._
 import Chainsaw.intel._
 
 import scala.language.postfixOps

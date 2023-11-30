@@ -18,7 +18,7 @@ package object floating {
       float.mantissa #= bitValue & 0x7fffff
     }
 
-    def #=(value: Double) = {
+    def #=(value: Double) = { // FIXME: ....
       val bitValue = java.lang.Double.doubleToLongBits(value)
       float.sign #= (bitValue >> 52) == 1
       float.exponent #= (bitValue >> 52) &0x7ff
