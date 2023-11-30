@@ -120,7 +120,7 @@ abstract class Flopoco(val family: XilinxDeviceFamily, val targetFrequency: Hert
       .head
       .split(" ")(1)
     src.close()
-    println(s"latency = $latency, moduleName = ${moduleName}(not necessarily right)")
+//    println(s"latency = $latency, moduleName = ${moduleName}(not necessarily right)")
     (latency, moduleName)
   }
 
