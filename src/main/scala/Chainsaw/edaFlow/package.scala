@@ -4,6 +4,7 @@ import Chainsaw.edaFlow.EdaFlowUtils.EdaDirectoryUtils._
 import Chainsaw.edaFlow.vivado.VivadoUtil
 import org.apache.commons.io.FileUtils
 import spinal.core._
+import spinal.core.internals.PhaseContext
 
 import java.io.File
 import java.text.SimpleDateFormat
@@ -93,7 +94,7 @@ package object edaFlow {
   val vu9p = new XilinxDevice(
     UltraScale,
     "xcvu9p-flga2104-2-i",
-    600 MHz,
+    300 MHz,
     None,
     budget = VivadoUtil(lut = 1182240, ff = 2364480, dsp = 6840, bram36 = 2160, uram288 = 960, carry8 = 147780)
   )
@@ -248,6 +249,18 @@ package object edaFlow {
 
     def runScript(): Unit
 
+  }
+
+  def inVirtualGlob[T](func: => T): T = {
+    val old = GlobalData.get
+
+    val virtualGlob = new GlobalData(SpinalConfig())
+    virtualGlob.phaseContext = new PhaseContext(SpinalConfig())
+    GlobalData.set(virtualGlob)
+    val ret = func
+
+    GlobalData.set(old)
+    ret
   }
 
 }

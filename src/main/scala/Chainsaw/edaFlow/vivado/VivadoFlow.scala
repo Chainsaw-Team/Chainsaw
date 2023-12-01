@@ -5,7 +5,7 @@ import Chainsaw.edaFlow._
 import org.apache.commons.io.FileUtils
 import org.slf4j._
 import spinal.core._
-import spinal.core.internals.PhaseContext
+import edaFlow.EdaFlowUtils._
 import spinal.lib.DoCmd
 
 import java.io.File
@@ -457,24 +457,12 @@ object VivadoTask {
     report
   }
 
-  private def inVirtualGlob[T](func: => T): T = {
-    val old = GlobalData.get
-
-    val virtualGlob = new GlobalData(SpinalConfig())
-    virtualGlob.phaseContext = new PhaseContext(SpinalConfig())
-    GlobalData.set(virtualGlob)
-    val ret = func
-
-    GlobalData.set(old)
-    ret
-  }
-
   def genBoardBitStream(
       design: => Module with Board,
       name: String
   ): VivadoReport = {
 
-    val (device, xdcFile) = inVirtualGlob{
+    val (device, xdcFile) = inVirtualGlob {
       (design.device, design.xdcFile)
     }
 

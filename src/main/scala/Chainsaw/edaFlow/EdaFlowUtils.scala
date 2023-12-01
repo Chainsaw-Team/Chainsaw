@@ -2,11 +2,11 @@ package Chainsaw.edaFlow
 
 import Chainsaw.phases
 import org.apache.commons.io.FileUtils
-import spinal.core.{Component, SpinalConfig}
+import spinal.core._
 
 import java.io.File
-import java.text.SimpleDateFormat
-import java.util.Calendar
+import scala.collection.mutable
+import scala.collection.mutable.{ArrayBuffer, LinkedHashSet}
 import scala.io.Source
 import scala.util.Try
 
@@ -94,7 +94,8 @@ object EdaFlowUtils {
         fileTypeFilter: Seq[String]
     ): Seq[File] = {
 
-      val genRtlDir = new File(workspaceDir, s"genRtl_$topModuleName")
+      val resultDirs = ArrayBuffer[File]()
+      val genRtlDir  = new File(workspaceDir, s"genRtl_$topModuleName")
       if (genRtlDir.exists()) genRtlDir.delete()
 
       val config = customizedConfig match {
@@ -108,11 +109,36 @@ object EdaFlowUtils {
           config.addTransformationPhase(new phases.FfIo)
       }
 
-      config.generateVerilog(design)
+      config.generateVerilog {
+        inVirtualGlob {
+          val block = design match {
+            case blackBox: BlackBox =>
+              resultDirs ++= blackBox.listRTLPath.toSeq.map(new File(_))
+            case component: Component =>
+              component.walkComponents {
+                case blackBox: BlackBox =>
+                  resultDirs ++= blackBox.listRTLPath.toSeq.map(new File(_))
+                case _ =>
+              }
+          }
+
+          if (design != Component.current) {
+            design.addPrePopTask(() => block)
+          } else {
+            block
+          }
+        }
+        design
+      }
+
       if (customizedConfig.isDefined) {
         if (genRtlDir.exists()) genRtlDir.delete()
-        FileUtils.copyFileToDirectory(new File(config.targetDirectory, s"$topModuleName.v"), genRtlDir)
+        val targetFile = new File(config.targetDirectory)
+        FileUtils.copyFileToDirectory(new File(targetFile, s"$topModuleName.v"), genRtlDir)
+        val generatedBinFile = targetFile.listFiles().toSeq.filter(_.getAbsolutePath.endsWith(".bin"))
+        generatedBinFile.foreach(FileUtils.copyFileToDirectory(_, genRtlDir))
       }
+
       if (config.oneFilePerComponent) {
         val lstFile = Source.fromFile(
           new File(
@@ -125,7 +151,7 @@ object EdaFlowUtils {
           )
         )
 
-        lstFile
+        resultDirs ++= lstFile
           .getLines()
           .map { line => new File(line) }
           .map(_.getAbsolutePath)
@@ -133,13 +159,14 @@ object EdaFlowUtils {
           .map(new File(_))
 
       } else {
-        genRtlDir
+        resultDirs ++= genRtlDir
           .listFiles()
           .toSeq
           .map(_.getAbsolutePath)
           .filter(path => fileTypeFilter.exists(fileType => path endsWith fileType))
           .map(new File(_))
       }
+      resultDirs.distinct
     }
   }
 }
