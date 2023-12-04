@@ -34,16 +34,16 @@ def corr_metric():
 
     ret = funcs.get_corrcoef(your_valid, golden_valid)
 
-#     if ret < 0.9:
-    fig, axs = plt.subplots(2)
-    axs[0].plot(yours)
-    axs[0].plot(golden)
-    axs[0].legend(['yours', 'golden'])
-    axs[1].plot(your_valid)
-    axs[1].plot(golden_valid)
-    axs[1].legend(['yours', 'golden'])
-    fig.savefig("corr.png")
-    print("view corr.png for failed test")
+    if ret < 0.9:
+        fig, axs = plt.subplots(2)
+        axs[0].plot(yours)
+        axs[0].plot(golden)
+        axs[0].legend(['yours', 'golden'])
+        axs[1].plot(your_valid)
+        axs[1].plot(golden_valid)
+        axs[1].legend(['yours', 'golden'])
+        fig.savefig("corr.png")
+        print("view corr.png for failed test")
 
     print(ret, lag)  # return corrcoef and lag by output
 

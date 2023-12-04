@@ -1,13 +1,13 @@
 package Chainsaw.io
 
-import ai.djl.ndarray._
 import Chainsaw._
+import ai.djl.ndarray._
 import ai.djl.ndarray.types.Shape
 
-import java.io.{BufferedReader, DataInputStream, File, InputStreamReader, PrintWriter}
-import java.nio.{ByteBuffer, ByteOrder}
+import java.io._
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
+import java.nio.{ByteBuffer, ByteOrder}
 import java.util.regex.Pattern
 import java.util.zip.{ZipEntry, ZipInputStream}
 import scala.collection.mutable.ArrayBuffer
@@ -26,129 +26,10 @@ object pythonIo {
   val outputArrayFile  = new File(pythonDataPath, "output.npz")
   val configFile       = new File(pythonDataPath, "config.json")
 
-  /** export BigDecimal signals to a .npz file
-   *  caution: this function convert BigDecimal to Double,
-   *  might cost too much time when signal is long
-  */
-  def exportSignals(file: File, signals: Signal*): File = {
-    val manager = NDManager.newBaseManager()
-    val arrays  = signals.toArray.map(signal => manager.create(signal.toArray.map(_.toDouble)))
-    val signal  = new NDList(arrays: _*)
-    val os      = Files.newOutputStream(file.toPath)
-    signal.encode(os, true)
-    file
-  }
-
-  /** export named BigDecimal signals to a .npz file
-   *  caution: this function convert BigDecimal to Double,
-   *  might cost too much time when signal is long
-   */
-  def exportSignals(file: File, signals: Map[String, Seq[BigDecimal]]): File = {
-    val manager = NDManager.newBaseManager()
-    val arrays  = signals.toArray.map(signal => {
-      val t = manager.create(signal._2.toArray.map(_.toDouble))
-      t.setName(signal._1)
-      t
-    })
-    val signal  = new NDList(arrays: _*)
-    val os      = Files.newOutputStream(file.toPath)
-    signal.encode(os, true)
-    file
-  }
-
-  /** export Double signals to a .npz file
-   */
-  def exportSignalsDouble(file: File, signals: Seq[Double]*): File = {
-    val manager = NDManager.newBaseManager()
-    val arrays  = signals.toArray.map(signal => manager.create(signal.toArray))
-    val signal  = new NDList(arrays: _*)
-    val os      = Files.newOutputStream(file.toPath)
-    signal.encode(os, true)
-    file
-  }
-
-  /** export named Double signals to a .npz file
-   */
-  def exportSignalsDouble(file: File, signals: Map[String, Seq[Double]]): File = {
-    val manager = NDManager.newBaseManager()
-    val arrays  = signals.toArray.map(signal => {
-      val t = manager.create(signal._2.toArray)
-      t.setName(signal._1)
-      t
-    })
-    val signal  = new NDList(arrays: _*)
-    val os      = Files.newOutputStream(file.toPath)
-    signal.encode(os, true)
-    file
-  }
-
-  /** export named BigDecimal 2d signals to a .npz file
-   *  caution: this function convert BigDecimal to Double,
-   *  might cost too much time when signal is long
-   */
-  def exportSignals2d(file: File, signals: Map[String, Seq[Signal]]): File = {
-    val manager = NDManager.newBaseManager()
-    val arrays  = signals.toArray.map(signal => {
-      val t = manager.create(signal._2.toArray.map(_.toArray.map(_.toDouble)))
-      t.setName(signal._1)
-      t
-    })
-    val signal  = new NDList(arrays: _*)
-    val os      = Files.newOutputStream(file.toPath)
-    signal.encode(os, true)
-    file
-  }
-
-  /** export named Double 2d signals to a .npz file
-   */
-  def exportSignalsDouble2d(file: File, signals: Map[String, Seq[Seq[Double]]]): File = {
-    val manager = NDManager.newBaseManager()
-    val arrays  = signals.toArray.map(signal => {
-      val t = manager.create(signal._2.toArray.map(_.toArray))
-      t.setName(signal._1)
-      t
-    })
-    val signal  = new NDList(arrays: _*)
-    val os      = Files.newOutputStream(file.toPath)
-    signal.encode(os, true)
-    file
-  }
-
-  /** convert named BigDecimal 2d signals to series of signals
-   *  converted signal name: {name}_2d_i.npz
-   */
-  def flatten2dSignals(signals: Map[String, Seq[Signal]]): Map[String, Signal] = {
-    var signal2d: Map[String, Signal] = Map()
-    signals.foreach(signal => {
-      signal._2.zipWithIndex.foreach(s => {
-        signal2d = signal2d + (signal._1+s"_2d_${s._2}" -> s._1)
-      })
-    })
-    signal2d
-  }
-
-  /** convert named Double 2d signals to series of signals
-   *  converted signal name: name_2d_i
-   */
-  def flatten2dSignalsDouble(signals: Map[String, Seq[Seq[Double]]]): Map[String, Seq[Double]] = {
-    var signal2d: Map[String, Seq[Double]] = Map()
-    signals.foreach(signal => {
-      signal._2.zipWithIndex.foreach(s => {
-        signal2d = signal2d + (signal._1+s"_2d_${s._2}" -> s._1)
-      })
-    })
-    signal2d
-  }
-
-  /** export one BigDecimal signal
-   *  caution: this function convert BigDecimal to Double,
-   *  might cost too much time when signal is long
-   */
-  def exportSignal(file: File, signal: Signal): File = exportSignals(file, signal)
-
-  def exportSignalDouble(file: File, signal: Seq[Double]): File = exportSignalsDouble(file, signal)
-
-  /** calc imported
+  /**
+   * calculate memory requirement to import npz file as BigDecimal
+   * @param file target file
+   * @return size in Byte
    */
   def getSignalSizeBigDecimal(file: File): Long = {
     val is = Files.newInputStream(file.toPath)
@@ -201,6 +82,11 @@ object pythonIo {
     sizeBigDecimal
   }
 
+  /**
+   * calculate memory requirement to import npz file as Double
+   * @param file target file
+   * @return size in Byte
+   */
   def getSignalSizeDouble(file: File): Long = {
     val is = Files.newInputStream(file.toPath)
     val zis = new ZipInputStream(is)
@@ -252,187 +138,249 @@ object pythonIo {
     sizeBigDecimal
   }
 
-  /** import BigDecimal signals form npz file
-   *  caution: this function convert BigDecimal to Double,
-   *  might cost too much time when signal is long
+  /**
+   * export signals to a npz file
+   * @param file target file
    */
-  def importSignals(file: File): Seq[Signal] = {
-    val allocatedMemory = Runtime.getRuntime.totalMemory() - Runtime.getRuntime.freeMemory()
-    val freeMemory = Runtime.getRuntime.maxMemory() - allocatedMemory
-    val neededMemory = getSignalSizeDouble(file)
+  case class pythonExporter(file: File = inputArrayFile) {
 
-    assert(freeMemory * 0.9 > neededMemory, s"Warning: not enough memory to import signal, needed: $neededMemory, available: $freeMemory")
+    private val manager = NDManager.newBaseManager()
+    private val list  = new NDList()
 
-    val manager     = NDManager.newBaseManager()
-    val is          = Files.newInputStream(file.toPath)
-    val decoded     = NDList.decode(manager, is)
-    val signalCount = decoded.size()
-    (0 until signalCount)
-      .map(decoded.get)
-      .map(_.toDoubleArray.map(BigDecimal.valueOf).toSeq)
-  }
-
-  /** import named Double signals form npz file
-   *  caution: this function convert BigDecimal to Double,
-   *  might cost too much time when signal is long
-   */
-  def importSignalsNamed(file: File): Map[String, Signal] = {
-    val allocatedMemory = Runtime.getRuntime.totalMemory() - Runtime.getRuntime.freeMemory()
-    val freeMemory = Runtime.getRuntime.maxMemory() - allocatedMemory
-    val neededMemory = getSignalSizeDouble(file)
-
-    assert(freeMemory * 0.9 > neededMemory, s"Warning: not enough memory to import signal, needed: $neededMemory, available: $freeMemory")
-
-    val manager     = NDManager.newBaseManager()
-    val is          = Files.newInputStream(file.toPath)
-    val decoded     = NDList.decode(manager, is)
-    val signalCount = decoded.size()
-    (0 until signalCount)
-      .map(decoded.get)
-      .map(arr => {
-        arr.getName.replace(".npy", "") -> arr.toDoubleArray.map(BigDecimal.valueOf).toSeq
+    /**
+     * add BigDecimal signals to export
+     *
+     * caution: this function convert BigDecimal to Double,
+     * might cost too much time when signal is long
+     */
+    def add(signals: Signal*) = {
+      signals.toArray.foreach(signal => {
+        list.add(manager.create(signal.toArray.map(_.toDouble)))
       })
-      .toMap
+      this
+    }
+
+    /**
+     * add named BigDecimal Signals to export
+     *
+     * caution: this function convert BigDecimal to Double,
+     * might cost too much time when signal is long
+     *
+     * @param signals map of name to signal
+     */
+    def add(signals: Map[String, Signal]) = {
+      signals.toArray.foreach(signal => {
+        val t = manager.create(signal._2.toArray.map(_.toDouble))
+        t.setName(signal._1)
+        list.add(t)
+      })
+      this
+    }
+
+    /**
+     * add Double signals to export
+     */
+    def addDouble(signals: Seq[Double]*) = {
+      signals.toArray.foreach(signal => {
+        list.add(manager.create(signal.toArray))
+      })
+      this
+    }
+
+    /**
+     * add named Double signals to export
+     * @param signals map of name to signal
+     */
+    def addDouble(signals: Map[String, Seq[Double]]) = {
+      signals.toArray.foreach(signal => {
+        val t = manager.create(signal._2.toArray)
+        t.setName(signal._1)
+        list.add(t)
+      })
+      this
+    }
+
+    /**
+     * add named 2d BigDecimal signals to export
+     *
+     * caution: this function convert BigDecimal to Double,
+     * might cost too much time when signal is long
+     *
+     * @param signals map of name to signal
+     */
+    def add2d(signals: Map[String, Seq[Signal]]) = {
+      signals.toArray.foreach(signal => {
+        val t = manager.create(signal._2.toArray.map(_.toArray.map(_.toDouble)))
+        t.setName(signal._1)
+        list.add(t)
+      })
+      this
+    }
+
+    /**
+     * add named 2d Double signals to export
+     * @param signals map of name to signal
+     */
+    def addDouble2d(signals: Map[String, Seq[Seq[Double]]]) = {
+      signals.toArray.foreach(signal => {
+        val t = manager.create(signal._2.toArray.map(_.toArray))
+        t.setName(signal._1)
+        list.add(t)
+      })
+      this
+    }
+
+    /**
+     * save signals to target file
+     */
+    def savez() = {
+      val os      = Files.newOutputStream(file.toPath)
+      list.encode(os, true)
+      file
+    }
   }
 
-  /** import Double signals form npz file
-   */
-  def importSignalsDouble(file: File): Seq[Seq[Double]] = {
-    val allocatedMemory = Runtime.getRuntime.totalMemory() - Runtime.getRuntime.freeMemory()
-    val freeMemory = Runtime.getRuntime.maxMemory() - allocatedMemory
-    val neededMemory = getSignalSizeDouble(file)
-
-    assert(freeMemory * 0.9 > neededMemory, s"Warning: not enough memory to import signal, needed: $neededMemory, available: $freeMemory")
-
-    val manager     = NDManager.newBaseManager()
-    val is          = Files.newInputStream(file.toPath)
-    val decoded     = NDList.decode(manager, is)
-    val signalCount = decoded.size()
-    (0 until signalCount)
-      .map(decoded.get)
-      .map(_.toDoubleArray.toSeq)
-  }
-
-  /** import named Double signals form npz file
-   */
-  def importSignalsNamedDouble(file: File): Map[String, Seq[Double]] = {
-    val allocatedMemory = Runtime.getRuntime.totalMemory() - Runtime.getRuntime.freeMemory()
-    val freeMemory = Runtime.getRuntime.maxMemory() - allocatedMemory
-    val neededMemory = getSignalSizeDouble(file)
-
-    assert(freeMemory * 0.9 > neededMemory, s"Warning: not enough memory to import signal, needed: $neededMemory, available: $freeMemory")
-
-    val manager     = NDManager.newBaseManager()
-    val is          = Files.newInputStream(file.toPath)
-    val decoded     = NDList.decode(manager, is)
-    val signalCount = decoded.size()
-    (0 until signalCount)
-      .map(decoded.get)
-      .map(arr => arr.getName.replace(".npy", "") -> arr.toDoubleArray.toSeq)
-      .toMap
-  }
-
-  /** import 2d BigDecimal signals form npz file
+  /** export one BigDecimal signal
    *  caution: this function convert BigDecimal to Double,
    *  might cost too much time when signal is long
    */
-  def importSignals2d(file: File, shape: (Int, Int)): Map[String, Seq[Signal]] = {
-    val allocatedMemory = Runtime.getRuntime.totalMemory() - Runtime.getRuntime.freeMemory()
-    val freeMemory = Runtime.getRuntime.maxMemory() - allocatedMemory
-    val neededMemory = getSignalSizeDouble(file)
+  def exportSignal(file: File, signal: Signal): File = pythonExporter(file).add(signal).savez()
 
+  /** export one Double signal
+   */
+  def exportSignalDouble(file: File, signal: Seq[Double]): File = pythonExporter(file).addDouble(signal).savez()
+
+  /**
+   * export signals to a npz file
+   * @param file target file
+   */
+  case class pythonImporter(file: File = outputArrayFile) {
+
+    private val allocatedMemory = Runtime.getRuntime.totalMemory() - Runtime.getRuntime.freeMemory()
+    private val freeMemory = Runtime.getRuntime.maxMemory() - allocatedMemory
+    private val neededMemory = getSignalSizeDouble(file)
+
+    // check memory requirement
     assert(freeMemory * 0.9 > neededMemory, s"Warning: not enough memory to import signal, needed: $neededMemory, available: $freeMemory")
 
-    val manager     = NDManager.newBaseManager()
-    val is          = Files.newInputStream(file.toPath)
-    val decoded     = NDList.decode(manager, is)
-    val signalCount = decoded.size()
-    (0 until signalCount)
-      .map(decoded.get)
-      .map(arr => {
-        val arrDouble = arr.toDoubleArray
-        val name = arr.getName.replace(".npy", "")
-        val data: ArrayBuffer[Seq[BigDecimal]] = ArrayBuffer()
-        (0 to shape._1).foreach(i => {
-          data.append(arrDouble.slice(i * shape._2, i * shape._2 + shape._2).map(BigDecimal.valueOf))
+    private val manager = NDManager.newBaseManager()
+
+    private val is          = Files.newInputStream(file.toPath)
+    private val decoded     = NDList.decode(manager, is)
+    private val signalCount = decoded.size()
+
+    (0 until signalCount).map(decoded.get).map(_.getShape).map(_.dimension())
+
+    /**
+     * import BigDecimal signal
+     *
+     * caution: this function convert Double to BigDecimal,
+     * might cost too much time when signal is long
+     */
+    def importBigDecimal: Seq[Signal] = {
+      (0 until signalCount)
+        .map(decoded.get)
+        .map(_.toDoubleArray.toSeq.map(BigDecimal.valueOf))
+    }
+
+    /**
+     * import named BigDecimal signal
+     *
+     * caution: this function convert Double to BigDecimal,
+     * might cost too much time when signal is long
+     *
+     * @return map of name to signal
+     */
+    def importNamedBigDecimal: Map[String, Signal] = {
+      (0 until signalCount)
+        .map(decoded.get)
+        .map(arr => {
+          arr.getName.replace(".npy", "") ->
+            arr.toDoubleArray.toSeq.map(BigDecimal.valueOf)
         })
-        name -> data
-      }).toMap
+        .toMap
+    }
 
-  }
+    /**
+     * import Double signal
+     */
+    def importDouble: Seq[Seq[Double]] = {
+      (0 until signalCount)
+        .map(decoded.get)
+        .map(_.toDoubleArray.toSeq)
+    }
 
-  /** import 2d Double signals form npz file
-   */
-  def importSignalsDouble2d(file: File, shape: (Int, Int)): Map[String, Seq[Seq[Double]]] = {
-    val allocatedMemory = Runtime.getRuntime.totalMemory() - Runtime.getRuntime.freeMemory()
-    val freeMemory = Runtime.getRuntime.maxMemory() - allocatedMemory
-    val neededMemory = getSignalSizeDouble(file)
+    /**
+     * import Double signal
+     * @return map of name to signal
+     */
+    def importNamedDouble: Map[String, Seq[Double]] = {
+      (0 until signalCount)
+        .map(decoded.get)
+        .map(arr => arr.getName.replace(".npy", "") -> arr.toDoubleArray.toSeq)
+        .toMap
+    }
 
-    assert(freeMemory * 0.9 > neededMemory, s"Warning: not enough memory to import signal, needed: $neededMemory, available: $freeMemory")
+    /**
+     * import named 2d BigDecimal signal
+     *
+     * caution: this function convert Double to BigDecimal,
+     * might cost too much time when signal is long
+     *
+     * @return map of name to signal
+     */
+    def importNamedBigDecimal2d: Map[String, Seq[Signal]] = {
+      (0 until signalCount)
+        .map(decoded.get)
+        .filter(_.getShape.dimension() == 2)
+        .map(arr => {
+          val arrDouble = arr.toDoubleArray
+          val name = arr.getName.replace(".npy", "")
+          val shape = arr.getShape.getShape
+          val data: ArrayBuffer[Signal] = ArrayBuffer()
+          (0 until shape.head.toInt).foreach(i => {
+            data.append(arrDouble.map(BigDecimal.valueOf).slice(i * shape(1).toInt, i * shape(1).toInt + shape(1).toInt))
+          })
+          name -> data
+        }).toMap
+    }
 
-    val manager     = NDManager.newBaseManager()
-    val is          = Files.newInputStream(file.toPath)
-    val decoded     = NDList.decode(manager, is)
-    val signalCount = decoded.size()
-    (0 until signalCount)
-      .map(decoded.get)
-      .map(arr => {
-        val arrDouble = arr.toDoubleArray
-        val name = arr.getName.replace(".npy", "")
-        val data: ArrayBuffer[Seq[Double]] = ArrayBuffer()
-        (0 until shape._1).foreach(i => {
-          data.append(arrDouble.slice(i * shape._2, i * shape._2 + shape._2))
-        })
-        name -> data
-      }).toMap
-
-  }
-
-  /** convert a series of 1d BigDecimal signals to named 2d signals
-   */
-  def fold2dSignals(signals: Map[String, Signal]): Map[String, Seq[Signal]] = {
-    var ret: Map[String, Seq[Signal]] = Map()
-    val signals2d = signals.filter(_._1.contains("_2d_"))
-    val nameSet = signals2d.keys.map(_.split("_2d_").head).toSet
-    nameSet.foreach(name => {
-      val tmp = signals2d
-        .filter(_._1.contains(name))
-        .toArray
-        .sortBy(s => s._1.split("_2d_").last.toInt)
-        .map(_._2).toSeq
-      ret = ret + (name -> tmp)
-    })
-    ret
-  }
-
-  /** convert a series of 1d Double signals to named 2d signals
-   */
-  def fold2dSignalsDouble(signals: Map[String, Seq[Double]]): Map[String, Seq[Seq[Double]]] = {
-    var ret: Map[String, Seq[Seq[Double]]] = Map()
-    val signals2d = signals.filter(_._1.contains("_2d_"))
-    val nameSet = signals2d.keys.map(_.split("_2d_").head).toSet
-    nameSet.foreach(name => {
-      val tmp = signals2d
-        .filter(_._1.contains(name))
-        .toArray
-        .sortBy(s => s._1.split("_2d_").last.toInt)
-        .map(_._2).toSeq
-      ret = ret + (name -> tmp)
-    })
-    ret
+    /**
+     * import named 2d Double signal
+     *
+     * caution: this function convert Double to BigDecimal,
+     * might cost too much time when signal is long
+     *
+     * @return map of name to signal
+     */
+    def importNamedDouble2d: Map[String, Seq[Seq[Double]]] = {
+      (0 until signalCount)
+        .map(decoded.get)
+        .filter(_.getShape.dimension() == 2)
+        .map(arr => {
+          val arrDouble = arr.toDoubleArray
+          val name = arr.getName.replace(".npy", "")
+          val shape = arr.getShape.getShape
+          val data: ArrayBuffer[Seq[Double]] = ArrayBuffer()
+          (0 until shape.head.toInt).foreach(i => {
+            data.append(arrDouble.slice(i * shape(1).toInt, i * shape(1).toInt + shape(1).toInt))
+          })
+          name -> data
+        }).toMap
+    }
   }
 
   /** import one BigDecimal signal
    *  caution: this function convert Double to BigDecimal,
    *  might cost too much time when signal is long
    */
-  def importSignal(file: File): Signal = importSignals(file).head
+  def importSignal(file: File): Signal = pythonImporter(file).importBigDecimal.head
 
   /** import one Double signal
    *  caution: this function convert Double to BigDecimal,
    *  might cost too much time when signal is long
    */
-  def importSignalDouble(file: File): Seq[Double] = importSignalsDouble(file).head
+  def importSignalDouble(file: File): Seq[Double] = pythonImporter(file).importDouble.head
 
   import org.json4s._
   import org.json4s.jackson.JsonMethods._
