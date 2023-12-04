@@ -51,8 +51,7 @@ case class ChainsawTest(
             noTimingCheck      = true
           ),
           customizedConfig = Some(spinalConfig),
-          macroFile        = None,
-          memBinaryFile    = None
+          macroFile        = None
         ).getSpinalSimConfig(withWave).workspaceName(testName)
       case _ => ???
     }

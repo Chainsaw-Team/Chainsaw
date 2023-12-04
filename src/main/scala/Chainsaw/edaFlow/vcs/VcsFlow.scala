@@ -1,6 +1,7 @@
 package Chainsaw.edaFlow.vcs
 
 import Chainsaw._
+import Chainsaw.edaFlow.Device.generic
 import Chainsaw.edaFlow._
 
 import java.io.File
@@ -14,13 +15,23 @@ import spinal.lib.sim._
 import org.scalatest.funsuite._
 import org.slf4j._
 import spinal.lib.DoCmd
+import spinal.sim.VCSFlags
 
+/** The class which can be used to run VcsTask
+  * @param designInput
+  *   the vcsFlow design source file input
+  * @param compileOption
+  *   specify the optimize option will be used in vcsFlow
+  * @param customizedConfig
+  *   specify SpinalConfig will used in VcsFlow
+  * @param macroFile
+  *   the macro file will be add to VcsFlow
+  */
 case class VcsFlow(
     designInput: ChainsawEdaDirInput,
     compileOption: VcsCompileOption,
-    customizedConfig: Option[SpinalConfig]   = None,
-    macroFile: Option[Seq[File]]             = None,
-    memBinaryFile: Option[Map[String, File]] = None
+    customizedConfig: Option[SpinalConfig] = None,
+    macroFile: Option[Seq[File]]           = None
 ) extends EdaFlow(
       designDirs     = designInput.designDirs,
       workspaceDir   = designInput.workspaceDir,
@@ -28,8 +39,7 @@ case class VcsFlow(
       device         = generic,
       taskType       = SIM,
       optimizeOption = compileOption,
-      blackBoxSet    = None,
-      memBinaryFile  = memBinaryFile
+      blackBoxSet    = None
     ) {
 
   require(

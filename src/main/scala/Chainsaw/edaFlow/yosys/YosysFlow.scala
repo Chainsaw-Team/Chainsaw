@@ -1,6 +1,7 @@
 package Chainsaw.edaFlow.yosys
 
 import Chainsaw._
+import Chainsaw.edaFlow.Device._
 import Chainsaw.edaFlow._
 import org.apache.commons.io.FileUtils
 import org.slf4j._
@@ -10,12 +11,23 @@ import spinal.lib.DoCmd
 import java.io.File
 import scala.collection.mutable.ArrayBuffer
 
+/** The class which can be used to run YosysTask
+  * @param designInput
+  *   the YosysFlow design source, it can be file dir format or Component format or mixed input of dir and Component
+  * @param device
+  *   the device which will be used in edaFlow to synthesis or implementation
+  * @param optimizeOption
+  *   specify the optimize option will be used in edaFlow
+  * @param blackBoxSet
+  *   specify which module will be viewed as BlackBox(will change v or sv file)
+  * @tparam T
+  *   the class of Component or its subClass
+  */
 case class YosysFlow[T <: Module](
-    designInput: ChainsawEdaFullInput[T],
+    designInput: ChainsawEdaFlowInput[T],
     device: ChainsawDevice,
     optimizeOption: YosysOptimizeOption,
-    blackBoxSet: Option[Set[String]]         = None,
-    memBinaryFile: Option[Map[String, File]] = None
+    blackBoxSet: Option[Set[String]] = None
 ) extends EdaFlow(
       designInput.getRtlDir(),
       designInput.workspaceDir,
@@ -23,8 +35,7 @@ case class YosysFlow[T <: Module](
       device,
       SYNTH,
       optimizeOption,
-      blackBoxSet,
-      memBinaryFile
+      blackBoxSet
     ) {
 
   require(

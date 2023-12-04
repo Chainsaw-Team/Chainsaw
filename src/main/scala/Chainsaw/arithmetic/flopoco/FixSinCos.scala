@@ -1,15 +1,11 @@
 package Chainsaw.arithmetic.flopoco
 
 import Chainsaw._
+import Chainsaw.edaFlow.Device.XilinxDeviceFamily
 import Chainsaw.edaFlow.vivado._
-import spinal.core._
-import spinal.lib._
-import Chainsaw.edaFlow._
-import breeze.linalg.InjectNumericOps
 import spinal.core.{IntToBuilder, _}
 
 import scala.language.postfixOps
-import scala.util.Random
 
 /** Computes sin(pi*x) and cos(pi*x) for x in -[1,1), using tables and multipliers.
   * @param lsb

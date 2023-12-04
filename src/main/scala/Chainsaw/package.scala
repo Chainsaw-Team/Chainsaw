@@ -1,4 +1,5 @@
 import Chainsaw.NumericExt._
+import Chainsaw.edaFlow.Device._
 import Chainsaw.edaFlow._
 import cc.redberry.rings.scaladsl.IntZ
 import com.mathworks.engine.MatlabEngine
@@ -57,7 +58,6 @@ package object Chainsaw {
   val simWorkspace   = new File("simWorkspace")   // waveform
   val synthWorkspace = new File("synthWorkspace") // log & checkpoint
 
-  val xdcFileDir   = new File("src/main/resources/xdc")
   val unisimDir    = new File("src/main/resources/unisims") // for Xilinx primitives
   val dagOutputDir = new File("src/main/resources/dfgGenerated")
 

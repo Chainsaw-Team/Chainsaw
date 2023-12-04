@@ -1,6 +1,7 @@
 package Chainsaw.examples
 
 import Chainsaw._
+import Chainsaw.edaFlow.Device.a7100t
 import Chainsaw.edaFlow._
 import Chainsaw.edaFlow.vivado._
 import spinal.core._

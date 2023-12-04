@@ -1,25 +1,40 @@
 package Chainsaw.edaFlow.vivado
 
 import Chainsaw._
+import Chainsaw.edaFlow.Device._
 import Chainsaw.edaFlow._
 import org.apache.commons.io.FileUtils
 import org.slf4j._
 import spinal.core._
-import edaFlow.EdaFlowUtils._
 import spinal.lib.DoCmd
 
 import java.io.File
 import scala.collection.mutable.ArrayBuffer
 import scala.io.Source
 
+/** The class which can be used to run VivadoTask
+  * @param designInput
+  *   the vivadoFlow design source, it can be file dir format or Component format or mixed input of dir and Component
+  * @param device
+  *   the device which will be used in edaFlow to synthesis or implementation
+  * @param taskType
+  *   specify the task type (Simulation, Synthesis, Implementation, Generate Binary)
+  * @param optimizeOption
+  *   specify the optimize option will be used in vivadoFlow
+  * @param xdcFile
+  *   specify the xilinx design constraint file will be used in [[VivadoFlow]]
+  * @param blackBoxSet
+  *   specify which module will be viewed as BlackBox(will change v or sv file)
+  * @tparam T
+  *   the class of Component or its subClass
+  */
 case class VivadoFlow[T <: Module](
     designInput: ChainsawEdaFlowInput[T],
     device: ChainsawDevice,
     taskType: EdaFlowType,
     optimizeOption: VivadoOptimizeOption,
-    xdcFile: Option[File]                    = None,
-    blackBoxSet: Option[Set[String]]         = None,
-    memBinaryFile: Option[Map[String, File]] = None
+    xdcFile: Option[File]            = None,
+    blackBoxSet: Option[Set[String]] = None
 ) extends EdaFlow(
       designInput.getRtlDir(),
       designInput.workspaceDir,
@@ -27,8 +42,7 @@ case class VivadoFlow[T <: Module](
       device,
       taskType,
       optimizeOption,
-      blackBoxSet,
-      memBinaryFile
+      blackBoxSet
     ) {
 
   require(
@@ -192,16 +206,14 @@ object VivadoFlow {
       taskType: EdaFlowType,
       optimizeOption: VivadoOptimizeOption,
       xdcFile: Option[File],
-      blackBoxSet: Option[Set[String]],
-      memBinaryFile: Option[Map[String, File]]
+      blackBoxSet: Option[Set[String]]
   ): VivadoFlow[T] = VivadoFlow(
     ChainsawEdaFullInput(design, designDirs, workspaceDir, topModuleName, Some(customizedConfig)),
     device,
     taskType,
     optimizeOption,
     xdcFile,
-    blackBoxSet,
-    memBinaryFile
+    blackBoxSet
   )
 }
 
@@ -221,7 +233,6 @@ object VivadoTask {
       taskType,
       VivadoOptimizeOption(),
       xdcFile,
-      None,
       None
     )
     val report = task.startFlow()
@@ -242,7 +253,6 @@ object VivadoTask {
       device,
       SYNTH,
       VivadoOptimizeOption(),
-      None,
       None,
       None
     )
@@ -268,7 +278,6 @@ object VivadoTask {
       SYNTH,
       VivadoOptimizeOption(),
       None,
-      None,
       None
     )
     val report = task.startFlow()
@@ -291,7 +300,6 @@ object VivadoTask {
       device,
       SYNTH,
       VivadoOptimizeOption(),
-      None,
       None,
       None
     )
@@ -318,7 +326,6 @@ object VivadoTask {
       IMPL,
       VivadoOptimizeOption(),
       None,
-      None,
       None
     )
     val report = task.startFlow()
@@ -343,7 +350,6 @@ object VivadoTask {
       IMPL,
       VivadoOptimizeOption(),
       None,
-      None,
       None
     )
     val report = task.startFlow()
@@ -366,7 +372,6 @@ object VivadoTask {
       device,
       IMPL,
       VivadoOptimizeOption(),
-      None,
       None,
       None
     )
@@ -394,7 +399,6 @@ object VivadoTask {
       BIN,
       VivadoOptimizeOption(),
       xdcFile,
-      None,
       None
     )
     val report = task.startFlow()
@@ -420,7 +424,6 @@ object VivadoTask {
       BIN,
       VivadoOptimizeOption(),
       xdcFile,
-      None,
       None
     )
     val report = task.startFlow()
@@ -445,7 +448,6 @@ object VivadoTask {
       BIN,
       VivadoOptimizeOption(),
       xdcFile,
-      None,
       None
     )
     val report = task.startFlow()

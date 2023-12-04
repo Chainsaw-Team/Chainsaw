@@ -38,20 +38,6 @@ object EdaFlowUtils {
   }
 
   object EdaDirectoryUtils {
-//    def genTargetWorkspace(target: String, topModuleName: Option[String], workspaceDir: File): File = {
-//      topModuleName match {
-//        case Some(name) => new File(workspaceDir, s"gen${target}_$name")
-//        case None =>
-//          val dateFormat = new SimpleDateFormat("yyyyMMdd")
-//          val cla        = Calendar.getInstance()
-//          cla.setTimeInMillis(System.currentTimeMillis())
-//          val date   = dateFormat.format(cla.getTime)
-//          val hour   = cla.get(Calendar.HOUR_OF_DAY).toString
-//          val min    = cla.get(Calendar.MINUTE).toString
-//          val second = cla.get(Calendar.SECOND).toString
-//          new File(workspaceDir, s"gen${target}_InferredTop_${date}_${hour}_${min}_$second")
-//      }
-//    }
 
     def parseRtlDirFor(designDirs: Seq[File], supportedFileTypes: Seq[String] = Seq(".v", ".sv")): Seq[File] = {
       val supportedFiles = designDirs.flatMap { dir =>
