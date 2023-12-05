@@ -12,8 +12,10 @@ import scala.collection.mutable.ArrayBuffer
 import scala.io.Source
 import scala.util.Try
 
+// TODO: move Input/Device classes to separate files
 package object edaFlow {
 
+  // enumerations for FPGA vendor and family
   sealed trait Vendor
   object Xilinx extends Vendor
   object Altera extends Vendor
@@ -32,6 +34,8 @@ package object edaFlow {
   sealed trait GenericFamily extends Family
 
   object Generic extends GenericFamily
+
+  // device abstraction for FPGA devices
 
   case class ChainsawDevice(
       vendor: Vendor,
@@ -90,6 +94,7 @@ package object edaFlow {
 
   }
 
+  // commonly used board/devices
   val vu9p = new XilinxDevice(
     UltraScale,
     "xcvu9p-flga2104-2-i",
@@ -110,6 +115,7 @@ package object edaFlow {
   )
   val generic = new GenericDevice(Generic, "", 600 MHz, None)
 
+  // commonly used clock domains/configs
   val xilinxDefaultCDConfig = ClockDomainConfig( // recommended by Xilinx UG901
     clockEdge              = RISING,
     resetKind              = ASYNC,

@@ -27,3 +27,25 @@ case class XillybusDevice(name: String, deviceType: String, direction: String, b
 
   def deviceName = s"\\\\.\\xillybus_$name" // device name in windows system
 }
+
+// factory methods
+
+object XillybusFifoRead {
+  def apply(name: String, bitWidth: Int) = XillybusDevice(name, "fifo", "read", bitWidth)
+}
+
+object XillybusFifoWrite {
+  def apply(name: String, bitWidth: Int) = XillybusDevice(name, "fifo", "write", bitWidth)
+}
+
+object XillybusMemWrite {
+  def apply(name: String, bitWidth: Int, addrWidth: Int) = XillybusDevice(name, "mem", "write", bitWidth, addrWidth)
+}
+
+object XillybusMemRead {
+  def apply(name: String, bitWidth: Int, addrWidth: Int) = XillybusDevice(name, "mem", "read", bitWidth, addrWidth)
+}
+
+object XillybusMemBi {
+  def apply(name: String, bitWidth: Int, addrWidth: Int) = XillybusDevice(name, "mem", "bi", bitWidth, addrWidth)
+}

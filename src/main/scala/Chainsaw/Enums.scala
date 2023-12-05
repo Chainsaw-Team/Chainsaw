@@ -104,6 +104,8 @@ object PULSE extends DdsSignalType
 
 sealed trait EdaFlowType extends ChainsawEnum
 
+object PROJECT extends EdaFlowType
+
 object SYNTH extends EdaFlowType
 
 object IMPL extends EdaFlowType

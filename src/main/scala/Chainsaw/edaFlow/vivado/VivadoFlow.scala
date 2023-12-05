@@ -1,3 +1,5 @@
+// create project | synth | impl | bitstream through Vivado for your design
+
 package Chainsaw.edaFlow.vivado
 
 import Chainsaw._
@@ -12,6 +14,18 @@ import java.io.File
 import scala.collection.mutable.ArrayBuffer
 import scala.io.Source
 
+// TODO: using project mode instead of non-project mode
+
+/**
+ * @param designInput
+ * @param device FPGA chip abstraction
+ * @param taskType task that you want to run in Vivado, including SYNTH, IMPL, BITSTREAM, etc.
+ * @param optimizeOption
+ * @param xdcFile .xdc(Xilinx Design Constraint) file for clock & physical constraint, necessary for BITSTREAM task
+ * @param blackBoxSet
+ * @param memBinaryFile
+ * @tparam T
+ */
 case class VivadoFlow[T <: Module](
     designInput: ChainsawEdaFlowInput[T],
     device: ChainsawDevice,
@@ -31,21 +45,15 @@ case class VivadoFlow[T <: Module](
       memBinaryFile
     ) {
 
-  require(
-    hasVivado,
-    "to use VivadoFlow, please set the environment variable 'VIVADO' to the vivado executable, e.g. /tools/Xilinx/Vivado/2022.1/bin/vivado"
-  )
+  require(hasVivado, "to use VivadoFlow, please set the environment variable 'VIVADO' to the vivado executable, " +
+    "e.g. /tools/Xilinx/Vivado/2022.1/bin/vivado")
+  require(device.vendor == Xilinx,s"${device.vendor} device is not supported by Vivado Flow")
 
-  device.vendor match {
-    case Xilinx =>
-    case _ =>
-      throw new IllegalArgumentException(
-        s"The device type must be Xilinx family."
-      )
-  }
   val vivadoLogger = LoggerFactory.getLogger(s"VivadoFlow")
 
+  // dirs
   val genScriptDir = new File(designInput.workspaceDir, s"genScript_${designInput.topModuleName}")
+
 
   val tclFile       = new File(genScriptDir, "run_vivado.tcl")
   val xdcFileBeUsed = new File(genScriptDir, "vivado_constraint.xdc")
@@ -67,10 +75,7 @@ case class VivadoFlow[T <: Module](
     def getReadCommand(sourcePath: File): String = {
       if (sourcePath.getPath.endsWith(".sv")) s"read_verilog -sv $sourcePath \n"
       else if (sourcePath.getPath.endsWith(".v")) s"read_verilog $sourcePath \n"
-      else if (
-        sourcePath.getPath
-          .endsWith(".vhdl") || sourcePath.getPath.endsWith(".vhd")
-      ) s"read_vhdl $sourcePath \n"
+      else if (sourcePath.getPath.endsWith(".vhdl") || sourcePath.getPath.endsWith(".vhd")) s"read_vhdl $sourcePath \n"
       else if (sourcePath.getPath.endsWith(".bin")) "\n"
       else
         throw new IllegalArgumentException(
@@ -98,6 +103,11 @@ case class VivadoFlow[T <: Module](
       }
     }
 
+    // FIXME: clear directory before run scripts
+
+    // create project
+    script += s"create_project ${designInput.topModuleName} ${genScriptDir.getAbsolutePath} -part ${device.familyPart} -force\n"
+    script += s"set_property PART ${device.familyPart} [current_project]\n"
     designInput.getRtlDir().foreach(path => script += getReadCommand(path))
 
     def addReadXdcTask(): Unit = {
@@ -147,7 +157,19 @@ case class VivadoFlow[T <: Module](
     }
 
     addReadXdcTask()
+
+    val xillybus_pcie_dir = new File(s"/home/ltr/Chainsaw/src/main/resources/ip/xillybus_pcie_ku")
+    script +=
+      s"read_verilog ${xillybus_pcie_dir}/xillybus.v\n" +
+      s"read_verilog ${xillybus_pcie_dir}/xillybus_core.v\n" +
+      s"read_edif ${xillybus_pcie_dir}/xillybus_core.edf\n" +
+      s"import_ip ${xillybus_pcie_dir}/pcie_ku.xci\n" +
+      "report_ip_status\n" +
+      "upgrade_ip [get_ips]\n" +
+      "synth_ip [get_ips]\n"
+
     taskType match {
+      case PROJECT => // do nothing
       case SYNTH =>
         addSynthTask()
       case IMPL =>
@@ -205,16 +227,31 @@ object VivadoFlow {
   )
 }
 
+// usage
 object VivadoTask {
+
+  private def inVirtualGlob[T](func: => T): T = {
+    val old = GlobalData.get
+
+    val virtualGlob = new GlobalData(SpinalConfig())
+    virtualGlob.phaseContext = new PhaseContext(SpinalConfig())
+    GlobalData.set(virtualGlob)
+    val ret = func
+
+    GlobalData.set(old)
+    ret
+  }
+
   def general[T <: Module](
       design: => T,
       name: String,
       device: ChainsawDevice,
       taskType: EdaFlowType,
-      includeRtlFile: Seq[File],
+      includeRtlFile: Seq[File], //
       xdcFile: Option[File],
       customizedConfig: SpinalConfig
   ): VivadoReport = {
+
     val task = VivadoFlow(
       ChainsawEdaFullInput(design, includeRtlFile, new File(synthWorkspace, name), name, Some(customizedConfig)),
       device,
@@ -337,22 +374,23 @@ object VivadoTask {
       customizedConfig: SpinalConfig = xilinxDefaultSpinalConfig,
       ignoreBudget: Boolean          = false
   ): VivadoReport = {
-    val task = VivadoFlow(
-      ChainsawEdaModuleInput(design, new File(synthWorkspace, name), name, Some(customizedConfig)),
-      device,
-      IMPL,
-      VivadoOptimizeOption(),
-      None,
-      None,
-      None
-    )
-    val report = task.startFlow()
-    if (!ignoreBudget) {
-      report.requireFmax(device.fMax)
-      report.requireUtil(device.budget, PreciseRequirement)
-    }
-    report.showInfosReport()
-    report
+    impl(design, Seq[File](), name, device, customizedConfig, ignoreBudget)
+//    val task = VivadoFlow(
+//      ChainsawEdaModuleInput(design, new File(synthWorkspace, name), name, Some(customizedConfig)),
+//      device,
+//      IMPL,
+//      VivadoOptimizeOption(),
+//      None,
+//      None,
+//      None
+//    )
+//    val report = task.startFlow()
+//    if (!ignoreBudget) {
+//      report.requireFmax(device.fMax)
+//      report.requireUtil(device.budget, PreciseRequirement)
+//    }
+//    report.showInfosReport()
+//    report
   }
 
   def implDirs[T <: Module](
@@ -414,6 +452,8 @@ object VivadoTask {
       customizedConfig: SpinalConfig = xilinxDefaultSpinalConfig,
       ignoreBudget: Boolean          = false
   ): VivadoReport = {
+
+
     val task = VivadoFlow(
       ChainsawEdaModuleInput(design, new File(synthWorkspace, name), name, Some(customizedConfig)),
       device,
@@ -457,28 +497,19 @@ object VivadoTask {
     report
   }
 
-  private def inVirtualGlob[T](func: => T): T = {
-    val old = GlobalData.get
 
-    val virtualGlob = new GlobalData(SpinalConfig())
-    virtualGlob.phaseContext = new PhaseContext(SpinalConfig())
-    GlobalData.set(virtualGlob)
-    val ret = func
-
-    GlobalData.set(old)
-    ret
-  }
 
   def genBoardBitStream(
       design: => Module with Board,
       name: String
   ): VivadoReport = {
 
-    val (device, xdcFile) = inVirtualGlob{
+    val (device, xdcFile) = inVirtualGlob {
       (design.device, design.xdcFile)
     }
 
     genModuleBitStream(design, name, device, Some(xdcFile))
-//    genModuleBitStream(design, name, design.device, Some(design.xdcFile))
   }
+
 }
+
