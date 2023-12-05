@@ -24,14 +24,14 @@ import scala.collection.mutable.ArrayBuffer
   *   the class of Component or its subClass
   */
 case class YosysFlow[T <: Module](
-    designInput: ChainsawEdaFlowInput[T],
+    designInput: ChainsawEdaFlowInput,
     device: ChainsawDevice,
     optimizeOption: YosysOptimizeOption,
     blackBoxSet: Option[Set[String]] = None
 ) extends EdaFlow(
       designInput.getRtlDir(),
-      designInput.workspaceDir,
-      designInput.topModuleName,
+      designInput.getWorkspaceDir(),
+      designInput.getTopModuleName(),
       device,
       SYNTH,
       optimizeOption,
@@ -45,7 +45,7 @@ case class YosysFlow[T <: Module](
 
   val yosysLogger = LoggerFactory.getLogger(s"YosysFlow")
 
-  val genScriptDir = new File(designInput.workspaceDir, s"genScript_${designInput.topModuleName}")
+  val genScriptDir = new File(designInput.getWorkspaceDir(), s"genScript_${designInput.getTopModuleName()}")
 
   if (genScriptDir.exists()) genScriptDir.delete()
 
@@ -71,7 +71,7 @@ case class YosysFlow[T <: Module](
 
     device match {
       case generic: GenericDevice =>
-        script += s"synth  -top ${designInput.topModuleName}  "
+        script += s"synth  -top ${designInput.getTopModuleName()}  "
         optimizeOption match {
           case yosysOption: YosysGeneralOptimizeOption =>
             if (yosysOption.isFlatten) script += s"-flatten  "
@@ -88,7 +88,7 @@ case class YosysFlow[T <: Module](
         script += s"\n"
 
       case xilinx: XilinxDevice =>
-        script += s"synth_xilinx  -top ${designInput.topModuleName}  "
+        script += s"synth_xilinx  -top ${designInput.getTopModuleName()}  "
         xilinx.deviceFamily match {
           case UltraScale     => script += s"-family xcu  "
           case Series7        => script += s"-family xc7  "

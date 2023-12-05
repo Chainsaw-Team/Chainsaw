@@ -1,5 +1,6 @@
 package Chainsaw.edaFlow
 
+import Chainsaw.edaFlow.Device.ChainsawDevice
 import Chainsaw.phases
 import org.apache.commons.io.FileUtils
 import spinal.core._
@@ -72,16 +73,19 @@ object EdaFlowUtils {
 
     }
 
-    def genRtlSourcesFromComponent(
+    def genRtlSourcesAndDeviceFrom(
         design: => Component,
         customizedConfig: Option[SpinalConfig] = None,
         topModuleName: String,
         workspaceDir: File,
         fileTypeFilter: Seq[String]
-    ): Seq[File] = {
+    ): (ArrayBuffer[File], ArrayBuffer[ChainsawDevice], ArrayBuffer[File]) = {
 
-      val resultDirs = ArrayBuffer[File]()
-      val genRtlDir  = new File(workspaceDir, s"genRtl_$topModuleName")
+      val resultDirs    = ArrayBuffer[File]()
+      val resultDevice  = ArrayBuffer[ChainsawDevice]()
+      val resultXdcFile = ArrayBuffer[File]()
+
+      val genRtlDir = new File(workspaceDir, s"genRtl_$topModuleName")
       if (genRtlDir.exists()) genRtlDir.delete()
 
       val config = customizedConfig match {
@@ -97,22 +101,24 @@ object EdaFlowUtils {
 
       config.generateVerilog {
         inVirtualGlob {
-          val block = design match {
-            case blackBox: BlackBox =>
-              resultDirs ++= blackBox.listRTLPath.toSeq.map(new File(_))
-            case component: Component =>
-              component.walkComponents {
-                case blackBox: BlackBox =>
-                  resultDirs ++= blackBox.listRTLPath.toSeq.map(new File(_))
-                case _ =>
-              }
+          def parseBlackBoxBlock() = {
+            design.walkComponents {
+              case blackBox: BlackBox =>
+                resultDirs ++= blackBox.listRTLPath.toSeq.map(new File(_))
+              case _ =>
+            }
           }
 
-          if (design != Component.current) {
-            design.addPrePopTask(() => block)
-          } else {
-            block
+          def parseBlock() = design match {
+            case board: Component with Board =>
+              resultDevice += board.device
+              resultXdcFile += board.xdcFile
+              parseBlackBoxBlock()
+            case _ =>
+              parseBlackBoxBlock()
           }
+
+          parseBlock()
         }
         design
       }
@@ -152,7 +158,7 @@ object EdaFlowUtils {
           .filter(path => fileTypeFilter.exists(fileType => path endsWith fileType))
           .map(new File(_))
       }
-      resultDirs.distinct
+      (resultDirs.distinct, resultDevice, resultXdcFile)
     }
   }
 }

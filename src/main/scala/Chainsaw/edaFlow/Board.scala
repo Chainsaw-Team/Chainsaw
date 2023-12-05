@@ -120,5 +120,5 @@ case class Basys3Led() extends Basys3 {
 
 object ZyboLed extends App {
   SpinalVerilog(ZyboLed())
-  VivadoTask.genBoardBitStream(Basys3Led(), "Basys3Led")
+  VivadoTask.fastGenModuleBitStream("Basys3Led", Basys3Led())
 }

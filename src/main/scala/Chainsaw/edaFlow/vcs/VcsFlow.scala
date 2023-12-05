@@ -33,9 +33,9 @@ case class VcsFlow(
     customizedConfig: Option[SpinalConfig] = None,
     macroFile: Option[Seq[File]]           = None
 ) extends EdaFlow(
-      designDirs     = designInput.designDirs,
-      workspaceDir   = designInput.workspaceDir,
-      topModuleName  = designInput.topModuleName,
+      designDirs     = designInput.getRtlDir(),
+      workspaceDir   = designInput.getWorkspaceDir(),
+      topModuleName  = designInput.getTopModuleName(),
       device         = generic,
       taskType       = SIM,
       optimizeOption = compileOption,
@@ -49,7 +49,7 @@ case class VcsFlow(
 
   val vcsLogger = LoggerFactory.getLogger(s"VcsFlow")
 
-  val vcsWorkDir    = new File(designInput.workspaceDir, s"genByVcsFlow_${designInput.topModuleName}")
+  val vcsWorkDir    = new File(designInput.getWorkspaceDir(), s"genByVcsFlow_${designInput.getTopModuleName()}")
   var compileFlag   = ArrayBuffer[String]()
   var elaborateFlag = ArrayBuffer[String]()
   var runSimFlag    = ArrayBuffer[String]()
@@ -73,7 +73,7 @@ case class VcsFlow(
     // generate fileList by includeDirs(if exist)
     val flattenDirs        = ArrayBuffer[String]()
     val supportedFileTypes = Seq(".v", ".sv")
-    designInput.designDirs.foreach { dir =>
+    designInput.getRtlDir().foreach { dir =>
       if (dir.getAbsolutePath.endsWith(".f") || dir.getAbsolutePath.endsWith(".lst")) {
         val listFile = Source.fromFile(dir)
         listFile
@@ -87,7 +87,7 @@ case class VcsFlow(
           flattenDirs.append(dir.getAbsolutePath)
       }
     }
-    FileUtils.write(fileList, flattenDirs.mkString("\n"))
+    FileUtils.write(fileList, flattenDirs.distinct.mkString("\n"))
 
     // for coverage
     FileUtils.write(
@@ -102,9 +102,9 @@ case class VcsFlow(
     compileFlag.append("-V")
     compileFlag.append("-notice")
     compileFlag.append(s"-kdb")
-    if (designInput.designDirs.nonEmpty) compileFlag.append(s"-f ${fileList.getAbsolutePath}")
+    if (designInput.getRtlDir().nonEmpty) compileFlag.append(s"-f ${fileList.getAbsolutePath}")
     if (macroFile.isDefined) compileFlag.append(s"-f ${macroFile.get.map(_.getAbsoluteFile).mkString(" ")}")
-    compileFlag.append(s"-top ${designInput.topModuleName}")
+    compileFlag.append(s"-top ${designInput.getTopModuleName()}")
 
     elaborateFlag.append("-LDFLAGS -Wl,--no-as-needed")
     elaborateFlag.append(s"-j${compileOption.parallelNumber}")
@@ -137,12 +137,12 @@ case class VcsFlow(
         elaborateFlag.append(s"-cm line+cond+fsm+tgl+path+branch+assert")
         runSimFlag.append(s"-cm line+cond+fsm+tgl+path+branch+assert")
     }
-    if (designInput.designDirs.nonEmpty)
+    if (designInput.getRtlDir().nonEmpty)
       elaborateFlag.append(s"-cm_assert_hier ${coverageHierConfigFile.getAbsolutePath}")
     elaborateFlag.append(s"-cm_dir ${vcsWorkDir.getAbsolutePath}/cov.vdb")
     elaborateFlag.append(s"-cm_name cov_${vcsWorkDir.getName}")
     elaborateFlag.append(s"-cm_log cm_compile.log")
-    elaborateFlag.append(s"-top ${designInput.topModuleName}")
+    elaborateFlag.append(s"-top ${designInput.getTopModuleName()}")
     if (compileOption.incrementCompile) elaborateFlag.append("-M")
     if (compileOption.enableMemHierarchy) elaborateFlag.append("+memcbk")
     if (compileOption.noTimingCheck) elaborateFlag.append("+notimingcheck")

@@ -404,9 +404,9 @@ package object Chainsaw {
     try {
       val report = edaFlowType match {
         case SYNTH =>
-          VivadoTask.synth(gen.implH, gen.name, customizedConfig = ChainsawSpinalConfig(gen))
+          VivadoTask.synth(gen.name, gen.implH, vu9p, Seq[File](), None, ChainsawSpinalConfig(gen))
         case IMPL =>
-          VivadoTask.implModule(gen.implH, gen.name, customizedConfig = ChainsawSpinalConfig(gen))
+          VivadoTask.implModule(gen.name, gen.implH, vu9p, None, ChainsawSpinalConfig(gen))
       }
 
       report.requireUtil(gen.vivadoUtilEstimation, requirementStrategy)
