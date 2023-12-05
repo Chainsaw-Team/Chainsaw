@@ -2,7 +2,7 @@ package Chainsaw.edaFlow
 
 import Chainsaw.edaFlow.EdaFlowUtils.ParseReportUtils
 import org.slf4j._
-
+import Chainsaw.edaFlow.Device._
 import java.io.File
 import scala.io.Source
 
@@ -10,6 +10,22 @@ package object yosys {
 
   sealed trait YosysOptimizeOption extends EdaOptimizeOption
 
+  /** the OptimizeOption in YosysFlow when not specify device
+    * @param isFlatten
+    *   chose whether flatten design
+    * @param fsmOptimization
+    *   chose whether do fsm optimization
+    * @param lutArchitecture
+    *   chose the LUT Architecture will be used, for example, in Xilinx FPGA, it should be 6
+    * @param keepOpDirectForm
+    *   chose whether keep all operator naive form(not optimization)
+    * @param absorbMemDff
+    *   chose whether absorb the FF which driven by memory in memory
+    * @param dontCareRWCollision
+    *   chose whether can ignore Read-Write collision
+    * @param dontShareBySAT
+    *   chose whether can share logic by SAT(Boolean satisfiability problem)
+    */
   case class YosysGeneralOptimizeOption(
       isFlatten: Boolean           = true,
       fsmOptimization: Boolean     = true,
@@ -20,6 +36,30 @@ package object yosys {
       dontShareBySAT: Boolean      = false
   ) extends YosysOptimizeOption
 
+  /** the Xilinx device OptimizeOption in YosysFlow
+    * @param isFlatten
+    *   chose whether flatten design in output netlist
+    * @param useBram
+    *   chose whether use Block Ram in output netlist
+    * @param useDram
+    *   chose whether use Distribute Ram in output netlist
+    * @param useDSRL
+    *   chose whether use distributed SRL cells in output netlist
+    * @param useCarry
+    *   chose whether use XORCY/MUXCY/CARRY4 cells in output netlist
+    * @param useMUXF
+    *   chose whether use MUXFresources to implement LUTs larger than native for the target
+    * @param useDsp
+    *   chose whether use Dsp in output netlist
+    * @param useIOPad
+    *   chose whether enable I/O buffer insertion (useful for hierarchical or out-of-context flows)
+    * @param autoClockBuf
+    *   chose whether use automatic clock buffer insertion in output netlist
+    * @param retiming
+    *   chose whether enable flip-flop retiming in output netlist
+    * @param useUram
+    *   chose whether use Ultra Ram in output netlist (xcup only)
+    */
   case class YosysXilinxOptimizeOption(
       isFlatten: Boolean       = true,
       useBram: Boolean         = true,

@@ -1,7 +1,7 @@
 package Chainsaw.phases
 
 import Chainsaw._
-import Chainsaw.edaFlow._
+import Chainsaw.edaFlow.Device._
 import spinal.core._
 import spinal.core.internals._
 

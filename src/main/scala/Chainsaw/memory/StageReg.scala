@@ -60,7 +60,7 @@ class stateReg(G: Int, w: Int) extends Component {
 object stateReg {
   def main(args: Array[String]): Unit = {
     //    VivadoSynth(new stateReg(253.divideAndCeil(8), 8), "synthStateReg")
-    VivadoTask.implModule(new stateReg(253.divideAndCeil(8), 12), "synthStateReg")
+    VivadoTask.fastImplModule("stateReg", new stateReg(253.divideAndCeil(8), 12))
   }
 }
 

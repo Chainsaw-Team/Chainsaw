@@ -29,7 +29,7 @@ case class InverseExample(method: Int) extends Component {
 
 object InverseExample {
   def main(args: Array[String]): Unit = {
-    VivadoTask.synth(InverseExample(0), "InverseExampleBetter") // 500 LUT
-    VivadoTask.synth(InverseExample(1), "InverseExampleBetter") // 250 LUT
+    VivadoTask.fastSynthModule("InverseExample", InverseExample(0)) // 500 LUT
+    VivadoTask.fastSynthModule("InverseExample", InverseExample(1)) // 250 LUT
   }
 }
