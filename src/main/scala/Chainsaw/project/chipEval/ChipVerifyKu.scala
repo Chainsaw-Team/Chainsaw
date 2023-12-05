@@ -191,5 +191,5 @@ case class ChipVerifyKu() extends AXKU041 {
 
 object ChipVerifyKu extends App {
   SpinalVerilog(ChipVerifyKu())
-  VivadoTask.genBoardBitStream(ChipVerifyKu(), "ChipVerifyKu")
+//  VivadoTask.genBitStream(ChipVerifyKu(), "ChipVerifyKu")
 }

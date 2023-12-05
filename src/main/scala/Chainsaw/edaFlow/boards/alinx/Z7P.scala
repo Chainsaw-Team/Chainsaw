@@ -1,9 +1,9 @@
 package Chainsaw.edaFlow.boards.alinx
 
 import Chainsaw.edaFlow.boards.{FmcHpc, PcieXilinx}
-import Chainsaw.edaFlow.{Board, UltraScalePlus, XilinxDevice}
+import Chainsaw.edaFlow.Device._
+import Chainsaw.edaFlow._
 import Chainsaw.primitives.IBUFDS
-import Chainsaw.xdcFileDir
 import spinal.core._
 import spinal.core.sim._
 import spinal.lib._

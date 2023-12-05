@@ -80,5 +80,5 @@ case class ChipVerify() extends Z7P {
 
 object ChipVerify extends App {
   SpinalVerilog(ChipVerify())
-  VivadoTask.genBoardBitStream(ChipVerify(), "ChipVerify")
+//  VivadoTask.genBoardBitStream(ChipVerify(), "ChipVerify")
 }

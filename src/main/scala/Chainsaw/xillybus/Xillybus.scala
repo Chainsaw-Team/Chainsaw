@@ -1,7 +1,7 @@
 package Chainsaw.xillybus
 
 import Chainsaw.edaFlow
-import Chainsaw.edaFlow.ChainsawDevice
+import Chainsaw.edaFlow.Device._
 import Chainsaw.edaFlow.boards.{PcieIntel, PcieXilinx}
 import spinal.core._
 import spinal.lib.{master, slave}
@@ -23,8 +23,8 @@ case class Xillybus(pinCount: Int, devices: Seq[XillybusDevice], target: Chainsa
   val quiesce, bus_clk = out Bool ()
   val user_led         = out Bits (4 bits)
 
-  val pcieIntel  = target.isInstanceOf[edaFlow.AlteraDevice].generate(slave(PcieIntel(pinCount)))
-  val pcieXilinx = target.isInstanceOf[edaFlow.XilinxDevice].generate(slave(PcieXilinx(pinCount)))
+  val pcieIntel  = target.isInstanceOf[AlteraDevice].generate(slave(PcieIntel(pinCount)))
+  val pcieXilinx = target.isInstanceOf[XilinxDevice].generate(slave(PcieXilinx(pinCount)))
 
   val streamsRead  = devices.filter(device => device.direction == "read" && device.deviceType == "fifo")
   val streamsWrite = devices.filter(device => device.direction == "write" && device.deviceType == "fifo")
@@ -39,8 +39,8 @@ case class Xillybus(pinCount: Int, devices: Seq[XillybusDevice], target: Chainsa
   val memBiInterfaces       = memsBi.map(MemBi)
 
   target match {
-    case device: edaFlow.AlteraDevice =>
-    case device: edaFlow.XilinxDevice =>
+    case device: AlteraDevice =>
+    case device: XilinxDevice =>
       user_led.setName("GPIO_LED")
   }
 

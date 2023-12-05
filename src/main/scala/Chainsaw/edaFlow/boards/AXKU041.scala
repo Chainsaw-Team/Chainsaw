@@ -34,7 +34,7 @@ class AXKU041 extends Component with Board {
 
   val sys_clk_p, sys_clk_n, rst_n = in Bool ()
   val user_key                    = in Bool ()
-  lazy val pcie                   = master(Pcie(8))
+  lazy val pcie                   = master(PcieXilinx(8))
 
   // FMC
   lazy val FMC1_LPC, FMC2_LPC = FmcLpc()

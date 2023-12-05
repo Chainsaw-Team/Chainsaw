@@ -1,7 +1,7 @@
 package Chainsaw.dfg
 import Chainsaw.NumericType
 import Chainsaw.arithmetic.floating._
-import Chainsaw.edaFlow.UltraScale
+import Chainsaw.edaFlow.Device._
 import spinal.core._
 import spinal.lib.experimental.math.Floating
 

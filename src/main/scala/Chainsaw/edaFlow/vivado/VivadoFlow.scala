@@ -2,6 +2,7 @@ package Chainsaw.edaFlow.vivado
 
 import Chainsaw._
 import Chainsaw.edaFlow._
+import Chainsaw.edaFlow.Device._
 import org.apache.commons.io.FileUtils
 import org.slf4j._
 import spinal.core._
@@ -114,7 +115,7 @@ case class VivadoFlow[T <: Module](
     // FIXME: clear directory before run scripts
 
     // create project
-    script += s"create_project ${designInput.topModuleName} ${genScriptDir.getAbsolutePath} -part ${device.familyPart} -force\n"
+    script += s"create_project ${designInput.getTopModuleName()} ${genScriptDir.getAbsolutePath} -part ${device.familyPart} -force\n"
     script += s"set_property PART ${device.familyPart} [current_project]\n"
     designInput.getRtlDir().foreach(path => script += getReadCommand(path))
 
@@ -242,7 +243,7 @@ object VivadoTask {
       xdcFile: Option[File],
       customizedConfig: SpinalConfig
   ): VivadoReport = {
-    val edaInput = inVirtualGlob(
+    val edaInput: ChainsawEdaFlowInput = inVirtualGlob(
       if (design == null) ChainsawEdaDirInput(includeRtlFile, new File(synthWorkspace, name), name)
       else if (includeRtlFile.nonEmpty)
         ChainsawEdaFullInput(design, includeRtlFile, new File(synthWorkspace, name), name, Some(customizedConfig))
@@ -256,7 +257,6 @@ object VivadoTask {
       VivadoOptimizeOption(),
       xdcFile,
       None,
-      None
     )
     val report = task.startFlow()
     report.showInfosReport()
@@ -278,7 +278,6 @@ object VivadoTask {
       VivadoOptimizeOption(),
       None,
       None,
-      None
     )
     val report = task.startFlow()
     if (!ignoreBudget) {
@@ -303,7 +302,6 @@ object VivadoTask {
       VivadoOptimizeOption(),
       None,
       None,
-      None
     )
     val report = task.startFlow()
     if (!ignoreBudget) {
@@ -325,7 +323,6 @@ object VivadoTask {
       device,
       SYNTH,
       VivadoOptimizeOption(),
-      None,
       None,
       None
     )

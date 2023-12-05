@@ -1,7 +1,7 @@
 package Chainsaw.xillybus
 
 import Chainsaw._
-import Chainsaw.edaFlow.{ChainsawDevice, XilinxDevice}
+import Chainsaw.edaFlow.Device._
 import Chainsaw.edaFlow.boards.{PcieIntel, PcieXilinx}
 import spinal.core._
 import spinal.lib._
@@ -19,15 +19,15 @@ import scala.language.postfixOps
   */
 case class XillybusWrapper(pinCount:Int, devices: Seq[XillybusDevice], target:ChainsawDevice) extends Component {
 
-  val pcieIntel    = target.isInstanceOf[edaFlow.AlteraDevice].generate(slave(PcieIntel(pinCount)))
-  val pcieXilinx = target.isInstanceOf[edaFlow.XilinxDevice].generate(slave(PcieXilinx(pinCount)))
+  val pcieIntel    = target.isInstanceOf[AlteraDevice].generate(slave(PcieIntel(pinCount)))
+  val pcieXilinx = target.isInstanceOf[XilinxDevice].generate(slave(PcieXilinx(pinCount)))
 
   val xillybus = Xillybus(pinCount, devices, target) // xillybus IP
 
   // global connections
   target match {
-    case _: edaFlow.AlteraDevice => pcieIntel <> xillybus.pcieIntel
-    case _: edaFlow.XilinxDevice => pcieXilinx <> xillybus.pcieXilinx
+    case _: AlteraDevice => pcieIntel <> xillybus.pcieIntel
+    case _: XilinxDevice => pcieXilinx <> xillybus.pcieXilinx
   }
 
   val streamToHost = xillybus.streamsRead.map(device => slave(Stream(Bits(device.bitWidth bits))))
@@ -50,8 +50,8 @@ case class XillybusWrapper(pinCount:Int, devices: Seq[XillybusDevice], target:Ch
   val xillyDomain = ClockDomain(
     clock  =  xillybus.bus_clk,
     reset  = target match {
-      case device: edaFlow.AlteraDevice =>  xillybus.pcieIntel.perstn
-      case device: edaFlow.XilinxDevice => xillybus.pcieXilinx.PERST_B_LS
+      case device: AlteraDevice =>  xillybus.pcieIntel.perstn
+      case device: XilinxDevice => xillybus.pcieXilinx.PERST_B_LS
     },
     config = ClockDomainConfig(resetActiveLevel = LOW) // TODO: active-low for both Xilinx and Altera?
   )

@@ -1,9 +1,9 @@
 package Chainsaw.edaFlow.boards.alinx
 
 import Chainsaw.edaFlow.boards.{FmcLpc, PcieXilinx}
-import Chainsaw.edaFlow.{Board, UltraScale, UltraScalePlus, XilinxDevice}
+import Chainsaw.edaFlow.Device._
 import Chainsaw.primitives.IBUFDS
-import Chainsaw.{edaFlow, xdcFileDir}
+import Chainsaw.edaFlow._
 import spinal.core._
 import spinal.lib.slave
 
@@ -35,7 +35,7 @@ class AXKU041 extends Component with Board {
 
   // board definition
   override val xdcFile: File = new File(xdcFileDir, "AXKU041.xdc")
-  override val device: edaFlow.XilinxDevice =
+  override val device: XilinxDevice =
     new XilinxDevice(UltraScale, "XCKU040-FFVA1156-2-i".toLowerCase(), 200 MHz, None)
   val clk: Bool = Bool()
   clk := IBUFDS.Lvds2Clk(sys_clk_p, sys_clk_n) // LVDS CLK -> single ended clk

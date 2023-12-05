@@ -1,7 +1,6 @@
 package Chainsaw.arithmetic.floating
 
-import Chainsaw.edaFlow.{Series7, UltraScale, UltraScalePlus, XilinxDeviceFamily}
-import Chainsaw.edaFlow.XilinxDevice
+import Chainsaw.edaFlow.Device._
 import Chainsaw.{ChainsawBaseGenerator, FLOPOCO, doCmd, doCmds, logger}
 import spinal.core.sim.SimConfig
 import spinal.core.{HertzNumber, IntToBuilder}
