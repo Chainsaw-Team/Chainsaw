@@ -133,6 +133,6 @@ case class mWnRDUT(m: Int, n: Int, mode: MwNrMode) extends Component {
 
 object MwNrRam {
   def main(args: Array[String]): Unit = {
-    VivadoTask.implModule(MwNrRam(2, 2, PURELOGIC), "MwNrRam")
+    VivadoTask.fastImplModule("MwNrRam", MwNrRam(2, 2, PURELOGIC))
   }
 }

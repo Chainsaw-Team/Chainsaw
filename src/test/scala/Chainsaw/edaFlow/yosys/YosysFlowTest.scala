@@ -2,6 +2,7 @@ package Chainsaw.edaFlow.yosys
 
 import Chainsaw._
 import Chainsaw.edaFlow._
+import Chainsaw.edaFlow.Device._
 import org.scalatest.funsuite.AnyFunSuite
 import spinal.core._
 import spinal.lib._

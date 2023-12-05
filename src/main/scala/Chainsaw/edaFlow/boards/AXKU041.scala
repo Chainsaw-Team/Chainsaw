@@ -1,7 +1,8 @@
 package Chainsaw.edaFlow.boards
 
-import Chainsaw.edaFlow.{Board, UltraScalePlus, XilinxDevice}
-import Chainsaw.{edaFlow, xdcFileDir}
+import Chainsaw.edaFlow.Device._
+import Chainsaw._
+import Chainsaw.edaFlow._
 import spinal.core._
 import spinal.lib.master
 
@@ -50,7 +51,7 @@ class AXKU041 extends Component with Board {
   lazy val SMA_CLKIN_P, SMA_CLKIN_N = out Bool ()
 
   override val xdcFile: File = new File(xdcFileDir, "AXKU041.xdc")
-  override val device: edaFlow.XilinxDevice =
+  override val device: XilinxDevice =
     new XilinxDevice(UltraScalePlus, "XCKU040-FFVA1156-2-i".toLowerCase(), 200 MHz, None)
 
   // clock domain
@@ -59,6 +60,5 @@ class AXKU041 extends Component with Board {
   val clockDomainConfig = ClockDomainConfig(clockEdge = RISING, resetKind = ASYNC, resetActiveLevel = LOW)
   override val defaultClockDomain =
     new ClockDomain(clock = clk, reset = rst_n, config = clockDomainConfig, frequency = FixedFrequency(200 MHz))
-
 
 }

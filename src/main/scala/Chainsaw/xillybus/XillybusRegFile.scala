@@ -6,16 +6,17 @@ import spinal.lib.bus.regif.BusIf
 import scala.language.postfixOps
 
 /** a simple bus for host -> device control by register file
- *
- * @param ctrlDevice xillybus device of the control interface
- */
+  *
+  * @param ctrlDevice
+  *   xillybus device of the control interface
+  */
 case class XillybusRegFile(ctrlDevice: XillybusDevice) extends Bundle {
   // host -> xillybus
   val ctrlIn = in(XillybusCtrl(ctrlDevice))
   // xilllybus -> user logic
-  val readAddr = in UInt (ctrlDevice.addrWidth bits)
-  val readData = out Bits (ctrlDevice.bitWidth bits)
-  val readError = out Bool()
+  val readAddr  = in UInt (ctrlDevice.addrWidth bits)
+  val readData  = out Bits (ctrlDevice.bitWidth bits)
+  val readError = out Bool ()
 }
 
 case class XillybusRegIf(bus: XillybusRegFile) extends BusIf {
@@ -31,12 +32,12 @@ case class XillybusRegIf(bus: XillybusRegFile) extends BusIf {
 
   override val regPre = "ctrl"
 
-  override val askWrite = ctrlIn.update
-  override val doWrite = ctrlIn.update
+  override val askWrite  = ctrlIn.update
+  override val doWrite   = ctrlIn.update
   override val writeData = ctrlIn.value.asBits
 
   override val askRead = True
-  override val doRead = True
+  override val doRead  = True
 
   override val readData = RegInit(B(0, ctrlDevice.bitWidth bits))
   bus.readData := readData
@@ -54,4 +55,9 @@ case class XillybusRegIf(bus: XillybusRegFile) extends BusIf {
 
   override def busDataWidth = ctrlDevice.bitWidth
 
+  override val withStrb: Boolean = ???
+  override val wstrb: Bits       = ???
+  override val wmask: Bits       = ???
+  override val wmaskn: Bits      = ???
+  override type RefOwnerType = this.type
 }

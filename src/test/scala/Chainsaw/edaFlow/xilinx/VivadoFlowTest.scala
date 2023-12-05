@@ -3,6 +3,7 @@ package Chainsaw.edaFlow.xilinx
 import Chainsaw._
 import Chainsaw.arithmetic.Cpa
 import Chainsaw.edaFlow._
+import Chainsaw.edaFlow.Device._
 import Chainsaw.edaFlow.vivado._
 import org.scalatest.funsuite.AnyFunSuite
 import spinal.core._

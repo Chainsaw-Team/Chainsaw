@@ -1,7 +1,7 @@
 package Chainsaw.edaFlow.boards
 
-import Chainsaw.edaFlow.{Board, Series7, XilinxDevice}
-import Chainsaw.xdcFileDir
+import Chainsaw.edaFlow.Device._
+import Chainsaw.edaFlow._
 import spinal.core._
 
 import java.io.File

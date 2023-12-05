@@ -1,7 +1,6 @@
 package Chainsaw.arithmetic.floating
 
-import Chainsaw.edaFlow.{UltraScale, XilinxDeviceFamily}
-import Chainsaw.edaFlow.XilinxDevice
+import Chainsaw.edaFlow.Device._
 import Chainsaw.{FLOPOCO, doCmd, pow2}
 import spinal.core._
 import spinal.core.sim._

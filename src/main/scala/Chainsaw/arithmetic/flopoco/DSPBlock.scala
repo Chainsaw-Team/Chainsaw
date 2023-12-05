@@ -1,7 +1,7 @@
 package Chainsaw.arithmetic.flopoco
 
 import Chainsaw.{ChainsawOperatorModule, NumericType, TestCase, pow2}
-import Chainsaw.edaFlow.{UltraScale, XilinxDeviceFamily}
+import Chainsaw.edaFlow.Device._
 import Chainsaw.edaFlow.vivado._
 import spinal.lib._
 import spinal.core._

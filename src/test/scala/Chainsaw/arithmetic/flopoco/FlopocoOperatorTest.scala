@@ -2,7 +2,7 @@ package Chainsaw.arithmetic.flopoco
 
 
 import Chainsaw._
-import Chainsaw.edaFlow.UltraScale
+import Chainsaw.edaFlow.Device._
 import spinal.core.IntToBuilder
 import spinal.lib.cpu.riscv.impl.Utils.M
 import java.lang._

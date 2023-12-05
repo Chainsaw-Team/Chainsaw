@@ -1,30 +1,36 @@
 package Chainsaw.arithmetic.floating
 
-import Chainsaw.edaFlow.{UltraScale, XilinxDeviceFamily}
-import Chainsaw.edaFlow.XilinxDevice
+import Chainsaw.edaFlow.Device._
 import Chainsaw.{FLOPOCO, doCmd, pow2}
 import spinal.core._
 import spinal.core.sim._
 import spinal.lib.experimental.math._
 
-case class IEEEAdd (exponentSize: Int, mantissaSize: Int, family: XilinxDeviceFamily, targetFrequency: HertzNumber) extends BlackBox with floatingFlopoco{
+case class IEEEAdd(exponentSize: Int, mantissaSize: Int, family: XilinxDeviceFamily, targetFrequency: HertzNumber)
+    extends BlackBox
+    with floatingFlopoco {
   override val operatorName = "IEEEAdd"
-  override val entityName = operatorName
-  override val params = Seq(("wE", exponentSize), ("wF", mantissaSize))
+  override val entityName   = operatorName
+  override val params       = Seq(("wE", exponentSize), ("wF", mantissaSize))
 
-  val clk = in Bool()
-  mapClockDomain(clock=clk)
-  val X, Y = in Bits((exponentSize+mantissaSize+1) bits)
-  val R = out Bits((exponentSize+mantissaSize+1) bits)
+  val clk = in Bool ()
+  mapClockDomain(clock = clk)
+  val X, Y = in Bits ((exponentSize + mantissaSize + 1) bits)
+  val R    = out Bits ((exponentSize + mantissaSize + 1) bits)
   addRTLPath(this.verilogFile.getAbsolutePath)
   setDefinitionName(this.moduleName)
 }
 
-case class FloatingAddWithoutConvert(exponentSize: Int, mantissaSize: Int, family: XilinxDeviceFamily, targetFrequency: HertzNumber) extends Module{
-  val x, y = in (Floating(exponentSize, mantissaSize))
-  val z = out (Floating(exponentSize, mantissaSize))
+case class FloatingAddWithoutConvert(
+    exponentSize: Int,
+    mantissaSize: Int,
+    family: XilinxDeviceFamily,
+    targetFrequency: HertzNumber
+) extends Module {
+  val x, y = in(Floating(exponentSize, mantissaSize))
+  val z    = out(Floating(exponentSize, mantissaSize))
 
-  Seq(x,y,z).foreach(_.flattenForeach(_.simPublic()))
+  Seq(x, y, z).foreach(_.flattenForeach(_.simPublic()))
 
   val add = IEEEAdd(exponentSize, mantissaSize, family, targetFrequency)
 
@@ -34,16 +40,18 @@ case class FloatingAddWithoutConvert(exponentSize: Int, mantissaSize: Int, famil
 }
 
 object SinglePrecisionFPAddWithoutConvert {
-  def apply(family:XilinxDeviceFamily, targetFrequency: HertzNumber) = FloatingAddWithoutConvert(8, 23, family, targetFrequency)
+  def apply(family: XilinxDeviceFamily, targetFrequency: HertzNumber) =
+    FloatingAddWithoutConvert(8, 23, family, targetFrequency)
 }
 
 object DoublePrecisionFPAddWithoutConvert {
-  def apply(family:XilinxDeviceFamily, targetFrequency: HertzNumber) = FloatingAddWithoutConvert(11, 52, family, targetFrequency)
+  def apply(family: XilinxDeviceFamily, targetFrequency: HertzNumber) =
+    FloatingAddWithoutConvert(11, 52, family, targetFrequency)
 }
 
-object FloatingAddWithoutConvertSim{
+object FloatingAddWithoutConvertSim {
   def main(args: Array[String]): Unit = {
-    SimConfig.withFstWave.compile(SinglePrecisionFPAddWithoutConvert(UltraScale, 20 MHz)).doSim{dut=>
+    SimConfig.withFstWave.compile(SinglePrecisionFPAddWithoutConvert(UltraScale, 20 MHz)).doSim { dut =>
       dut.clockDomain.forkStimulus(2)
       dut.clockDomain.waitSampling()
       var expected: Float = 0.0f
@@ -54,7 +62,8 @@ object FloatingAddWithoutConvertSim{
         dut.y.randNormal(true)
         dut.clockDomain.waitSampling(2)
         expected = dut.x.toFloat + dut.y.toFloat
-        if (!(((expected - dut.z.toFloat).abs < 1e-37) || (expected.isInfinite && dut.z.isInf))) simFailure(s"FPAdd error, x=${dut.x.toFloat}, y=${dut.y.toFloat}, z=${dut.z.toFloat}, expected=${expected}")
+        if (!(((expected - dut.z.toFloat).abs < 1e-37) || (expected.isInfinite && dut.z.isInf)))
+          simFailure(s"FPAdd error, x=${dut.x.toFloat}, y=${dut.y.toFloat}, z=${dut.z.toFloat}, expected=${expected}")
       }
 
       // special test
@@ -63,7 +72,8 @@ object FloatingAddWithoutConvertSim{
         dut.y.randNormal(true)
         dut.clockDomain.waitSampling(2)
         expected = dut.x.toFloat + dut.y.toFloat
-        if ((dut.z.toFloat - expected).abs > 1e-37) simFailure(s"FPAdd error, z=${dut.z.toFloat}, expected=${expected}") // precision
+        if ((dut.z.toFloat - expected).abs > 1e-37)
+          simFailure(s"FPAdd error, z=${dut.z.toFloat}, expected=${expected}") // precision
       }
 
       dut.x #= 0.0f
@@ -123,7 +133,7 @@ object FloatingAddWithoutConvertSim{
       println("========= pass test SinglePrecisionFPAddWithoutConvert =========")
     }
 
-    SimConfig.withFstWave.compile(DoublePrecisionFPAddWithoutConvert(UltraScale, 20 MHz)).doSim{dut=>
+    SimConfig.withFstWave.compile(DoublePrecisionFPAddWithoutConvert(UltraScale, 20 MHz)).doSim { dut =>
       dut.clockDomain.forkStimulus(2)
       dut.clockDomain.waitSampling()
       var expected: Double = 0.0
@@ -134,7 +144,8 @@ object FloatingAddWithoutConvertSim{
         dut.y.randNormal(true)
         expected = dut.x.toDouble + dut.y.toDouble
         dut.clockDomain.waitSampling()
-        if (!(((expected - dut.z.toDouble).abs < 1e-37) || (expected.isInfinite && dut.z.isInf))) simFailure(s"FPAdd error, z=${dut.z.toDouble}")
+        if (!(((expected - dut.z.toDouble).abs < 1e-37) || (expected.isInfinite && dut.z.isInf)))
+          simFailure(s"FPAdd error, z=${dut.z.toDouble}")
       }
 
       // special test
@@ -143,7 +154,8 @@ object FloatingAddWithoutConvertSim{
         dut.y.randNormal(true)
         dut.clockDomain.waitSampling(2)
         expected = dut.x.toDouble + dut.y.toDouble
-        if ((dut.z.toDouble - expected).abs > 1e-37) simFailure(s"FPAdd error, z=${dut.z.toDouble}, expected=$expected") // precision
+        if ((dut.z.toDouble - expected).abs > 1e-37)
+          simFailure(s"FPAdd error, z=${dut.z.toDouble}, expected=$expected") // precision
       }
 
       dut.x #= 0.0
@@ -180,7 +192,8 @@ object FloatingAddWithoutConvertSim{
         dut.y.randDenormal
         dut.clockDomain.waitSampling(2)
         expected = dut.x.toDouble + dut.y.toDouble
-        if ((expected - dut.z.toDouble).abs > 1e-37) simFailure(s"FPAdd error, z=${dut.z.toDouble}, expected=${expected}") // precision
+        if ((expected - dut.z.toDouble).abs > 1e-37)
+          simFailure(s"FPAdd error, z=${dut.z.toDouble}, expected=${expected}") // precision
       }
 
       dut.x #= Double.PositiveInfinity

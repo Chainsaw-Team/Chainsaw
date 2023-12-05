@@ -1,6 +1,7 @@
 package Chainsaw.examples
 
 import Chainsaw._
+import Chainsaw.edaFlow.Device.a7100t
 import Chainsaw.edaFlow._
 import Chainsaw.edaFlow.vivado._
 import spinal.core._
@@ -24,10 +25,8 @@ case class PassThrough() extends Nexys4A7T100 {
 }
 
 object TestBoard extends App {
-  VivadoTask.genModuleBitStream(
-    PassThrough(),
+  VivadoTask.fastGenModuleBitStream(
     "PassThrough",
-    a7100t,
-    Some(new File("src/main/resources/xdc/Nexys-A7-100T-Master.xdc"))
+    PassThrough()
   )
 }

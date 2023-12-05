@@ -66,6 +66,6 @@ case class SystolicSpinal(bs: Seq[BigInt]) extends Component {
 object SystolicExample extends App {
   val bs = Seq.fill(5)(BigInt(16, Random) - pow2(15))
   //  VivadoSynth(SystolicExample(), "synthXilinxSystolic")
-  VivadoTask.synth(SystolicSpinal(bs), "synthOurSystolic")
+  VivadoTask.fastSynthModule("SystolicSpinal", SystolicSpinal(bs))
   //  new QuartusFlow(SystolicSpinal(bs)).impl() // this architecture is also suitable for Intel Device(Cyclone V)
 }

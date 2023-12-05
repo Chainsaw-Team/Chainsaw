@@ -27,7 +27,7 @@ case class Bcm(
   val outputModulus = pow2(widthOut)
   val csaGen        = Merge(infos)
 
-  override def latency() = 1
+  override def latency() = csaGen.latency()
 
   override def fmaxEstimation: HertzNumber = 600 MHz
 
@@ -56,9 +56,7 @@ case class Bcm(
   }
 
   override def testCases = {
-    val extra = Seq(dataForUpper, dataForLower).map(data =>
-      TestCase(Seq(BigDecimal(data)))
-    )
+    val extra = Seq(dataForUpper, dataForLower).map(data => TestCase(Seq(BigDecimal(data))))
     super.testCases ++ extra
   }
 

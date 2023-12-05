@@ -8,8 +8,7 @@ import project.zprize.ZPrizeMSM.MPrime
 
 import scala.language.postfixOps
 
-case class Barrett377() extends ModularReduction
-  with OverwriteLatency {
+case class Barrett377() extends ModularReduction with OverwriteLatency {
 
   override def widthM = 377
 
@@ -20,9 +19,12 @@ case class Barrett377() extends ModularReduction
 
   val msbSolution = BmSolution(
     baseMultiplier = BaseDspMult(48, 48),
-    splits = Seq.fill(3)(2),
-    multiplierType = MsbMultiplier, isKaras = Seq.fill(3)(true),
-    constant = Some(MPrime << (384 - 378)), threshold = 0)
+    splits         = Seq.fill(3)(2),
+    multiplierType = MsbMultiplier,
+    isKaras        = Seq.fill(3)(true),
+    constant       = Some(MPrime << (384 - 378)),
+    threshold      = 0
+  )
   val msbGen = Bm(msbSolution)
   val lsbGen = LsbBcm(constant = baseModulus, widthIn = 378, widthOut = 379)
   val cpaGen = Cpa(BinarySubtractor, 379)
@@ -32,13 +34,13 @@ case class Barrett377() extends ModularReduction
     val x = dataIn.head.asUInt() // 377 * 2 bits
 
     val xHighPadded = x.takeHigh(378).asUInt << (384 - 378)
-    val xLow = x.takeLow(379).asUInt.d(msbGen.latency() + lsbGen.latency())
+    val xLow        = x.takeLow(379).asUInt.d(msbGen.latency() + lsbGen.latency())
 
-    val u = msbGen.process(Seq(xHighPadded.toAFix)).head.asUInt()
-    val E = u.takeHigh(378).asUInt
-    val r = lsbGen.process(Seq(E.toAFix)).head.asUInt()
+    val u    = msbGen.process(Seq(xHighPadded.toAFix)).head.asUInt()
+    val E    = u.takeHigh(378).asUInt
+    val r    = lsbGen.process(Seq(E.toAFix)).head.asUInt()
     val diff = cpaGen.process(Seq(xLow.toAFix, r.toAFix)).head.asUInt()
-    val ret = diff % baseModulus
+    val ret  = diff % baseModulus
 
     dataOut.head := ret.toAFix.truncated
   }

@@ -1,6 +1,7 @@
 package Chainsaw.arithmetic.flopoco
 
 import Chainsaw._
+import Chainsaw.edaFlow.Device.XilinxDeviceFamily
 import Chainsaw.edaFlow._
 import Chainsaw.edaFlow.vivado._
 import spinal.core.{IntToBuilder, _}

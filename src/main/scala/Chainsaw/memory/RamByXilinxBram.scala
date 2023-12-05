@@ -46,6 +46,6 @@ case class RamByXilinxBram(
 }
 
 object RamByXilinxBram extends App {
-  VivadoTask.synth(RamByXilinxBram(1, 1, 64, 16384), "bram")
-  VivadoTask.implModule(RamByXilinxBram(1, 1, 64, 16384), "bram")
+  VivadoTask.fastSynthModule("RamByXilinxBram", RamByXilinxBram(1, 1, 64, 16384))
+  VivadoTask.fastImplModule("RamByXilinxBram", RamByXilinxBram(1, 1, 64, 16384))
 }
