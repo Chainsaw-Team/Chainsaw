@@ -8,8 +8,9 @@ case class IBUFDS() extends BlackBox {
 }
 
 object IBUFDS {
+
   /** convert LVDS clock pair into single-ended clock
-   */
+    */
   def Lvds2Clk(p: Bool, n: Bool): Bool = {
     val buf = IBUFDS()
     buf.I  := p

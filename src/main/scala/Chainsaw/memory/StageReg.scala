@@ -1,11 +1,9 @@
 package Chainsaw.memory
 
-import spinal.core._
-import spinal.core.sim._
-import spinal.lib._
-import spinal.lib.fsm._
 import Chainsaw._
 import Chainsaw.edaFlow.vivado._
+import spinal.core._
+import spinal.lib._
 
 import scala.language.postfixOps
 
@@ -60,7 +58,7 @@ class stateReg(G: Int, w: Int) extends Component {
 object stateReg {
   def main(args: Array[String]): Unit = {
     //    VivadoSynth(new stateReg(253.divideAndCeil(8), 8), "synthStateReg")
-    VivadoTask.fastImplModule("stateReg", new stateReg(253.divideAndCeil(8), 12))
+    VivadoTask.implModule("stateReg", new stateReg(253.divideAndCeil(8), 12))
   }
 }
 

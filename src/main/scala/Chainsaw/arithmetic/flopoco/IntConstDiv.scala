@@ -3,14 +3,9 @@ package Chainsaw.arithmetic.flopoco
 import Chainsaw._
 import Chainsaw.edaFlow.Device.XilinxDeviceFamily
 import Chainsaw.edaFlow.vivado._
-import spinal.core._
-import spinal.lib._
-import Chainsaw.edaFlow._
-import breeze.linalg.InjectNumericOps
 import spinal.core.{IntToBuilder, _}
 
 import scala.language.postfixOps
-import scala.util.Random
 
 /** Integer divider by a small constant, input only supports unsigned numbers
   * @param wIn

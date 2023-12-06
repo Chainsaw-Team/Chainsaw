@@ -9,7 +9,6 @@ import spinal.core._
 import spinal.lib.DoCmd
 
 import java.io.File
-import scala.collection.mutable.ArrayBuffer
 
 /** The class which can be used to run YosysTask
   * @param designInput

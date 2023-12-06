@@ -2,13 +2,10 @@ package Chainsaw.arithmetic.flopoco
 
 import Chainsaw._
 import Chainsaw.edaFlow.Device.XilinxDeviceFamily
-import Chainsaw.edaFlow._
 import Chainsaw.edaFlow.vivado._
 import spinal.core.{IntToBuilder, _}
-import spinal.lib.cpu.riscv.impl.Utils.M
 
 import scala.language.postfixOps
-import scala.util.Random
 
 /** Integer multiplier of an unsigned number by a constant using a shift-and-add tree
   *

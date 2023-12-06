@@ -12,7 +12,6 @@ import java.io.File
 import scala.collection.mutable.ArrayBuffer
 import scala.io.Source
 
-
 /** The class which can be used to run VcsTask
   * @param designInput
   *   the vcsFlow design source file input

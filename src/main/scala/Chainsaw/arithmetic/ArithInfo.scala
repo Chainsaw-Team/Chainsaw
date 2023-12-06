@@ -1,11 +1,10 @@
 package Chainsaw.arithmetic
 
 import Chainsaw._
+import Chainsaw.arithmetic.bitheap.BitHeap
 import spinal.core._
 
-import scala.collection.immutable
 import scala.util.Random
-import bitheap.BitHeap
 
 /** describe the attributes of an UInt Operand needed for merge arithmetic
   *

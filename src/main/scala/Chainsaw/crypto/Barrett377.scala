@@ -1,10 +1,9 @@
 package Chainsaw.crypto
 
 import Chainsaw._
+import Chainsaw.arithmetic._
+import Chainsaw.project.zprize.ZPrizeMSM.{MPrime, baseModulus}
 import spinal.core._
-import arithmetic._
-import project.zprize.ZPrizeMSM.baseModulus
-import project.zprize.ZPrizeMSM.MPrime
 
 import scala.language.postfixOps
 

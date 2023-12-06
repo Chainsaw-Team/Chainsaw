@@ -1,29 +1,29 @@
 package Chainsaw.edaFlow.vivado
 
 import Chainsaw._
-import Chainsaw.edaFlow._
 import Chainsaw.edaFlow.Device._
+import Chainsaw.edaFlow._
 import org.apache.commons.io.FileUtils
 import org.slf4j._
 import spinal.core._
 import spinal.lib.DoCmd
 
 import java.io.File
-import scala.collection.mutable.ArrayBuffer
 import scala.io.Source
 
-/** The class which can be used to run VivadoTask
+/** Abstraction of a Vivado Flow
   * @param designInput
-  *   the vivadoFlow design source, it can be file dir format or Component format or mixed input of dir and Component
+  *   the vivadoFlow design source, it may be directories containing source code|component|both
   * @param device
-  *   the device which will be used in edaFlow to synthesis or implementation
+  *   FPGA chip abstracted by [[ChainsawDevice]], when the designInput contains a [[Board]], this parameter will be
+  *   ignored
   * @param taskType
-  *   specify the task type (Simulation, Synthesis, Implementation, Generate Binary)
+  *   specify the task type (Project creation, Simulation, Synthesis, Implementation, BitStream Generation)
   * @param optimizeOption
   *   specify the optimize option will be used in vivadoFlow
   * @param xdcFile
-  *   specify the xilinx design constraint file will be used in [[VivadoFlow]], if your design is Board, this file will
-  *   invalid
+  *   specify the xilinx design constraint file will be used in [[VivadoFlow]], when the designInput contains a
+  *   [[Board]], this parameter will be ignored
   * @param blackBoxSet
   *   specify which module will be viewed as BlackBox(will change v or sv file)
   * @tparam T
@@ -46,39 +46,43 @@ case class VivadoFlow[T <: Module](
       blackBoxSet
     ) {
 
-  require(hasVivado, "to use VivadoFlow, please set the environment variable 'VIVADO' to the vivado executable, " +
-    "e.g. /tools/Xilinx/Vivado/2022.1/bin/vivado")
-  require(device.vendor == Xilinx,s"${device.vendor} device is not supported by Vivado Flow")
+  require(
+    hasVivado,
+    "to use VivadoFlow, please set the environment variable 'VIVADO' to the vivado executable, " +
+      "e.g. /tools/Xilinx/Vivado/2022.1/bin/vivado"
+  )
 
-  val usedDevice = designInput.getDevice(device)
+  // directory & file location
+  val genScriptDir = new File(designInput.getWorkspaceDir(), s"genScript_${designInput.getTopModuleName()}")
+  val tclFile = new File(genScriptDir, "run_vivado.tcl")
+  private val xdcFileInProject = new File(genScriptDir, "vivado_constraint.xdc")
+  val logFile = new File(genScriptDir, "vivado_flow.log")
 
-  usedDevice.vendor match {
+  // decide actual device & xdcFile in use
+  private val deviceInUse = designInput.getDevice(device)
+  private val xdcFileInUse = designInput.getXdcFile(xdcFile.getOrElse { // priority: boardXdcFile > xdcFile > genXdcFile
+    val generatedXdcFile = new File(genScriptDir, s"generatedXdc.xdc")
+    val targetPeriod     = deviceInUse.fMax.toTime
+    val clkConstr        = s"""create_clock -period ${(targetPeriod * 1e9) toBigDecimal} [get_ports clk]"""
+    FileUtils.write(generatedXdcFile, clkConstr)
+    generatedXdcFile
+  })
+  FileUtils.copyFile(xdcFileInUse, xdcFileInProject)
+
+  deviceInUse.vendor match {
     case Xilinx =>
     case _ =>
       throw new IllegalArgumentException(
-        s"The device type must be Xilinx family."
+        s"The device type must be of Xilinx family."
       )
   }
+
   val vivadoLogger = LoggerFactory.getLogger(s"VivadoFlow")
 
-  val genScriptDir = new File(designInput.getWorkspaceDir(), s"genScript_${designInput.getTopModuleName()}")
 
-  val tclFile       = new File(genScriptDir, "run_vivado.tcl")
-  val xdcFileBeUsed = new File(genScriptDir, "vivado_constraint.xdc")
-  val logFile       = new File(genScriptDir, "vivado_flow.log")
 
   override def genScript(): String = {
     vivadoLogger.info(s"Generating tcl script by user configuration...")
-
-    val targetPeriod = usedDevice.fMax.toTime
-    val clkConstr    = s"""create_clock -period ${(targetPeriod * 1e9) toBigDecimal} [get_ports clk]"""
-    val genXdcFile   = new File(genScriptDir, s"generatedXdc.xdc")
-    FileUtils.write(genXdcFile, clkConstr)
-
-    val candidateXdcFile = Seq(xdcFile, Some(genXdcFile)).dropWhile(_.isEmpty).head.get
-    val boardXdcFile     = designInput.getXdcFile(candidateXdcFile)
-    xdcFileBeUsed.delete()
-    FileUtils.copyFile(boardXdcFile, xdcFileBeUsed)
 
     var script = ""
     def getReadCommand(sourcePath: File): String = {
@@ -115,15 +119,17 @@ case class VivadoFlow[T <: Module](
     // FIXME: clear directory before run scripts
 
     // create project
-    script += s"create_project ${designInput.getTopModuleName()} ${genScriptDir.getAbsolutePath} -part ${device.familyPart} -force\n"
-    script += s"set_property PART ${device.familyPart} [current_project]\n"
+    script += s"create_project ${designInput.getTopModuleName()} ${genScriptDir.getAbsolutePath} -part ${deviceInUse.familyPart} -force\n"
+    script += s"set_property PART ${deviceInUse.familyPart} [current_project]\n"
+
+    // reading RTL sources
     designInput.getRtlDir().foreach(path => script += getReadCommand(path))
 
     def addReadXdcTask(): Unit = {
-      script += s"read_xdc ${xdcFileBeUsed.getAbsolutePath}\n"
+      script += s"read_xdc ${xdcFileInProject.getAbsolutePath}\n"
     }
     def addSynthTask(activateOOC: Boolean = true): Unit = {
-      script += s"synth_design -part ${usedDevice.familyPart}  -top ${designInput.getTopModuleName()} ${if (activateOOC) "-mode out_of_context"
+      script += s"synth_design -part ${deviceInUse.familyPart}  -top ${designInput.getTopModuleName()} ${if (activateOOC) "-mode out_of_context"
       else ""}\t"
       if (optimizeOption.isFlatten) script += s"-flatten_hierarchy full\t"
       if (optimizeOption.convertClkGateLogic) script += s"-gated_clock_conversion on\t"
@@ -170,25 +176,29 @@ case class VivadoFlow[T <: Module](
     val xillybus_pcie_dir = new File(s"/home/ltr/Chainsaw/src/main/resources/ip/xillybus_pcie_ku")
     script +=
       s"read_verilog ${xillybus_pcie_dir}/xillybus.v\n" +
-      s"read_verilog ${xillybus_pcie_dir}/xillybus_core.v\n" +
-      s"read_edif ${xillybus_pcie_dir}/xillybus_core.edf\n" +
-      s"import_ip ${xillybus_pcie_dir}/pcie_ku.xci\n" +
-      "report_ip_status\n" +
-      "upgrade_ip [get_ips]\n" +
-      "synth_ip [get_ips]\n"
+        s"read_verilog ${xillybus_pcie_dir}/xillybus_core.v\n" +
+        s"read_edif ${xillybus_pcie_dir}/xillybus_core.edf\n" +
+        s"import_ip ${xillybus_pcie_dir}/pcie_ku.xci\n" +
+        "report_ip_status\n" +
+        "upgrade_ip [get_ips]\n" +
+        "synth_ip [get_ips]\n"
 
     taskType match {
+      case PROJECT => // do nothing
       case SYNTH =>
         addSynthTask()
+        addReportUtilizationTask()
       case IMPL =>
         addSynthTask()
         addImplTask()
+        addReportUtilizationTask()
       case BIN =>
         addSynthTask(activateOOC = false)
         addImplTask()
         addBitStreamTask()
+        addReportUtilizationTask()
     }
-    addReportUtilizationTask()
+
     FileUtils.write(tclFile, script)
     vivadoLogger.info(s"Finish Vivado script generation...")
     script
@@ -207,7 +217,7 @@ case class VivadoFlow[T <: Module](
   def startFlow(): VivadoReport = {
     genScript()
     runScript()
-    VivadoReport(logFile, usedDevice)
+    VivadoReport(logFile, deviceInUse)
   }
 }
 
@@ -231,171 +241,4 @@ object VivadoFlow {
     xdcFile,
     blackBoxSet
   )
-}
-
-object VivadoTask {
-  def general[T <: Module](
-      name: String,
-      design: => T,
-      device: ChainsawDevice,
-      taskType: EdaFlowType,
-      includeRtlFile: Seq[File],
-      xdcFile: Option[File],
-      customizedConfig: SpinalConfig
-  ): VivadoReport = {
-    val edaInput: ChainsawEdaFlowInput = inVirtualGlob(
-      if (design == null) ChainsawEdaDirInput(includeRtlFile, new File(synthWorkspace, name), name)
-      else if (includeRtlFile.nonEmpty)
-        ChainsawEdaFullInput(design, includeRtlFile, new File(synthWorkspace, name), name, Some(customizedConfig))
-      else ChainsawEdaModuleInput(design, new File(synthWorkspace, name), name, Some(customizedConfig))
-    )
-
-    val task = VivadoFlow(
-      edaInput,
-      device,
-      taskType,
-      VivadoOptimizeOption(),
-      xdcFile,
-      None,
-    )
-    val report = task.startFlow()
-    report.showInfosReport()
-    report
-  }
-
-  def synth[T <: Module](
-      design: => T,
-      name: String,
-      device: ChainsawDevice         = vu9p,
-      customizedConfig: SpinalConfig = xilinxDefaultSpinalConfig,
-      includeFile: Seq[File]         = Seq[File](),
-      ignoreBudget: Boolean          = false
-  ): VivadoReport = {
-    val task = VivadoFlow(
-      ChainsawEdaFullInput(design, includeFile, new File(synthWorkspace, name), name, Some(customizedConfig)),
-      device,
-      SYNTH,
-      VivadoOptimizeOption(),
-      None,
-      None,
-    )
-    val report = task.startFlow()
-    if (!ignoreBudget) {
-      report.requireFmax(device.fMax)
-      report.requireUtil(device.budget, PreciseRequirement)
-    }
-    report.showInfosReport()
-    report
-  }
-
-  def synthModule[T <: Module](
-      design: => T,
-      name: String,
-      device: ChainsawDevice         = vu9p,
-      customizedConfig: SpinalConfig = xilinxDefaultSpinalConfig,
-      ignoreBudget: Boolean          = false
-  ): VivadoReport = {
-    val task = VivadoFlow(
-      ChainsawEdaModuleInput(design, new File(synthWorkspace, name), name, Some(customizedConfig)),
-      device,
-      SYNTH,
-      VivadoOptimizeOption(),
-      None,
-      None,
-    )
-    val report = task.startFlow()
-    if (!ignoreBudget) {
-      report.requireFmax(device.fMax)
-      report.requireUtil(device.budget, PreciseRequirement)
-    }
-    report.showInfosReport()
-    report
-  }
-
-  def synthDirs[T <: Module](
-      dirs: Seq[File],
-      name: String,
-      device: ChainsawDevice = vu9p,
-      ignoreBudget: Boolean  = false
-  ): VivadoReport = {
-    val task = VivadoFlow(
-      ChainsawEdaDirInput(dirs, new File(synthWorkspace, name), name),
-      device,
-      SYNTH,
-      VivadoOptimizeOption(),
-      None,
-      None
-    )
-    val report = task.startFlow()
-    if (!ignoreBudget) {
-      report.requireFmax(device.fMax)
-      report.requireUtil(device.budget, PreciseRequirement)
-    }
-    report.showInfosReport()
-    report
-  }
-
-  def synth: (String, => Module, ChainsawDevice, Seq[File], Option[File], SpinalConfig) => VivadoReport = {
-    general(_, _, _, SYNTH, _, _, _)
-  }
-
-  def fastSynth: (String, => Module, Seq[File]) => VivadoReport =
-    general(_, _, vu9p, SYNTH, _, None, xilinxDefaultSpinalConfig)
-
-  def synthModule: (String, => Module, ChainsawDevice, Option[File], SpinalConfig) => VivadoReport =
-    synth(_, _, _, Seq[File](), _, _)
-
-  def fastSynthModule: (String, => Module) => VivadoReport =
-    synth(_, _, vu9p, Seq[File](), None, xilinxDefaultSpinalConfig)
-
-  def synthDirs: (String, ChainsawDevice, Seq[File], Option[File], SpinalConfig) => VivadoReport =
-    synth(_, null, _, _, _, _)
-
-  def fastSynthDirs: (String, Seq[File]) => VivadoReport = synthDirs(_, vu9p, _, None, xilinxDefaultSpinalConfig)
-
-  def impl: (String, => Module, ChainsawDevice, Seq[File], Option[File], SpinalConfig) => VivadoReport =
-    general(_, _, _, IMPL, _, _, _)
-
-  def fastImpl: (String, => Module, Seq[File]) => VivadoReport =
-    general(_, _, vu9p, IMPL, _, None, xilinxDefaultSpinalConfig)
-
-  def implModule: (String, => Module, ChainsawDevice, Option[File], SpinalConfig) => VivadoReport =
-    impl(_, _, _, Seq[File](), _, _)
-
-  def fastImplModule: (String, => Module) => VivadoReport =
-    impl(_, _, vu9p, Seq[File](), None, xilinxDefaultSpinalConfig)
-
-  def implDirs: (String, ChainsawDevice, Seq[File], Option[File], SpinalConfig) => VivadoReport =
-    impl(_, null, _, _, _, _)
-
-  def fastImplDirs: (String, Seq[File]) => VivadoReport =
-    impl(_, null, vu9p, _, None, xilinxDefaultSpinalConfig)
-
-  def genBitStream: (String, => Module, ChainsawDevice, Seq[File], Option[File], SpinalConfig) => VivadoReport =
-    general(_, _, _, BIN, _, _, _)
-
-  def genModuleBitStream: (String, => Module, ChainsawDevice, Option[File], SpinalConfig) => VivadoReport =
-    genBitStream(_, _, _, Seq[File](), _, _)
-
-  def fastGenModuleBitStream: (String, => Module) => VivadoReport =
-    genModuleBitStream(_, _, vu9p, None, xilinxDefaultSpinalConfig)
-
-  def genDirBitStream: (String, ChainsawDevice, Seq[File], Option[File], SpinalConfig) => VivadoReport =
-    genBitStream(_, null, _, _, _, _)
-
-  def fastGenDirBitStream: (String, Seq[File]) => VivadoReport =
-    genDirBitStream(_, vu9p, _, None, xilinxDefaultSpinalConfig)
-
-//  def genBoardBitStream(
-//      design: => Module with Board,
-//      name: String
-//  ): VivadoReport = {
-//
-//    val (device, xdcFile) = inVirtualGlob {
-//      (design.device, design.xdcFile)
-//    }
-//
-//    genModuleBitStream(design, name, vu9p, None, xilinxDefaultSpinalConfig)
-////    genModuleBitStream(design, name, design.device, Some(design.xdcFile))
-//  }
 }

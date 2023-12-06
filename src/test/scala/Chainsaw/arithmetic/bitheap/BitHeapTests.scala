@@ -280,7 +280,7 @@ class BitHeapTests extends ChainsawFlatSpec {
       logger.info("passed")
     }
 
-    if (hasVivado) VivadoTask.fastSynthModule("Add200_6", Add200_6())
+    if (hasVivado) VivadoTask.synthModule("Add200_6", Add200_6())
   }
 
   behavior of "BitHeaps"

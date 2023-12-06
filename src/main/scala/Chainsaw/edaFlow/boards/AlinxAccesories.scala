@@ -1,7 +1,6 @@
 package Chainsaw.edaFlow.boards
 
 import spinal.core._
-import spinal.lib._
 
 import scala.language.postfixOps
 
@@ -33,7 +32,7 @@ case class AN9767() extends Component {
 object AN9767 {
   def getVoltageValue(voltage: Double): UInt = {
     // -4V -> 0x0000, 4V -> 0x3FFF
-    val step = (0x3fff - 0x0000) / (4.0 - (-4.0))
+    val step  = (0x3fff - 0x0000) / (4.0 - (-4.0))
     val value = ((voltage - (-4.0)) * step + 0x0000).toInt
     println(s"voltage: $voltage, value: $value")
     U(value, 14 bits)

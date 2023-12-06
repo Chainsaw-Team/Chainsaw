@@ -2,16 +2,11 @@ package Chainsaw.examples
 
 //import StarX.intf._
 
-import spinal.core.{B, _}
-import spinal.lib.bus.regif.RegDescr
+import spinal.core._
 
 import java.io.{File, PrintWriter}
-import java.lang.reflect.{Method, Type}
-import scala.collection.mutable
+import java.lang.reflect.Method
 import scala.collection.mutable._
-import spinal.core.GlobalData.set
-import spinal.core._
-import spinal.lib._
 
 object UML {
   val extendRelations: ListBuffer[String] = ListBuffer()
@@ -35,7 +30,7 @@ case class XdcNode(name: String, node: Data, children: ListBuffer[XdcNode] = Lis
 
 object XDC {
   val constriants: ListBuffer[String] = ListBuffer()
-  val clocks: ListBuffer[XdcNode] = ListBuffer()
+  val clocks: ListBuffer[XdcNode]     = ListBuffer()
 
   def findMaster(name: String): XdcNode = {
     var ret: XdcNode = null
@@ -52,8 +47,8 @@ class IP() extends Component {
   this.setName(this.getClass().getSimpleName())
   noIoPrefix()
   globalData.commonClockConfig = ClockDomainConfig(
-    clockEdge = RISING,
-    resetKind = ASYNC,
+    clockEdge        = RISING,
+    resetKind        = ASYNC,
     resetActiveLevel = LOW
   )
 
@@ -70,7 +65,7 @@ class IP() extends Component {
   def xdcGetNode(node: Data, handler: String = "Q"): String = {
     println(s"${node.toString()}")
     val node_path = node.getRtlPath()
-    var get_node = s"get_nets ${node_path}"
+    var get_node  = s"get_nets ${node_path}"
     if (node.isDirectionLess) {
       if (node.isReg) {
         get_node = s"get_pins ${node_path}_reg.${handler}"
@@ -121,16 +116,20 @@ class IP() extends Component {
     if (mst == null) {
       XDC.constriants += s"create_generated_clock -name ${name} -edges {${edges._1} ${edges._2} ${edges._3}} -add -master ${mst.name} [${xdcGetNode(node)}]\n"
     } else {
-      XDC.constriants += s"create_generated_clock -name ${name} -source [${xdcGetNode(mst.node)}] -edges {${edges._1} ${edges._2} ${edges._3}} -add -master ${mst.name} [${xdcGetNode(node)}]\n"
+      XDC.constriants += s"create_generated_clock -name ${name} -source [${xdcGetNode(
+        mst.node
+      )}] -edges {${edges._1} ${edges._2} ${edges._3}} -add -master ${mst.name} [${xdcGetNode(node)}]\n"
     }
   }
 
   def xdcCreateGeneratedClock(name: String, edges: (Int, Int, Int), src: Data, node: Data): Unit = {
-    XDC.constriants += s"create_generated_clock -name ${name} -source [${xdcGetNode(src)}] -edges {${edges._1} ${edges._2} ${edges._3}} [${xdcGetNode(node)}]\n"
+    XDC.constriants += s"create_generated_clock -name ${name} -source [${xdcGetNode(
+      src
+    )}] -edges {${edges._1} ${edges._2} ${edges._3}} [${xdcGetNode(node)}]\n"
   }
 
   def xdcCreateClock(name: String, freqMHz: Int, node: Data, dutyHighRatio: Double = 0.5): Unit = {
-    val period = ((1 / (freqMHz * 1e6)) * 1e12).toInt * 1e-3
+    val period   = ((1 / (freqMHz * 1e6)) * 1e12).toInt * 1e-3
     val highTime = period * dutyHighRatio
     xdcCreateClock(name, period, node, (0.000, highTime))
   }
@@ -170,7 +169,10 @@ class IP() extends Component {
     this
   }
 
-  def generateUmlFile(uml: PrintWriter = new PrintWriter(s"${this.getName()}.plantuml"), umlInit: Boolean = true): IP = {
+  def generateUmlFile(
+      uml: PrintWriter = new PrintWriter(s"${this.getName()}.plantuml"),
+      umlInit: Boolean = true
+  ): IP = {
     if (umlInit) {
       uml.write(s"@startuml\n")
       UML.extendRelations.clear()
@@ -181,7 +183,9 @@ class IP() extends Component {
       uml.write(s"  .. io ..\n")
       for (io <- ios) {
         if (io.getName() matches ("^io.*")) {
-          uml.write(s"  + {field} ${io.getClass.toString.replaceAll("class ", "").replaceAll("\\w+\\.", "")} ${io.getName()}\n")
+          uml.write(
+            s"  + {field} ${io.getClass.toString.replaceAll("class ", "").replaceAll("\\w+\\.", "")} ${io.getName()}\n"
+          )
         }
       }
     }
@@ -198,7 +202,11 @@ class IP() extends Component {
     val methods = new HashMap[String, Method]
     for (method <- this.getClass().getDeclaredMethods()) {
       val methodString = method.toString
-      if ((methodString.matches("^public spinal.*") || methodString.matches("^public StarX.*")) && !methodString.matches(".* static .*") && !methodString.matches(".*RegInst .*") && !methodString.matches(".*copy.*")) {
+      if (
+        (methodString.matches("^public spinal.*") || methodString.matches("^public StarX.*")) && !methodString.matches(
+          ".* static .*"
+        ) && !methodString.matches(".*RegInst .*") && !methodString.matches(".*copy.*")
+      ) {
         if (!methods.contains(method.getName())) {
           methods(method.getName()) = method
         }
@@ -235,7 +243,7 @@ class IP() extends Component {
     }
 
     if (this.children.length > 0) {
-      val children = new HashMap[String, IP]
+      val children    = new HashMap[String, IP]
       val childrenNum = new HashMap[String, Int]
       for (child <- this.children) {
         if (child.isInstanceOf[IP]) {
@@ -250,7 +258,9 @@ class IP() extends Component {
       for (child <- children.values) {
         child.generateUmlFile(uml, false)
         val q = '"'
-        uml.write(s"${this.getClass().getName()} ${q}1${q} *-- ${q}${childrenNum(child.getClass().getName())}${q} ${child.getClass().getName()}\n")
+        uml.write(
+          s"${this.getClass().getName()} ${q}1${q} *-- ${q}${childrenNum(child.getClass().getName())}${q} ${child.getClass().getName()}\n"
+        )
       }
     }
     if (umlInit) {
@@ -275,21 +285,15 @@ class IP() extends Component {
     reportPhase()
   }
 
-  def prePhase(): Unit = {
-  }
+  def prePhase(): Unit = {}
 
-  def buildPhase(): Unit = {
-  }
+  def buildPhase(): Unit = {}
 
-  def postPhase(): Unit = {
-  }
+  def postPhase(): Unit = {}
 
-  def reportPhase(): Unit = {
-  }
+  def reportPhase(): Unit = {}
 
-  def constraintPhase(): Unit = {
-
-  }
+  def constraintPhase(): Unit = {}
 
   addPrePopTask(() => buildIP())
 }

@@ -1,6 +1,5 @@
 package Chainsaw.edaFlow
 
-
 import spinal.core.{GlobalData, SpinalError}
 import spinal.lib.bus.regif._
 
@@ -8,14 +7,14 @@ import java.io.PrintWriter
 import scala.collection.mutable
 
 case class PythonHeaderGenerator(
-                                  fileName: String,
-                                  prefix: String,
-                                  regType: String = "u32"
-                                ) extends BusIfVisitor {
+    fileName: String,
+    prefix: String,
+    regType: String = "u32"
+) extends BusIfVisitor {
   val words = "\\w*".r
   prefix match {
     case words(_*) => null
-    case _ => SpinalError(s"${prefix} should be Valid naming : '[A-Za-z0-9_]+'")
+    case _         => SpinalError(s"${prefix} should be Valid naming : '[A-Za-z0-9_]+'")
   }
 
   case class Reg(name: String, addr: Long)
@@ -25,15 +24,15 @@ case class PythonHeaderGenerator(
   case class Type(name: String, var fields: List[FieldDescr])
 
   val regs: mutable.ListBuffer[RegDescr] = mutable.ListBuffer[RegDescr]()
-  val types: mutable.ListBuffer[Type] = mutable.ListBuffer[Type]()
-  var regLength: Int = 0
+  val types: mutable.ListBuffer[Type]    = mutable.ListBuffer[Type]()
+  var regLength: Int                     = 0
 
   def begin(busDataWidth: Int): Unit = {}
 
   def visit(descr: BaseDescriptor): Unit = {
     descr match {
       case descr: RegDescr => regDescrVisit(descr)
-      case _ => ???
+      case _               => ???
     }
   }
 
@@ -48,19 +47,18 @@ case class PythonHeaderGenerator(
   }
 
   def end(): Unit = {
-    val pc = GlobalData.get.phaseContext
+    val pc         = GlobalData.get.phaseContext
     val targetPath = s"${pc.config.targetDirectory}/${fileName}.py"
-    val pw = new PrintWriter(targetPath)
+    val pw         = new PrintWriter(targetPath)
 
     regs.zip(types).foreach { case (reg, t) =>
-      val regAddress = s"0x%0${4}x".format(reg.getAddr)
-      val fieldWidths = t.fields.map(_.getWidth)
+      val regAddress   = s"0x%0${4}x".format(reg.getAddr)
+      val fieldWidths  = t.fields.map(_.getWidth)
       val fieldOffsets = fieldWidths.scan(0)(_ + _).init
-      val fieldNames = t.fields.filterNot(_.getAccessType() == AccessType.NA).map(_.getName)
+      val fieldNames   = t.fields.filterNot(_.getAccessType() == AccessType.NA).map(_.getName)
 
       // a class supporting read/write for each reg
-      pw.write(
-        s"""
+      pw.write(s"""
            |class ${t.name.toLowerCase()}:
            |    def __init__(self, ${fieldNames.mkString(", ")}):
            |        self.address = $regAddress
@@ -74,8 +72,7 @@ case class PythonHeaderGenerator(
 
     val regByteCount: Int = types.head.fields.map(_.getWidth()).sum / 8
 
-    pw.write(
-      s"""
+    pw.write(s"""
          |def update_reg(reg):
          |    file_name = r"\\\\.\\xillybus_ctrl" # replace with your file_name
          |    with open(file_name, "wb") as ctrl:

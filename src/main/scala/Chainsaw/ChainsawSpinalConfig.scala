@@ -1,7 +1,7 @@
 package Chainsaw
 
-import Chainsaw.phases._
 import Chainsaw.edaFlow._
+import Chainsaw.phases._
 import spinal.core._
 
 /** customized elaboration configuration for ChainsawGenerator

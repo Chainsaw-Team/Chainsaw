@@ -1,12 +1,12 @@
 package Chainsaw
 
-import java.io.File
+import Chainsaw.arithmetic.bitheap._
 import spinal.core.Bool
-
-import scala.collection.mutable.ArrayBuffer
-import arithmetic.bitheap._
-import spinal.lib.experimental.math._
 import spinal.core.sim._
+import spinal.lib.experimental.math._
+
+import java.io.File
+import scala.collection.mutable.ArrayBuffer
 
 package object arithmetic {
 
@@ -27,7 +27,7 @@ package object arithmetic {
   implicit class FloatingPointPimper(float: Floating) {
     def #=(value: Float) = {
       val bitValue = java.lang.Float.floatToIntBits(value)
-      float.sign #= (bitValue >> 31) == 1
+      float.sign     #= (bitValue >> 31) == 1
       float.exponent #= (bitValue >> 23) & 0xff
       float.mantissa #= bitValue & 0x7fffff
     }

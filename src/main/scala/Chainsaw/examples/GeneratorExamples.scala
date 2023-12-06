@@ -2,13 +2,13 @@ package Chainsaw.examples
 
 import Chainsaw._
 import Chainsaw.edaFlow.vivado._
+import Chainsaw.memory._
 import spinal.core._
+import spinal.core.sim.SpinalSimBackendSel
 import spinal.lib._
 
 import scala.language.postfixOps
 import scala.util.Random
-import Chainsaw.memory._
-import spinal.core.sim.SpinalSimBackendSel
 
 // TODO: formal examples
 

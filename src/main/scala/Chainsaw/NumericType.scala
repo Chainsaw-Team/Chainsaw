@@ -4,7 +4,6 @@ import Chainsaw.NumericExt._
 import breeze.math.Complex
 import spinal.core._
 import spinal.core.internals.PhaseContext
-import spinal.lib.experimental.math.Floating
 
 import scala.language.postfixOps
 import scala.util.Random

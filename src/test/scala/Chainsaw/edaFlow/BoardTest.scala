@@ -1,15 +1,23 @@
 package Chainsaw.edaFlow
 
-import Chainsaw.edaFlow.Device.vu9p
+import Chainsaw.{BIN, DataUtil}
+import Chainsaw.edaFlow.boards.digilent.Nexys4Ddr
 import Chainsaw.edaFlow.vivado.VivadoTask
 import org.scalatest.flatspec.AnyFlatSpec
 
 import java.io.File
 
 class BoardTest extends AnyFlatSpec {
+
+  case class Nexys4Led() extends Nexys4Ddr {
+    defaultClockDomain on {
+      LED := SW.d(2)
+    }
+  }
+
+
+
   it should "synthesis board with its device and xdcFile" in {
-//    VivadoTask.synthModule("Nexys4Led", Nexys4Led(), vu9p, None, xilinxDefaultSpinalConfig)
-//    VivadoTask.fastSynthModule("Nexys4Led", Nexys4Led())
-    VivadoTask.fastGenModuleBitStream("Nexys4Led", Nexys4Led())
+    VivadoTask.general("Nexys4Led", Nexys4Led(), BIN, null, Seq[File](), None, xilinxDefaultSpinalConfig)
   }
 }

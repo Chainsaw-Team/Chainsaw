@@ -2,7 +2,6 @@ package Chainsaw.edaFlow.boards
 
 import spinal.core._
 import spinal.lib.IMasterSlave
-import spinal.lib.Stream
 
 // M2C = Mezzanine-to-Carrier,that is, sub-module to FPGA, vise versa
 // CC = clock capable pins, these pins can be used for clock signals.
@@ -63,7 +62,6 @@ object FmcHpc {
   def apply(): FmcHpc = new FmcHpc()
 }
 
-
 class PcieIntel(pinCount: Int) extends Bundle with IMasterSlave {
   assert(Seq(1, 2, 4, 8, 16).contains(pinCount), "pinCount must be 1,2,4,8 or 16")
   val perstn, refclk = Bool()
@@ -80,7 +78,7 @@ class PcieIntel(pinCount: Int) extends Bundle with IMasterSlave {
 class PcieXilinx(pinCount: Int) extends Bundle with IMasterSlave {
   assert(Seq(1, 2, 4, 8, 16).contains(pinCount), "pinCount must be 1,2,4,8 or 16")
   val PERST_B_LS, REFCLK_P, REFCLK_N = Bool() // FIXME: is PERST_B_LS active-low?
-  val RX_P, RX_N, TX_P, TX_N             = Bits(pinCount bits)
+  val RX_P, RX_N, TX_P, TX_N         = Bits(pinCount bits)
   this.setName("PCIE")
 
   override def asMaster(): Unit = {

@@ -1,19 +1,6 @@
 package Chainsaw.examples
 
-import spinal.core._
-import spinal.lib._
-import spinal.lib.fsm._
-import spinal.lib.bus._
-import spinal.lib.bus.regif._
-import spinal.sim._
-import spinal.core.sim._
-import Chainsaw._
-import Chainsaw.dsp._
-import Chainsaw.arithmetic._
-import Chainsaw.crypto._
-
 import ai.djl.ndarray._
-import ai.djl.ndarray.types._
 
 import java.io.{BufferedReader, InputStreamReader}
 import java.nio.file.{Files, Paths}

@@ -1,10 +1,7 @@
-package Chainsaw.project.chipEval
+package Chainsaw.project.ChipVerify
 
 import Chainsaw.DataUtil
-import Chainsaw.edaFlow.boards.PcieXilinx
-import Chainsaw.edaFlow.boards.alinx.Z7P
 import Chainsaw.edaFlow.boards.alinx._
-import Chainsaw.edaFlow.vivado.VivadoTask
 import Chainsaw.xillybus._
 import spinal.core._
 import spinal.lib._
@@ -20,7 +17,7 @@ case class ChipVerify() extends Z7P {
     out(alinx40Pin)
 
     // pulse generation logic
-    val an9767 = AN9767()
+    val an9767     = AN9767()
     val clkCounter = CounterFreeRun(100)
     val daClk      = (clkCounter.value >= U(49, 7 bits)).d()
 
@@ -49,25 +46,27 @@ case class ChipVerify() extends Z7P {
     xillybus.pcieXilinx <> pcie
 
     // stream loopback
-    val upload_32   = xillybus.getStreamToHost("read_32")
+    val upload_32 = xillybus.getStreamToHost("read_32")
     upload_32.addAttribute("mark_debug", "true")
     val download_32 = xillybus.getStreamFromHost("write_32")
-    val upload_8 = xillybus.getStreamToHost("read_8")
-    val download_8 = xillybus.getStreamFromHost("write_8")
+    val upload_8    = xillybus.getStreamToHost("read_8")
+    val download_8  = xillybus.getStreamFromHost("write_8")
 
-    val Seq(fifo_32, fifo_8) = Seq(32, 8).map(bitWidth => StreamFifoCC(
-      dataType = Bits(bitWidth bits),
-      depth    = 1024,
-      xillybus.xillyDomain,
-      xillybus.xillyDomain
-    ))
+    val Seq(fifo_32, fifo_8) = Seq(32, 8).map(bitWidth =>
+      StreamFifoCC(
+        dataType = Bits(bitWidth bits),
+        depth    = 1024,
+        xillybus.xillyDomain,
+        xillybus.xillyDomain
+      )
+    )
     fifo_32.setName("fifo_32")
     fifo_8.setName("fifo_8")
 
-    download_32 >> fifo_32.io.push
+    download_32    >> fifo_32.io.push
     fifo_32.io.pop >> upload_32
-    download_8    >> fifo_8.io.push
-    fifo_8.io.pop >> upload_8
+    download_8     >> fifo_8.io.push
+    fifo_8.io.pop  >> upload_8
 
     // mem - register file
     val memBusIf      = XillybusBusIf(xillybus.memBus)

@@ -7,7 +7,7 @@ import spinal.lib.bus.regif.BusIf
 import scala.language.postfixOps
 
 /** Bus interface for Xillybus mem interface
- */
+  */
 case class XillybusBusIf(bus: MemBi) extends BusIf {
 
   override type B = this.type

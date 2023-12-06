@@ -1,7 +1,5 @@
 package Chainsaw.edaFlow
 
-import java.io.File
-
 package object vcs {
   sealed trait CoverageType
 

@@ -1,10 +1,8 @@
 package Chainsaw.memory
 
-import Chainsaw.edaFlow.vivado.VivadoUtil
 import Chainsaw._
-import spinal.core._
-
-import scala.util.Random // for Xilinx FPGA Flow
+import Chainsaw.edaFlow.vivado.VivadoUtil
+import spinal.core._ // for Xilinx FPGA Flow
 
 case class DynamicDownSample(factor: Int, dataType: NumericType) extends ChainsawDynamicInfiniteGenerator {
   override def implNaiveH = None

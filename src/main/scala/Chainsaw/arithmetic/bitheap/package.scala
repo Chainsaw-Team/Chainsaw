@@ -3,7 +3,6 @@ package Chainsaw.arithmetic
 import Chainsaw._
 
 import scala.collection.mutable
-import scala.math.BigInt
 
 package object bitheap {
 

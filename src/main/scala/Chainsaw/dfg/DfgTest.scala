@@ -1,17 +1,13 @@
 package Chainsaw.dfg
 
-import spinal.core.sim.{SimConfig, _}
-import spinal.core.{Component, Vec, in, out}
 import Chainsaw.arithmetic.floating._
-import Chainsaw.examples.{StreamPeek, StreamPeekFloating, StreamPoke, StreamPokeFloating}
-
-import scala.collection.mutable.ArrayBuffer
+import Chainsaw.examples.{StreamPeekFloating, StreamPokeFloating}
+import spinal.core.sim.{SimConfig, _}
 import spinal.core._
-import spinal.core.sim._
 import spinal.lib._
 import spinal.lib.sim._
-import spinal.lib.fsm._
-import spinal.lib.bus._
+
+import scala.collection.mutable.ArrayBuffer
 
 object DfgRawTest {
   def apply(dfg: => Dfg, stimulus: Seq[Seq[Float]]) = {
@@ -35,18 +31,17 @@ object DfgRawTest {
 }
 
 object DfgStreamTest {
-  def apply(dfg: => Dfg, stimulus: Seq[Seq[Float]], golden:Seq[Seq[Float]]) = {
+  def apply(dfg: => Dfg, stimulus: Seq[Seq[Float]], golden: Seq[Seq[Float]]) = {
     SimConfig.withFstWave.compile(DfgStreamWrapper(dfg)).doSim { dut =>
-
       val scoreboards = dut.dataOut.map(_ => ScoreboardInOrder[Float]())
 
       // input
-      dut.dataIn.zipWithIndex.foreach{ case (stream, i) =>
+      dut.dataIn.zipWithIndex.foreach { case (stream, i) =>
         StreamPokeFloating(stream, dut.clockDomain, stimulus.map(_.apply(i)))
       }
 
       // output
-      scoreboards.zipWithIndex.foreach{ case (board, i) => golden.map(_.apply(i)).foreach(board.pushRef)}
+      scoreboards.zipWithIndex.foreach { case (board, i) => golden.map(_.apply(i)).foreach(board.pushRef) }
       dut.dataOut.zip(scoreboards) foreach { case (stream, board) =>
         StreamPeekFloating(stream, dut.clockDomain, board)
       }
@@ -83,7 +78,7 @@ object DfgStreamWrapper {
         input
       }.toSeq
 
-      val dataOut = graph.floatingOutputs.values.map {stream =>
+      val dataOut = graph.floatingOutputs.values.map { stream =>
         val output = master(cloneOf(stream))
         stream >> output
         output.simPublic()

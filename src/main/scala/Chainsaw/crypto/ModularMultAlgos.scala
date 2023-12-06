@@ -45,15 +45,13 @@ case class BarrettAlgo(override val M: BigInt) extends ModularMult {
   }
 }
 
-/** fine-tuned Barrett algorithm taking advantage of MSB/LSB truncated
-  * multiplication
+/** fine-tuned Barrett algorithm taking advantage of MSB/LSB truncated multiplication
   *
   * @param M
   *   modulus
   * @see
-  *   ''Langhammer, Martin and Bogdan Mihai Pasca. “Efficient FPGA Modular
-  *   Multiplication Implementation.” The 2021 ACM/SIGDA International Symposium
-  *   on Field-Programmable Gate Arrays (2021): n. pag.''
+  *   ''Langhammer, Martin and Bogdan Mihai Pasca. “Efficient FPGA Modular Multiplication Implementation.” The 2021
+  *   ACM/SIGDA International Symposium on Field-Programmable Gate Arrays (2021): n. pag.''
   */
 case class BarrettFineAlgo(override val M: BigInt) extends ModularMult {
 
@@ -65,9 +63,7 @@ case class BarrettFineAlgo(override val M: BigInt) extends ModularMult {
 
   val accuracy = 10
   val multMsb = (k + 1 until k + 10)
-    .map(width =>
-      BcmAlgo(MPrime, MsbMultiplier, k + 1, width, k + 1, useCsd = true)
-    )
+    .map(width => BcmAlgo(MPrime, MsbMultiplier, k + 1, width, k + 1, useCsd = true))
     .dropWhile(mult => (mult.upperBound - mult.lowerBound) > accuracy)
     .head
   logger.info(s"width involved in msbMult: ${multMsb.widthInvolved}")

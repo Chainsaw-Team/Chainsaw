@@ -1,12 +1,11 @@
 package Chainsaw
 
+import Chainsaw.NumericExt._
 import spinal.core._
 
 import scala.language.postfixOps
-import NumericExt._
 
-class ComplexFix(maxRaw: BigInt, minRaw: BigInt, exp: Int)
-  extends Bundle {
+class ComplexFix(maxRaw: BigInt, minRaw: BigInt, exp: Int) extends Bundle {
 
   val real, imag = new AFix(maxRaw, minRaw, exp)
 
@@ -20,17 +19,17 @@ class ComplexFix(maxRaw: BigInt, minRaw: BigInt, exp: Int)
 
   def -|(that: ComplexFix): ComplexFix = ComplexFix(real -| that.real, imag -| that.imag)
 
-  /** --------
-   * multiplication
-   * -------- */
+  /** -------- multiplication
+    * --------
+    */
 
   def *(that: AFix): ComplexFix = ComplexFix(real mult that, imag mult that)
 
   // TODO: multiplication using 3 mults
 
-  /** --------
-   * nontrivial computations
-   * -------- */
+  /** -------- nontrivial computations
+    * --------
+    */
 
   def >>(that: Int) = ComplexFix(real >> that, imag >> that)
 

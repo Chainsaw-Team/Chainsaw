@@ -1,11 +1,11 @@
 package Chainsaw.device
 
+import org.slf4j._
 import spinal.core._
 
 import scala.collection.mutable.ArrayBuffer
 import scala.language.postfixOps
 import scala.math._
-import org.slf4j._
 
 object LUTUtils {
   def expression2value(expression: Seq[Boolean] => Boolean, bitCount: Int) = {

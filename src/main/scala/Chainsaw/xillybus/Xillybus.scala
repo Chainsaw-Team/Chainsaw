@@ -1,16 +1,9 @@
 package Chainsaw.xillybus
 
-import Chainsaw.edaFlow
 import Chainsaw.edaFlow.Device._
 import Chainsaw.edaFlow.boards.{PcieIntel, PcieXilinx}
 import spinal.core._
-import spinal.lib.{master, slave}
-import spinal.core._
-import spinal.core.sim._
-import spinal.lib._
-import spinal.lib.sim._
-import spinal.lib.fsm._
-import spinal.lib.bus._
+import spinal.lib.slave
 
 import scala.language.postfixOps
 
@@ -74,9 +67,9 @@ case class StreamWrite(device: XillybusDevice) extends Bundle {
 
 case class MemBi(device: XillybusDevice) extends Bundle {
   val hasWrite = device.direction == "write" || device.direction == "bi"
-  val hasRead = device.direction == "read" || device.direction == "bi"
-  val wName = s"user_w_${device.name}"
-  val rName = s"user_r_${device.name}"
+  val hasRead  = device.direction == "read" || device.direction == "bi"
+  val wName    = s"user_w_${device.name}"
+  val rName    = s"user_r_${device.name}"
   println(s"has read = $hasRead, has write = $hasWrite")
 
   // I/O

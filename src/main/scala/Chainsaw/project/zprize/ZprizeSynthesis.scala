@@ -1,7 +1,7 @@
 package Chainsaw.project.zprize
 
-import Chainsaw.{ChainsawSynth, logger}
 import Chainsaw.project.zprize.ZPrizeModules.{lsbMultGen, msbMultGen}
+import Chainsaw.{ChainsawSynth, logger}
 
 object ZprizeSynthesis extends App {
 

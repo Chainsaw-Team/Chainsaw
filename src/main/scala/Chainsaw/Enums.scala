@@ -106,12 +106,12 @@ sealed trait EdaFlowType extends ChainsawEnum
 
 object PROJECT extends EdaFlowType
 
+object SIM extends EdaFlowType
 object SYNTH extends EdaFlowType
 
 object IMPL extends EdaFlowType
 object BIN extends EdaFlowType
 
-object SIM extends EdaFlowType
 
 sealed trait CompressionStrategy extends ChainsawEnum
 object ReFirst extends CompressionStrategy // ReductionEfficiency First

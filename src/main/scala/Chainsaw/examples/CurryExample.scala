@@ -2,7 +2,7 @@ package Chainsaw.examples
 
 object CurryExample {
 
-  def add(a:Int, b:Int) = a + b
+  def add(a: Int, b: Int) = a + b
 
   def add1 = add(_, 1)
 
@@ -11,7 +11,6 @@ object CurryExample {
   }
 
 }
-
 
 object CurryApp extends App {
 

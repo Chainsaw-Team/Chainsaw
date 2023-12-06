@@ -6,8 +6,7 @@ import org.apache.commons.io.FileUtils
 import spinal.core._
 
 import java.io.File
-import scala.collection.mutable
-import scala.collection.mutable.{ArrayBuffer, LinkedHashSet}
+import scala.collection.mutable.ArrayBuffer
 import scala.io.Source
 import scala.util.Try
 

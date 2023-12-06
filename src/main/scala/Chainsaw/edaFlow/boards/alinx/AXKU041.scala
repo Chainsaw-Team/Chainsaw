@@ -1,9 +1,9 @@
 package Chainsaw.edaFlow.boards.alinx
 
-import Chainsaw.edaFlow.boards.{FmcLpc, PcieXilinx}
 import Chainsaw.edaFlow.Device._
-import Chainsaw.primitives.IBUFDS
 import Chainsaw.edaFlow._
+import Chainsaw.edaFlow.boards.{FmcLpc, PcieXilinx}
+import Chainsaw.primitives.IBUFDS
 import spinal.core._
 import spinal.lib.slave
 
@@ -11,8 +11,9 @@ import java.io.File
 import scala.language.postfixOps
 
 /** ALINX AXKU041 development board
- * @see [[https://alinx.com/detail/275]] for sales information and manual
- */
+  * @see
+  *   [[https://alinx.com/detail/275]] for sales information and manual
+  */
 class AXKU041 extends Component with Board {
 
   // pins with fixed direction
@@ -21,8 +22,8 @@ class AXKU041 extends Component with Board {
   lazy val pcie                   = slave(PcieXilinx(8)) // PCIE
 
   // pins without fixed direction
-  lazy val FMC1_LPC, FMC2_LPC = FmcLpc() // FMC-LPC
-  lazy val SMA_CLKIN_P, SMA_CLKIN_N = Bool() // SMA
+  lazy val FMC1_LPC, FMC2_LPC       = FmcLpc() // FMC-LPC
+  lazy val SMA_CLKIN_P, SMA_CLKIN_N = Bool()   // SMA
 
   // enable pins
   def useFmc1(asMaster: Boolean): Unit = { // Fmc1 of AXKU401 has no clock I/O
@@ -39,7 +40,8 @@ class AXKU041 extends Component with Board {
     new XilinxDevice(UltraScale, "XCKU040-FFVA1156-2-i".toLowerCase(), 200 MHz, None)
   val clk: Bool = Bool()
   clk := IBUFDS.Lvds2Clk(sys_clk_p, sys_clk_n) // LVDS CLK -> single ended clk
-  val clockDomainConfig: ClockDomainConfig = ClockDomainConfig(clockEdge = RISING, resetKind = ASYNC, resetActiveLevel = LOW)
+  val clockDomainConfig: ClockDomainConfig =
+    ClockDomainConfig(clockEdge = RISING, resetKind = ASYNC, resetActiveLevel = LOW)
   override val defaultClockDomain =
     new ClockDomain(clock = clk, reset = rst_n, config = clockDomainConfig, frequency = FixedFrequency(200 MHz))
 

@@ -19,9 +19,9 @@ case class Signal(v: DfgVertex, outId: Int) {
 
   // TODO: floating stream etc.
 
-  def floating: Floating = this.v.asInstanceOf[Io].floating
+  def floating: Floating                   = this.v.asInstanceOf[Io].floating
   def floatingStream: lib.Stream[Floating] = this.v.asInstanceOf[Io].floatingStream
-  def fixed: AFix = this.v.asInstanceOf[Io].fixed
+  def fixed: AFix                          = this.v.asInstanceOf[Io].fixed
 }
 
 object S {

@@ -1,9 +1,6 @@
 package Chainsaw.memory
 
 import spinal.core._
-import spinal.core.sim._
-import spinal.lib._
-import spinal.lib.fsm._
 
 // TODO: verification for dynamic counter
 case class DynamicCounter(end: UInt) extends ImplicitArea[UInt] {

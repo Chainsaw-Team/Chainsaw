@@ -1,16 +1,12 @@
 package Chainsaw.examples
 
 import Chainsaw.DataUtil
-import Chainsaw.memory.{DynamicCounter, DynamicCounterFreeRun}
+import Chainsaw.memory.DynamicCounterFreeRun
 import spinal.core._
 import spinal.core.sim._
 import spinal.lib._
-import spinal.lib.sim._
-import spinal.lib.fsm._
-import spinal.lib.bus._
 
 import scala.collection.mutable.ArrayBuffer
-import scala.util.Random
 
 case class Adc() extends Component {
 

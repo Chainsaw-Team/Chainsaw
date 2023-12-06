@@ -1,7 +1,6 @@
 package Chainsaw.phases
 
 import Chainsaw.{ChainsawBaseModule, logger}
-import spinal.core._
 import spinal.core.internals._
 
 import scala.collection.mutable.ArrayBuffer

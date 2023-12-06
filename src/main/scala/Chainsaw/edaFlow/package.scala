@@ -1,18 +1,10 @@
 package Chainsaw
 
 import Chainsaw.edaFlow.Device._
-import Chainsaw.edaFlow.EdaFlowUtils.EdaDirectoryUtils._
-import Chainsaw.edaFlow.vivado.VivadoUtil
-import org.apache.commons.io.FileUtils
 import spinal.core._
 import spinal.core.internals.PhaseContext
 
 import java.io.File
-import java.text.SimpleDateFormat
-import java.util.Calendar
-import scala.collection.mutable.ArrayBuffer
-import scala.io.Source
-import scala.util.Try
 
 package object edaFlow {
 

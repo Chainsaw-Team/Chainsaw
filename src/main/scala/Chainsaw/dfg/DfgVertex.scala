@@ -1,16 +1,11 @@
 package Chainsaw.dfg
 
 import Chainsaw.NumericType
-import spinal.core.{AFix, Bits}
+import spinal.core.AFix
+import spinal.lib._
 import spinal.lib.experimental.math.Floating
 
 import scala.collection.JavaConverters._
-import spinal.core._
-import spinal.core.sim._
-import spinal.lib._
-import spinal.lib.sim._
-import spinal.lib.fsm._
-import spinal.lib.bus._
 
 abstract class DfgVertex(implicit dfg: Dfg) {
 
@@ -25,7 +20,7 @@ abstract class DfgVertex(implicit dfg: Dfg) {
   override def toString: String = name // TODO: get name by reflection
 
   def implFloating(inputs: Seq[Floating]): Seq[Floating] = ???
-  def implFixed(inputs: Seq[AFix]): Seq[AFix] = ???
+  def implFixed(inputs: Seq[AFix]): Seq[AFix]            = ???
 
   def inCount = inputTypes.length
 
@@ -57,16 +52,16 @@ class NoOp(dataType: NumericType)(implicit dfg: Dfg) extends DfgVertex {
 abstract class Io(dataType: NumericType)(implicit dfg: Dfg) extends NoOp(dataType) {
 
   def floatingStream: Stream[Floating] = dfg.floatingSignalMap(this)
-  def floatingFlow: Flow[Floating] = floatingStream.asFlow
-  def floating: Floating = floatingStream.payload
+  def floatingFlow: Flow[Floating]     = floatingStream.asFlow
+  def floating: Floating               = floatingStream.payload
 
   def fixedStream: Stream[AFix] = dfg.fixedSignalMap(this)
 
   def fixedFlow: Flow[AFix] = fixedStream.asFlow
-  def fixed: AFix = fixedStream.payload
+  def fixed: AFix           = fixedStream.payload
 
   dfg.floatingSignalMap += this -> Stream(Floating(8, 23)).setName(this.name)
-  dfg.fixedSignalMap += this -> Stream(dataType()).setName(this.name)
+  dfg.fixedSignalMap += this    -> Stream(dataType()).setName(this.name)
 
 }
 

@@ -1,9 +1,9 @@
 package Chainsaw.device
 
-import spinal.core._
 import Chainsaw._
-import java.io.File
+import spinal.core._
 
+import java.io.File
 import scala.language.postfixOps
 
 /** Primitives in unisim library, usePrimitives in Chainsaw package should be set as true for synth, false for sim
@@ -43,7 +43,7 @@ object MULTMODE extends Enumeration {
   val AB1, AD0B1, AAD01, AD0AD01 = Value
 }
 
-import MULTMODE._
+import Chainsaw.device.MULTMODE._
 
 // ports for cascading
 case class DSPCASC() extends Bundle {

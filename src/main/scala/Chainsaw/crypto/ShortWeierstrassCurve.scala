@@ -4,11 +4,6 @@ import Chainsaw._
 import Chainsaw.project.zprize.ZPrizeMSM.baseModulus
 import cc.redberry.rings.scaladsl._
 
-import java.awt.Color
-import java.io.File
-import javax.imageio.ImageIO
-import scala.collection.mutable.ArrayBuffer
-
 case class ShortWeierstrassCurve(
     override val modulus: IntZ,
     override val c: IntZ,
@@ -17,16 +12,14 @@ case class ShortWeierstrassCurve(
 
   implicit val ecc: ShortWeierstrassCurve = this
 
-  /** algorithm for padd & pdbl on homogeneous projective coordinate, 12M
-    * required
+  /** algorithm for padd & pdbl on homogeneous projective coordinate, 12M required
     *
     * @see
-    *   ''Complete addition formulas for prime order elliptic curves, Joost
-    *   Renes, Craig Costello, Lejla Batina'' for the algorithm
+    *   ''Complete addition formulas for prime order elliptic curves, Joost Renes, Craig Costello, Lejla Batina'' for
+    *   the algorithm
     * @see
-    *   ''PipeMSM: Hardware Acceleration for Multi-Scalar Multiplication,
-    *   Charles. F. Xavier'' [[https://eprint.iacr.org/2022/999.pdf]] for the
-    *   pipeline
+    *   ''PipeMSM: Hardware Acceleration for Multi-Scalar Multiplication, Charles. F. Xavier''
+    *   [[https://eprint.iacr.org/2022/999.pdf]] for the pipeline
     */
   def paddExtendedHomo(p0: EcPointProj, p1: EcPointProj): EcPointProj = {
     val zp = Zp(modulus)

@@ -3,8 +3,7 @@ package Chainsaw.dfg
 import java.io.{File, FileOutputStream}
 
 /** methods visualizing Chainsaw Dfg by mapping it to a .drawio xml file
- *
- */
+  */
 object DfgToDrawIo {
 
   def apply(dfg: Dfg, fileName: String): Unit = {
@@ -59,10 +58,10 @@ object DfgToDrawIo {
       .mkString("\n") // with indent
 
     println(prefix)
-    val xml              = prefix + content + postfix
+    val xml                 = prefix + content + postfix
     val fileNameWithPostfix = s"$fileName.drawio"
-    val file = new File(fileNameWithPostfix)
-    val fileOutputStream = new FileOutputStream(fileNameWithPostfix)
+    val file                = new File(fileNameWithPostfix)
+    val fileOutputStream    = new FileOutputStream(fileNameWithPostfix)
     println(s"view your dfg at ${file.getAbsolutePath}")
     fileOutputStream.write(xml.getBytes)
     fileOutputStream.close()

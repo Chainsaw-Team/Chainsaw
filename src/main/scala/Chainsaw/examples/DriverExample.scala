@@ -1,14 +1,11 @@
 package Chainsaw.examples
 
+import Chainsaw._
+import Chainsaw.phases._
 import spinal.core._
-import spinal.core.sim._
-import spinal.lib._
-import spinal.lib.fsm._
 import spinal.core.internals._
 
 import scala.language.postfixOps
-import Chainsaw.phases._
-import Chainsaw._
 
 case class DriverExample(exampleId: Int) extends Component {
 

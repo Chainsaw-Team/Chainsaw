@@ -1,6 +1,5 @@
 import Chainsaw.NumericExt._
 import Chainsaw.edaFlow.Device._
-import Chainsaw.edaFlow._
 import cc.redberry.rings.scaladsl.IntZ
 import com.mathworks.engine.MatlabEngine
 import org.apache.commons.io.FileUtils
@@ -406,7 +405,7 @@ package object Chainsaw {
         case SYNTH =>
           VivadoTask.synth(gen.name, gen.implH, vu9p, Seq[File](), None, ChainsawSpinalConfig(gen))
         case IMPL =>
-          VivadoTask.implModule(gen.name, gen.implH, vu9p, None, ChainsawSpinalConfig(gen))
+          VivadoTask.implModule(gen.name, gen.implH)
       }
 
       report.requireUtil(gen.vivadoUtilEstimation, requirementStrategy)

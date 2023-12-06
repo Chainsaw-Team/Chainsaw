@@ -4,7 +4,7 @@ import java.io._
 
 object FileExample extends App {
 
-  val dir = new File("./src/main/resources/temp/temp")
+  val dir  = new File("./src/main/resources/temp/temp")
   val file = new File(dir, "temp.json")
 
   println("\nattributes")
@@ -24,14 +24,13 @@ object FileExample extends App {
 
   println("\nactions")
 
-  println(s"dir.mkdir() = ${dir.mkdir()}") // failed as its parent doesn't exist
-  println(s"dir.mkdirs() = ${dir.mkdirs()}") // recursive version of mkdir, succeed
-  println(s"dir.createNewFile() = ${dir.createNewFile()}") // failed as it is not a file
+  println(s"dir.mkdir() = ${dir.mkdir()}")                   // failed as its parent doesn't exist
+  println(s"dir.mkdirs() = ${dir.mkdirs()}")                 // recursive version of mkdir, succeed
+  println(s"dir.createNewFile() = ${dir.createNewFile()}")   // failed as it is not a file
   println(s"file.createNewFile() = ${file.createNewFile()}") // succeed
   println(s"file.delete() = ${file.delete()}")
   println(s"dir.delete() = ${dir.delete()}")
 
   println("\nothers")
-
 
 }

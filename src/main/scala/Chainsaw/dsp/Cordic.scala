@@ -6,11 +6,9 @@ import Chainsaw.edaFlow.vivado.VivadoUtil
 import breeze.numerics._
 import breeze.numerics.constants.Pi
 import spinal.core._
-
-import spinal.lib._
-import spinal.core._
-import spinal.lib.fsm._
 import spinal.core.sim._
+import spinal.lib._
+import spinal.lib.fsm._
 
 import scala.language.postfixOps
 import scala.util.Random

@@ -1,6 +1,3 @@
 package Chainsaw
 
-package object dfg {
-
-
-}
+package object dfg {}

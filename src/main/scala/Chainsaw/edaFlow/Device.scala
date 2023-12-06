@@ -1,9 +1,9 @@
 package Chainsaw.edaFlow
 
-import Chainsaw.edaFlow.vivado.VivadoUtil
 import Chainsaw._
-import spinal.lib._
+import Chainsaw.edaFlow.vivado.VivadoUtil
 import spinal.core._
+
 import java.io.File
 
 object Device {

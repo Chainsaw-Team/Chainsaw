@@ -1,16 +1,13 @@
 package Chainsaw.arithmetic
 
 import Chainsaw._
-import Chainsaw.arithmetic.bitheap.ScoreIndicator
+import Chainsaw.arithmetic.bitheap._
 import Chainsaw.edaFlow.vivado._
 import spinal.core._
 import spinal.lib._
 
 import scala.collection.mutable.ArrayBuffer
 import scala.language.postfixOps
-import bitheap._
-
-import scala.collection.immutable
 import scala.util.Random
 
 trait Compressor {

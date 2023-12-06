@@ -2,7 +2,6 @@ package Chainsaw.arithmetic
 
 import Chainsaw._
 import Chainsaw.edaFlow.vivado.VivadoUtil
-import breeze.numerics.ceil
 import spinal.core._
 
 import scala.language.postfixOps

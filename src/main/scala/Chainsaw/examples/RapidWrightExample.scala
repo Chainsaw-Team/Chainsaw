@@ -1,15 +1,12 @@
 package Chainsaw.examples
-import com.xilinx.rapidwright
-import com.xilinx.rapidwright.design.{Design, DesignTools, Net, SiteInst}
 import com.xilinx.rapidwright.design.tools.RelocationTools
+import com.xilinx.rapidwright.design.{Design, DesignTools, Net, SiteInst}
 import com.xilinx.rapidwright.device.SiteTypeEnum
 import com.xilinx.rapidwright.tests.CodePerfTracker
 import org.jgrapht.graph._
 
-import java.nio.file.Paths
-import collection.JavaConverters._
 import java.util
-import java.util.Set
+import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
 
 sealed trait RelocateStrategy

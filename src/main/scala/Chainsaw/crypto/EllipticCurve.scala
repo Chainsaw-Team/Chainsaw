@@ -34,8 +34,8 @@ class EllipticCurve(
 
   /** naive implementation of padd & pdbl on in affine coordinates
     *
-    * caution! padd & pdbl are actually two different operations in affine
-    * coordinates, we merge them for simplicity while using pmul
+    * caution! padd & pdbl are actually two different operations in affine coordinates, we merge them for simplicity
+    * while using pmul
     *
     * @see
     *   [[http://hyperelliptic.org/EFD/g1p/auto-shortw.html]]
@@ -226,7 +226,6 @@ case class EcPointProj(axis: IntZ*)(coordinates: Coordinates) {
 }
 
 object Temp extends App {
-  import sys._
 
   println(sys.env("HOME"))
   println(sys.env("VIVADO"))

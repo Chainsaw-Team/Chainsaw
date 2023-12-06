@@ -1,17 +1,8 @@
 package Chainsaw.memory
 
 import Chainsaw._
-import Chainsaw.dsp._
-import Chainsaw.arithmetic._
-import Chainsaw.crypto._
 import Chainsaw.edaFlow.vivado._
 import spinal.core._
-import spinal.lib._
-import spinal.lib.fsm._
-import spinal.lib.bus._
-import spinal.lib.bus.regif._
-import spinal.sim._
-import spinal.core.sim._
 
 import scala.language.postfixOps // for more simulation
 
@@ -46,6 +37,6 @@ case class RamByXilinxBram(
 }
 
 object RamByXilinxBram extends App {
-  VivadoTask.fastSynthModule("RamByXilinxBram", RamByXilinxBram(1, 1, 64, 16384))
-  VivadoTask.fastImplModule("RamByXilinxBram", RamByXilinxBram(1, 1, 64, 16384))
+  VivadoTask.synthModule("RamByXilinxBram", RamByXilinxBram(1, 1, 64, 16384))
+  VivadoTask.implModule("RamByXilinxBram", RamByXilinxBram(1, 1, 64, 16384))
 }

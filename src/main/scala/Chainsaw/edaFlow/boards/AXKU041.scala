@@ -1,7 +1,6 @@
 package Chainsaw.edaFlow.boards
 
 import Chainsaw.edaFlow.Device._
-import Chainsaw._
 import Chainsaw.edaFlow._
 import spinal.core._
 import spinal.lib.master

@@ -5,8 +5,6 @@ import Chainsaw.edaFlow.Device._
 import spinal.core._
 import spinal.lib.experimental.math.Floating
 
-import scala.collection.immutable
-
 // floating operators are designed for DFG verification
 abstract class FloatingBinaryOperator(implicit dfg: Dfg) extends Operator {
 
@@ -136,4 +134,3 @@ object FloatingOperators {
   }
 
 }
-
