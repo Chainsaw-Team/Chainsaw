@@ -5,7 +5,8 @@ import Chainsaw.edaFlow._
 import Chainsaw.edaFlow.boards.{FmcLpc, PcieXilinx}
 import Chainsaw.primitives.IBUFDS
 import spinal.core._
-import spinal.lib.slave
+import spinal.lib.{master, slave}
+import spinal.lib.com.uart._
 
 import java.io.File
 import scala.language.postfixOps
@@ -17,9 +18,12 @@ import scala.language.postfixOps
 class AXKU041 extends Component with Board {
 
   // pins with fixed direction
-  val sys_clk_p, sys_clk_n, rst_n = in Bool ()
-  val user_key                    = in Bool ()
-  lazy val pcie                   = slave(PcieXilinx(8)) // PCIE
+  lazy val sys_clk_p, sys_clk_n, rst_n = in Bool ()
+  lazy val user_key                    = in Bool ()
+  lazy val pcie                        = slave(PcieXilinx(8)) // PCIE
+  lazy val UART                        = master(Uart())       // FMC-HPC
+  lazy val led_test                    = out Bits (2 bits)
+  lazy val led                         = out Bits (4 bits)
 
   // pins without fixed direction
   lazy val FMC1_LPC, FMC2_LPC       = FmcLpc() // FMC-LPC
@@ -38,11 +42,13 @@ class AXKU041 extends Component with Board {
   override val xdcFile: File = new File(xdcFileDir, "AXKU041.xdc")
   override val device: XilinxDevice =
     new XilinxDevice(UltraScale, "XCKU040-FFVA1156-2-i".toLowerCase(), 200 MHz, None)
-  val clk: Bool = Bool()
-  clk := IBUFDS.Lvds2Clk(sys_clk_p, sys_clk_n) // LVDS CLK -> single ended clk
-  val clockDomainConfig: ClockDomainConfig =
-    ClockDomainConfig(clockEdge = RISING, resetKind = ASYNC, resetActiveLevel = LOW)
-  override val defaultClockDomain =
+
+  override lazy val defaultClockDomain = {
+    val clk: Bool = Bool()
+    clk := IBUFDS.Lvds2Clk(sys_clk_p, sys_clk_n) // LVDS CLK -> single ended clk
+    val clockDomainConfig: ClockDomainConfig =
+      ClockDomainConfig(clockEdge = RISING, resetKind = ASYNC, resetActiveLevel = LOW)
     new ClockDomain(clock = clk, reset = rst_n, config = clockDomainConfig, frequency = FixedFrequency(200 MHz))
+  }
 
 }

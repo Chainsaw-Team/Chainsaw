@@ -17,7 +17,6 @@ case class ChipVerifyKu() extends AXKU041 {
   defaultClockDomain on {
 
     // enable/set direction for inout signals
-    //    useFmc2(asMaster = true, dataOnly = true)
     useFmc1(asMaster = true)
 
     // module connection
@@ -135,6 +134,6 @@ case class ChipVerifyKu() extends AXKU041 {
 }
 
 object ChipVerifyKu extends App {
-//  SpinalVerilog(ChipVerifyKu())
-  VivadoTask.genBitStreamForBoard("ChipVerifyKu", ChipVerifyKu())
+  SpinalVerilog(ChipVerifyKu())
+//  VivadoTask.genBitStreamForBoard("ChipVerifyKu", ChipVerifyKu())
 }

@@ -1,83 +1,148 @@
 package Chainsaw.project.ChipVerify
 
 import Chainsaw.DataUtil
+import Chainsaw.edaFlow.PythonHeaderGenerator
 import Chainsaw.edaFlow.boards.alinx._
 import Chainsaw.xillybus._
 import spinal.core._
 import spinal.lib._
-import spinal.lib.bus.regif.AccessType
+import spinal.lib.bus.regif.{AccessType, HtmlGenerator}
 
 import scala.language.postfixOps
 
-case class ChipVerify() extends Z7P {
+/** Top module for ChipVerify project
+  */
+case class ChipVerify() extends AXKU041 {
 
-  defaultClockDomain on {
+  // CXP host blackbox
+  val cxpHost = CxpHostWrapper()
+  // CXP host <-> board connection
+  cxpHost.UART <> UART
+  led_test(1)  := False
+  led_test(0)  := cxpHost.power_good
 
-    // I/O
-    out(alinx40Pin)
+  // temp name for CXP <-> FMC-HPC card(part of FMC3)
+  val fmc_ref_clk_n, fmc_ref_clk_p = in Bool ()
+  val fmc_rx_n, fmc_rx_p           = in Bits (4 bits)
+  val fmc_tx                       = out Bits (4 bits)
+  val pocxp_en_tri_o               = out Bits (4 bits)
 
-    // pulse generation logic
-    val an9767     = AN9767()
-    val clkCounter = CounterFreeRun(100)
-    val daClk      = (clkCounter.value >= U(49, 7 bits)).d()
+  cxpHost.fmc_ref_clk_n := fmc_ref_clk_n
+  cxpHost.fmc_ref_clk_p := fmc_ref_clk_p
+  cxpHost.fmc_rx_n      := fmc_rx_n
+  cxpHost.fmc_rx_p      := fmc_rx_p
 
-    val da2Clk = RegInit(False)
-    da2Clk.toggleWhen(daClk.rise())
+  fmc_tx         := cxpHost.fmc_tx
+  pocxp_en_tri_o := cxpHost.pocxp_en_tri_o
 
-    val data = RegInit(U(0, 14 bits))
-    when(da2Clk.rise())(data := AN9767.getVoltageValue(1.8))
-    when(da2Clk.fall())(data := AN9767.getVoltageValue(0.0))
+  val dmaClockDomainConfig = ClockDomainConfig(clockEdge = RISING, resetKind = BOOT)
+  val dmaClockDomain = ClockDomain(cxpHost.dma_clk, config = dmaClockDomainConfig, frequency = FixedFrequency(250 MHz))
 
-    // manual trigger -> DAC
-    val trigger  = (!pl_key_n).d(3).rise()
-    val pulseGen = Timeout(5 us)
-    when(trigger)(pulseGen.clear())
+  // enable/set direction for inout signals
+  useFmc1(asMaster = true)
 
-    when(~pulseGen.state)(data := AN9767.getVoltageValue(1.8))
-      .otherwise(data := AN9767.getVoltageValue(0.0))
+  // module connection
+  // AN9767 -> FL1010 -> FMC2
+  val an9767 = AN9767()
+  FL1010(
+    an9767.alinx40PinOut,
+    an9767.alinx40PinOut
+  ) <> FMC1_LPC // copy an9767 output to both 40pin connectors on FL1010
 
-    // pulse -> AN9767 -> ALINX40PIN
-    Seq(an9767.channel1, an9767.channel2).foreach(_                                               := data)
-    Seq(an9767.channel1Clk, an9767.channel2Clk, an9767.channel1Wrt, an9767.channel2Wrt).foreach(_ := daClk)
-    alinx40Pin := an9767.alinx40PinOut
+  // PCIe module using Xillybus
 
-    // PCIE logic
-    val xillybus = XillybusWrapper.defaultWrapper(pinCount = 4, this.device)
-    xillybus.pcieXilinx <> pcie
+  // for block design, RTL module cannot contains IP
+  val xillybus = XillybusWrapper.defaultWrapper(pinCount = 8, this.device)
+  xillybus.pcieXilinx <> pcie
 
-    // stream loopback
-    val upload_32 = xillybus.getStreamToHost("read_32")
-    upload_32.addAttribute("mark_debug", "true")
-    val download_32 = xillybus.getStreamFromHost("write_32")
-    val upload_8    = xillybus.getStreamToHost("read_8")
-    val download_8  = xillybus.getStreamFromHost("write_8")
+  // stream loopback for PCIe test
+  val upload_8   = xillybus.getStreamToHost("read_8")
+  val download_8 = xillybus.getStreamFromHost("write_8")
+  download_8.queue(32, xillybus.xillyDomain, xillybus.xillyDomain) >> upload_8
 
-    val Seq(fifo_32, fifo_8) = Seq(32, 8).map(bitWidth =>
-      StreamFifoCC(
-        dataType = Bits(bitWidth bits),
-        depth    = 1024,
-        xillybus.xillyDomain,
-        xillybus.xillyDomain
-      )
-    )
-    fifo_32.setName("fifo_32")
-    fifo_8.setName("fifo_8")
+  val upload_32   = xillybus.getStreamToHost("read_32")
+  val download_32 = xillybus.getStreamFromHost("write_32")
 
-    download_32    >> fifo_32.io.push
-    fifo_32.io.pop >> upload_32
-    download_8     >> fifo_8.io.push
-    fifo_8.io.pop  >> upload_8
+  // creating system controller
+  val ctrlDomain =
+    new ClockingArea(xillybus.xillyDomain) { // register file should be instantiated in the same clock domain as xillybus
+      val memBusIf = XillybusBusIf(xillybus.memBus)
+      // creating system controller using xillybus mem device
+      val trigger = memBusIf
+        .newReg("trigger")
+        .field(UInt(1 bits), AccessType.RW, 0, "trigger flag, generate pulse when this flag change")
+      val pulseWidthForSample = memBusIf
+        .newReg("pulseWidthForSample")
+        .field(UInt(8 bits), AccessType.RW, 0, "pulsewidth control word(PCW), pulsewidth = PCW * 0.5us")
+      val voltageForSample = memBusIf
+        .newReg("voltageForSample")
+        .field(
+          UInt(8 bits),
+          AccessType.RW,
+          0,
+          "voltage control word(VCW), voltage = VCW * 64 * (8.0V / 16383) - 4.0V"
+        )
+      val delayForCamera = memBusIf
+        .newReg("delay")
+        .field(UInt(8 bits), AccessType.RW, 0, "channel1 -> channel2 delay control word(DCW), delay = DCW * 0.5us")
+      val pulseWidthForCamera = memBusIf
+        .newReg("pulseWidthForCamera")
+        .field(UInt(8 bits), AccessType.RW, 0, "pulse width in cycle")
+      val voltageForCamera = memBusIf
+        .newReg("voltageForCamera")
+        .field(
+          UInt(8 bits),
+          AccessType.RW,
+          0,
+          "voltage control word(VCW), voltage = VCW * 64 * (8.0V / 16383) - 4.0V"
+        )
+      val periodForCamera = memBusIf
+        .newReg("periodForCamera")
+        .field(UInt(8 bits), AccessType.RW, 0, "period = CW * 0.5us")
 
-    // mem - register file
-    val memBusIf      = XillybusBusIf(xillybus.memBus)
-    val pulseGenReg   = memBusIf.newReg("pulseGen")
-    val pulseGenField = pulseGenReg.field(UInt(8 bits), AccessType.RW, 0, "pulse generation flag")
+      memBusIf.accept(PythonHeaderGenerator("regIf", "VerifyChip", "u32"))
+      memBusIf.accept(HtmlGenerator("regIf", "VerifyChip"))
 
+      // TODO: mark_debug conflict with async_reg
+      // TODO: mark_debug on non-reg signal lead to unknown clock domain(which you need to specify manually)
+      pulseWidthForSample.addAttribute("mark_debug", "true").setName("pulseWidth")
+      delayForCamera.addAttribute("mark_debug", "true").setName("delay")
+      voltageForSample.addAttribute("mark_debug", "true").setName("voltage")
+    }
+
+  dmaClockDomain on {
+    def getControlWordCC[T <: Data](controlWord: T) = {
+      controlWord.addTag(crossClockDomain)
+      controlWord.d(3)
+    }
+    val pulseGen = PulseGen(dmaClockDomain.frequency)
+    // a trigger can be generated by host program through PCIe, or by pressing user key
+    val trigger = getControlWordCC(ctrlDomain.trigger).asBool.rise(False) || user_key.d(3).rise(False)
+    trigger.addAttribute("mark_debug", "true")
+    pulseGen.trigger     := trigger
+    pulseGen.voltage0    := getControlWordCC(ctrlDomain.voltageForSample)
+    pulseGen.voltage1    := getControlWordCC(ctrlDomain.voltageForCamera)
+    pulseGen.pulseWidth0 := getControlWordCC(ctrlDomain.pulseWidthForSample)
+    pulseGen.pulseWidth1 := getControlWordCC(ctrlDomain.pulseWidthForCamera)
+    pulseGen.delay       := getControlWordCC(ctrlDomain.delayForCamera)
+    pulseGen.period      := getControlWordCC(ctrlDomain.periodForCamera)
+    Seq(an9767.channel1Clk, an9767.channel2Clk, an9767.channel1Wrt, an9767.channel2Wrt).foreach(
+      _ := pulseGen.daClk
+    ) // clk
+    an9767.channel1 := pulseGen.channel1
+    an9767.channel2 := pulseGen.channel2
+
+    // frame processing
+    val imageRx = ImageRx()
+    cxpHost.dmaOut                                                     <> imageRx.dmaIn
+    imageRx.streamOut.queue(128, dmaClockDomain, xillybus.xillyDomain) >> upload_32 // upload image data to host
+    download_32.freeRun()
   }
 
 }
 
-object ChipVerify extends App {
-  SpinalVerilog(ChipVerify())
-//  VivadoTask.genBoardBitStream(ChipVerify(), "ChipVerify")
+object ChipVerify {
+  def main(args: Array[String]): Unit = {
+    SpinalVerilog(ChipVerify())
+  }
 }
