@@ -227,7 +227,7 @@ case class EcPointProj(axis: IntZ*)(coordinates: Coordinates) {
 
 object Temp extends App {
 
-  println(sys.env("HOME"))
-  println(sys.env("VIVADO"))
+  println(scala.sys.env("HOME"))
+  println(scala.sys.env("VIVADO"))
 
 }

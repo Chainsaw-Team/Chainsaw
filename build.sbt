@@ -35,7 +35,6 @@ val rapidwright = "com.xilinx.rapidwright" % "rapidwright" % "2022.2.1"
 // for ndarray processing
 //val ndarray = "org.tensorflow" % "ndarray" % "0.4.0"
 
-
 lazy val Chainsaw = (project in file("."))
   .settings(
     name := "Chainsaw",
@@ -53,7 +52,11 @@ lazy val Chainsaw = (project in file("."))
     libraryDependencies += djlBackend,
     libraryDependencies += snakeYaml,
     libraryDependencies += rapidwright,
-  libraryDependencies += "org.scalanlp" %% "breeze-viz" % "2.1.0",
+    libraryDependencies += "org.scalanlp" %% "breeze-viz" % "2.1.0",
+    libraryDependencies ++= Seq(
+      "org.scala-graph" %% "graph-core" % "1.13.1",
+      "org.graphstream" % "gs-core" % "1.3"
+    )
 //    libraryDependencies += ndarray
   )
 

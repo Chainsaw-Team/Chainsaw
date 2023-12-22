@@ -1,7 +1,7 @@
 package Chainsaw.project.ChipVerify
 
 import Chainsaw.DataUtil
-import Chainsaw.edaFlow.boards.{AN9767, AXKU041, FL1010}
+import Chainsaw.edaFlow.boards.alinx.{AN9767, AXKU041, FL1010}
 import Chainsaw.edaFlow.vivado.VivadoTask
 import spinal.core._
 import spinal.lib._

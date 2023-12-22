@@ -1,9 +1,12 @@
 package Chainsaw
 
-/** @param flow
-  *   a 2-dimensional matrix in which each row is a cycle, a each column is a port, element >= 0 means valid, elements
-  *   share a same value should be the same
-  */
+/**
+ * Represents a frame format, which is a 2-dimensional matrix containing cycles and ports.
+ *
+ * @param flow
+ * The frame format matrix, where each row represents a cycle and each column represents a port.
+ * Each element >= 0 indicates a valid value, and elements with the same value should be the same.
+ */
 case class FrameFormat(flow: Seq[Seq[Int]]) {
 
   /** -------- properties
