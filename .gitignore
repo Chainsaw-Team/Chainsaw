@@ -35,6 +35,8 @@ src/main/resources/*
 !src/main/resources/install
 !src/main/resources/matlabScripts/
 !src/main/resources/das/
+!src/main/resources/boards/
+!src/main/resources/ips/
 
 
 # Workspaces
