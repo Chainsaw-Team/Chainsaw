@@ -45,9 +45,9 @@ case class XillybusWrapper(pinCount: Int, devices: Seq[XillybusDevice], target: 
   memBus <> innerMemBus
 
   // mark debug for all data interface
-  streamToHost.foreach(_.addAttribute("mark_debug", "true"))
-  streamFromHost.foreach(_.addAttribute("mark_debug", "true"))
-  memBus.addAttribute("mark_debug", "true")
+//  streamToHost.foreach(_.addAttribute("mark_debug", "true"))
+//  streamFromHost.foreach(_.addAttribute("mark_debug", "true"))
+//  memBus.addAttribute("mark_debug", "true")
 
   // xillybus IP <-> stream interface
 

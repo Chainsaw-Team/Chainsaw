@@ -1,14 +1,8 @@
 package Chainsaw.project.ChipVerify
 
 import spinal.core._
-import spinal.core.sim.SpinalSimConfig
+import spinal.core.sim.{SpinalSimConfig, _}
 import spinal.lib._
-import spinal.core._
-import spinal.core.sim._
-import spinal.lib._
-import spinal.lib.sim._
-import spinal.lib.fsm._
-import spinal.lib.bus._
 
 import scala.language.postfixOps
 
@@ -28,56 +22,77 @@ case class CxpVideoDma(stream: Int, streamWords: Int) extends Bundle with IMaste
 
 // this module would receive image data from CXP IP and send it to the host through xillybus
 // this module insert headers according to the eop signal
-case class ImageRx() extends Component {
+case class ImageRx(height: Int, width: Int) extends Component {
 
   // I/O
   val dmaIn     = slave(CxpVideoDma(1, 4))
   val streamOut = master(Stream(Bits(32 bits)))
-  val done      = out Bool ()
+  val rxDone    = out Bool ()
 
   // params
-  val header = B(BigInt("ABCDABCD", 16))
+  val header         = B(BigInt("ABCDABCD", 16))
+  val pixelsPerCycle = dmaIn.streamWords * 4
+  assert(width % pixelsPerCycle == 0)
+  val cyclePerRow = width / pixelsPerCycle
 
   // using eop as last
   val data = dmaIn.data
-  val dataWithLast = data(31 downto 0) ## B(0, 1 bits) ##
+  val data128WithLast = data(31 downto 0) ## B(0, 1 bits) ##
     data(63 downto 32) ## B(0, 1 bits) ##
     data(95 downto 64) ## B(0, 1 bits) ##
     data(127 downto 96) ## dmaIn.eop
 
-  val StreamIn = Stream(Bits(dataWithLast.getBitsWidth bits))
-  StreamIn.payload := dataWithLast
-  StreamIn.valid   := dmaIn.valid
-  dmaIn.ready      := StreamIn.ready // TODO: using deeper buffer and make it a free-run stream?
+  val streamIn = Stream(Bits(data128WithLast.getBitsWidth bits))
+  streamIn.payload := data128WithLast
+  streamIn.valid   := dmaIn.valid
+  dmaIn.ready      := streamIn.ready
 
-  val bufferedStream  = StreamIn.queue(32) // in case CXP IP ready doesn't work
+  // store up to 2 frames in buffer
+  val bufferedStream = Stream(Bits(data128WithLast.getBitsWidth bits))
+  val bufferDepth    = ((height + 4) * width * (10 + 1) / pixelsPerCycle) + 10
+//  val bufferDepth = 1696 * 1710 / pixelsPerCycle + 10
+  val frameBuffer = StreamFifo(data128WithLast, bufferDepth)
+  print(s"buffer depth = $bufferDepth")
+  streamIn           >> frameBuffer.io.push
+  frameBuffer.io.pop >> bufferedStream
+
+  // 128bit -> 32bit conversion
   val convertedStream = Stream(Bits((32 + 1) bits))
-
   StreamWidthAdapter(bufferedStream, convertedStream, BIG)
 
-  val streamWithLast = Stream(Fragment(Bits(32 bits)))
-  streamWithLast.valid    := convertedStream.valid
-  streamWithLast.fragment := convertedStream.payload(32 downto 1)
-  streamWithLast.last     := convertedStream.payload(0)
-  convertedStream.ready   := streamWithLast.ready
+  convertedStream.translateWith(convertedStream.payload(32 downto 1)) >> streamOut
 
-  done := streamWithLast.last // TODO: including image threshold determination
+  frameBuffer.io.occupancy.addAttribute("mark_debug", "true").setName("frameBufferOccupancy")
+  (~frameBuffer.io.push.ready).addAttribute("mark_debug", "true").setName("frameBufferFull")
+  (~frameBuffer.io.pop.valid).addAttribute("mark_debug", "true").setName("frameBufferEmpty")
 
-  val streamWithHeader = streamWithLast.insertHeader(header)
-  streamWithHeader.freeRun()
-  streamOut.payload := streamWithHeader.fragment
-  streamOut.valid   := streamWithHeader.valid
+  val clear        = in Bool ()
+  val pixelCounter = Counter(cyclePerRow, inc = dmaIn.valid)
+  val rowCounter   = Counter(height, inc = pixelCounter.willOverflow)
+  val frameCounter = Counter(20, inc = rowCounter.willOverflow)
+  when(clear) {
+    pixelCounter.clear()
+    rowCounter.clear()
+    frameCounter.clear()
+  }
+
+  pixelCounter.value.addAttribute("mark_debug", "true").setName("pixelCounter")
+  rowCounter.value.addAttribute("mark_debug", "true").setName("rowCounter")
+  frameCounter.value.addAttribute("mark_debug", "true").setName("frameCounter")
 
   // debug
-  val badEop    = out(dmaIn.eop & !dmaIn.valid)
-  val headerOut = out((streamOut.payload === header & streamOut.valid).rise())
-  assert(!badEop)
+  rxDone := rowCounter.willOverflow
+  rxDone.addAttribute("mark_debug", "true").setName("rxDone")
 
 }
 
 object ImageRx {
   def main(args: Array[String]): Unit = {
-    SpinalSimConfig().withFstWave.compile(ImageRx()).doSim { dut =>
+
+    val height = 44
+    val width  = 128
+
+    SpinalSimConfig().withFstWave.compile(ImageRx(height, width)).doSim { dut =>
       def init() = {
         dut.clockDomain.forkStimulus(2)
         dut.dmaIn.data      #= 0
@@ -88,27 +103,28 @@ object ImageRx {
         dut.dmaIn.eol       #= false
         dut.dmaIn.empty     #= 0
         dut.streamOut.ready #= true // free run during simulation
+        dut.clear           #= true
         dut.clockDomain.waitSampling()
       }
 
       // simulating transferring 42 X 128 images
       def sendImage() = {
-        val height         = 42
-        val width          = 128
-        val pixelsPerCycle = dut.dmaIn.streamWords * 4
-        val rowCycle       = width / pixelsPerCycle
+        dut.clear #= false
+        val pixelsPerCycle = dut.pixelsPerCycle
+        val cyclePerRow    = dut.cyclePerRow
         (0 until height).foreach { row =>
-          (0 until rowCycle + 50).foreach { i =>
+          (0 until cyclePerRow + 50).foreach { i =>
             val idx       = (row * width + i * pixelsPerCycle) % (1 << 8)
             val dataValue = (0 until pixelsPerCycle).map(j => BigInt(idx + j) << (j * 8)).sum
             dut.dmaIn.sol   #= (i == 0)
-            dut.dmaIn.eol   #= (i == rowCycle - 1)
-            dut.dmaIn.eop   #= (i == rowCycle - 1 && row == height - 1)
-            dut.dmaIn.data  #= (if (i < rowCycle) dataValue else BigInt(0))
-            dut.dmaIn.valid #= i < rowCycle
-            if (i < rowCycle)
+            dut.dmaIn.eol   #= (i == cyclePerRow - 1)
+            dut.dmaIn.eop   #= (i == cyclePerRow - 1 && row == height - 1)
+            dut.dmaIn.data  #= (if (i < cyclePerRow) dataValue else BigInt(0))
+            dut.dmaIn.valid #= i < cyclePerRow
+            if (i < cyclePerRow)
               println(
-                s"idx = ${idx.hexString(8)}~${(idx + pixelsPerCycle - 1).hexString(8)}, eop = ${i == rowCycle - 1 && row == height - 1}"
+                s"idx = ${idx.hexString(8)}~${(idx + pixelsPerCycle - 1)
+                  .hexString(8)}, eop = ${i == cyclePerRow - 1 && row == height - 1}"
               )
 
             dut.clockDomain.waitSampling()

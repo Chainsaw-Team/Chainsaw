@@ -107,18 +107,18 @@ case class ChipVerifyKu() extends AXKU041 {
     val trigger = getControlWordCC(ctrlDomain.trigger).asBool.rise(False) || user_key.d(3).rise(False)
     trigger.addAttribute("mark_debug", "true")
     pulseGen.trigger := trigger
-    pulseGen.voltage0    := getControlWordCC(ctrlDomain.voltageForSample)
-    pulseGen.voltage1    := getControlWordCC(ctrlDomain.voltageForCamera)
-    pulseGen.pulseWidth0 := getControlWordCC(ctrlDomain.pulseWidthForSample)
-    pulseGen.pulseWidth1 := getControlWordCC(ctrlDomain.pulseWidthForCamera)
-    pulseGen.delay       := getControlWordCC(ctrlDomain.delayForCamera)
-    pulseGen.period      := getControlWordCC(ctrlDomain.periodForCamera)
+    pulseGen.voltageForSample    := getControlWordCC(ctrlDomain.voltageForSample)
+    pulseGen.voltage1ForCamera    := getControlWordCC(ctrlDomain.voltageForCamera)
+    pulseGen.pulseWidthForSample := getControlWordCC(ctrlDomain.pulseWidthForSample)
+    pulseGen.pulseWidthForCamera := getControlWordCC(ctrlDomain.pulseWidthForCamera)
+    pulseGen.delay0       := getControlWordCC(ctrlDomain.delayForCamera)
+    pulseGen.delay1      := getControlWordCC(ctrlDomain.periodForCamera)
 
     Seq(an9767.channel1Clk, an9767.channel2Clk, an9767.channel1Wrt, an9767.channel2Wrt).foreach(
       _ := pulseGen.daClk
     ) // clk
-    an9767.channel1 := pulseGen.channel1
-    an9767.channel2 := pulseGen.channel2
+    an9767.channel1 := pulseGen.pulseToSample
+    an9767.channel2 := pulseGen.pulseToCamera
 
     // CXP subsystem
 

@@ -4,6 +4,7 @@ import spinal.core.ClockDomain.ClockFrequency
 import spinal.core._
 import spinal.core.sim._
 import spinal.lib._
+import spinal.lib.fsm.{State, StateDelay, StateMachine}
 
 import scala.language.postfixOps
 
@@ -11,81 +12,106 @@ import scala.language.postfixOps
   */
 case class PulseGen(frequency: ClockFrequency) extends Module {
 
-  val trigger                                                     = in Bool ()
-  val voltage0, voltage1, pulseWidth0, pulseWidth1, delay, period = in UInt (8 bits)
-  val channel1, channel2                                          = out UInt (14 bits)
-  val daClk = out(RegInit(False).toggleWhen(True)) // 100MHz DA clock
+  // I/O
+  val trigger     = in Bool ()
+  val triggerMode = in UInt (1 bits)
+  val voltageForSample, voltage1ForCamera, pulseWidthForSample, pulseWidthForCamera, delay0, delay1, delay2 =
+    in UInt (8 bits)
+  val pulseToSample, pulseToCamera     = out UInt (14 bits)
+  val pulseToSampleOn, pulseToCameraOn = out Bool ()
+  val daClk                            = out(RegInit(False).toggleWhen(True)) // 125MHz DA clock
 
-  val voltage0Full = voltage0 << 6
-  val voltage1Full = voltage1 << 6
-  val voltageZero  = U(0x1fff, 14 bits)
+  // params
+  val voltageForSampleFull = voltageForSample  << 6
+  val voltageForCameraFull = voltage1ForCamera << 6
+  val voltageZero          = U(0x1fff, 14 bits)
+  val cameraFrameCount     = 10 // frames after ref frame
 
   // 0.5us counter
   val clkPeriod   = 1.0 / frequency.getValue.toInt
   val stepCycle   = (0.5e-6 / clkPeriod).toInt
   val stepCounter = CounterFreeRun(stepCycle)
-  when(trigger)(stepCounter.clear())
-  println(s"clk period = ${clkPeriod}, stepCycle = $stepCycle")
-  // generate a pulse lasting 5us through channel 1 # FIXME: only generated when trigger 0 -> 1
-  val pulseCounter = Counter(1 << 8)
-  val pulseRun     = RegInit(False)
-  when(trigger) { // start
-    pulseCounter.clear()
-    pulseRun.set()
+  println(s"clk period = $clkPeriod, stepCycle = $stepCycle")
+
+  pulseToCameraOn := False
+  pulseToSampleOn := False
+
+  val stateCounter = Counter(1 << 8)
+  val pulseCounter = Counter(cameraFrameCount)
+  val pulseGenFsm = new StateMachine {
+    val BOOT                                    = makeInstantEntry()
+    val IDLE, CAM_PULSE0, SAM_PULSE, CAM_PULSE1 = new State
+
+    // state transition logic
+    BOOT.whenIsActive(goto(IDLE))
+    IDLE.whenIsActive(when(trigger)(goto(CAM_PULSE0)))
+    CAM_PULSE0.whenIsActive {
+      when(stateCounter === delay0 - 1 & stepCounter.willOverflow) {
+        when(triggerMode === U(1))(goto(IDLE)).otherwise(goto(SAM_PULSE))
+      }
+    }
+    SAM_PULSE.whenIsActive(when(stateCounter === delay1 - 1 & stepCounter.willOverflow)(goto(CAM_PULSE1)))
+    CAM_PULSE1.whenIsActive(when(pulseCounter.willOverflow)(goto(IDLE)))
+
+    // state working logic
+    when(stepCounter.willOverflow && !isActive(IDLE))(stateCounter.increment())
+
+    CAM_PULSE0.onEntry {
+      stepCounter.clear()
+      stateCounter.clear()
+    }
+    CAM_PULSE0.whenIsActive(when(stateCounter.value < pulseWidthForCamera)(pulseToCameraOn.set()))
+    SAM_PULSE.onEntry(stateCounter.clear())
+    SAM_PULSE.whenIsActive(when(stateCounter.value < pulseWidthForSample)(pulseToSampleOn.set()))
+    CAM_PULSE1.onEntry {
+      stateCounter.clear()
+      pulseCounter.clear()
+    }
+    CAM_PULSE1.whenIsActive {
+      when(stateCounter.value < pulseWidthForCamera)(pulseToCameraOn.set())
+      when(stateCounter === delay2 - 1 & stepCounter.willOverflow) {
+        pulseCounter.increment()
+        stateCounter.clear()
+      }
+    }
+
   }
-  when(pulseRun & stepCounter.willOverflow)(pulseCounter.increment()) // increment
-  when(pulseCounter === pulseWidth0) {                                // end
-//    pulseCounter.clear()
-    pulseRun.clear()
-  }
-  when(pulseRun)(channel1 := voltage0Full).otherwise(channel1 := voltageZero) // state
-  // generate 10 triggers for camera after certain delay
-  val triggerCounter = Counter(1 << 8)
-  val periodCounter  = Counter(10)
-  val triggerRun     = RegInit(False)
-  when(trigger) { // start
-//    triggerCounter.clear()
-//    periodCounter.clear()
-    triggerRun.set()
-  }
-  // increment
-  when(triggerRun & stepCounter.willOverflow)(triggerCounter.increment())
-  when(triggerCounter === period)(triggerCounter.clear())
-  when(triggerRun & triggerCounter === period)(periodCounter.increment())
-  when(periodCounter.willOverflow) { // end
-    triggerCounter.clear()
-    periodCounter.clear()
-    triggerRun.clear()
-  }
-  val triggerOn = (triggerCounter.value < pulseWidth1 + delay) & (triggerCounter.value >= delay) & triggerRun // state
-  when(triggerOn)(channel2 := voltage1Full).otherwise(channel2 := voltageZero)
+
+  pulseToCamera := Mux(pulseToCameraOn, voltageForCameraFull, voltageZero)
+  pulseToSample := Mux(pulseToSampleOn, voltageForSampleFull, voltageZero)
 }
 
 object PulseGen extends App {
   SpinalSimConfig().withFstWave.compile(PulseGen(FixedFrequency(200 MHz))).doSim { dut =>
     import dut._
     clockDomain.forkStimulus(2)
-    def triggerOnce() = {
-      trigger     #= false
-      voltage0    #= 0
-      voltage1    #= 0
-      pulseWidth0 #= 0
-      pulseWidth1 #= 0
-      delay       #= 0
+
+    def triggerOnce(mode: Int) = {
+      trigger             #= false
+      triggerMode         #= mode
+      voltageForSample    #= 0
+      voltage1ForCamera   #= 0
+      pulseWidthForSample #= 0
+      pulseWidthForCamera #= 0
+      delay0              #= 0
       clockDomain.waitSampling()
-      trigger     #= true
-      voltage0    #= 127
-      voltage1    #= 63
-      pulseWidth0 #= 10
-      pulseWidth1 #= 10
-      delay       #= 5
-      period      #= 20
+
+      trigger             #= true
+      voltageForSample    #= 255
+      voltage1ForCamera   #= 255
+      pulseWidthForSample #= 10
+      pulseWidthForCamera #= 2
+      delay0              #= 30
+      delay1              #= 30
+      delay2              #= 15
       clockDomain.waitSampling()
       trigger #= false
-      clockDomain.waitSampling(50000)
+      clockDomain.waitSampling(25000)
     }
-    triggerOnce()
-    triggerOnce()
+    triggerOnce(1)
+    triggerOnce(0)
+    triggerOnce(1)
+    triggerOnce(0)
 
   }
 }
