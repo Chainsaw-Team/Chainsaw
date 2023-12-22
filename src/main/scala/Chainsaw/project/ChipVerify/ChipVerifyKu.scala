@@ -11,7 +11,6 @@ import spinal.lib.bus.regif.{AccessType, HtmlGenerator}
 
 import java.io.File
 import scala.language.postfixOps
-
 case class ChipVerifyKu() extends AXKU041 {
 
   defaultClockDomain on {
@@ -39,8 +38,8 @@ case class ChipVerifyKu() extends AXKU041 {
       StreamFifoCC(
         dataType = Bits(bitWidth bits),
         depth    = 1024,
-        xillybus.xillyDomain,
-        xillybus.xillyDomain
+        xillybus.pcieClockDomain,
+        xillybus.pcieClockDomain
       )
     )
     fifo_32.setName("fifo_32")
@@ -53,7 +52,7 @@ case class ChipVerifyKu() extends AXKU041 {
 
     // creating system controller
     val ctrlDomain =
-      new ClockingArea(xillybus.xillyDomain) { // register file should be instantiated in the same clock domain as xillybus
+      new ClockingArea(xillybus.pcieClockDomain) { // register file should be instantiated in the same clock domain as xillybus
         val memBusIf = XillybusBusIf(xillybus.memBus)
         // creating system controller using xillybus mem device
         val trigger = memBusIf

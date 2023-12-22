@@ -51,7 +51,7 @@ case class XillybusWrapper(pinCount: Int, devices: Seq[XillybusDevice], target: 
 
   // xillybus IP <-> stream interface
 
-  val xillyDomain = ClockDomain(
+  val pcieClockDomain = ClockDomain(
     clock = xillybus.bus_clk,
     reset = target match {
       case device: AlteraDevice => xillybus.pcieIntel.perstn
@@ -60,7 +60,7 @@ case class XillybusWrapper(pinCount: Int, devices: Seq[XillybusDevice], target: 
     config = ClockDomainConfig(resetActiveLevel = LOW) // TODO: active-low for both Xilinx and Altera?
   )
 
-  xillyDomain on {
+  pcieClockDomain on {
     xillybus.streamsRead.zip(xillybus.streamReadInterfaces).zip(streamToHost).foreach {
       case ((device, busSide), userSide) =>
         busSide.eof := False // unused
@@ -104,6 +104,14 @@ case class XillybusWrapper(pinCount: Int, devices: Seq[XillybusDevice], target: 
       |read_verilog xillybus_core.edf # from the corebundle generated
       |import_ip $deviceFamily.xci # from the demo project for this family
       |""".stripMargin)
+
+  if (target.isInstanceOf[AlteraDevice]) println("""
+      |execute following tcl commands before synth_design:
+      |set_global_assignment -name VERILOG_FILE xillybus.v # from the corebundle generated
+      |set_global_assignment -name QXP_FILE xillybus_core.qxp # from the corebundle generated
+      |set_global_assignment -name VERILOG_FILE pcie_c5_4x.v # from the demo project for this family
+      |set_global_assignment -name QSYS_FILE pcie_reconfig.qsys # from the demo project for this family
+      |""".stripMargin)
 }
 
 object XillybusWrapper {
@@ -114,7 +122,7 @@ object XillybusWrapper {
       XillybusFifoWrite("write_32", 32),
       XillybusFifoRead("read_8", 8),
       XillybusFifoWrite("write_8", 8),
-      XillybusMemBi("mem_8", 8, 5)
+      XillybusMemBi("mem_32", 32, 16)
     ),
     device
   )
