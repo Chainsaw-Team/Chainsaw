@@ -73,7 +73,7 @@ case class IntMultiAdder(
 
 object IntMultiAdder {
   def main(args: Array[String]): Unit = {
-    println(sys.env.contains("FLOPOCO"))
+    println(scala.sys.env.contains("FLOPOCO"))
     val test = IntMultiAdder(UltraScale, 50 MHz, 8, 8, true)
     println(test.moduleName)
   }

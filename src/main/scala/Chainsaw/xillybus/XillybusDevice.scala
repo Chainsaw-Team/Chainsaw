@@ -5,11 +5,11 @@ package Chainsaw.xillybus
   * @param name
   *   the name you specify through xillybus IP factory [[http://xillybus.com/custom-ip-factory]]
   * @param deviceType
-  *   = "fifo"/"mem" for stream(FIFO) or address based(RegFile or Mem) port
+  * = "fifo"/"mem" for stream(FIFO) or address based(RegFile or Mem) port
   * @param direction
-  *   = "write"/"read" for write (Host -> FPGA) or read (FPGA -> Host)
+  * = "write"/"read" for write (Host -> FPGA) or read (FPGA -> Host)
   * @param bitWidth
-  *   = 8/16/32, bit width of the fifo/register, can be
+  * = 8/16/32, bit width of the fifo/register, can be
   * @param addrWidth
   *   for address based port, width of address
   */

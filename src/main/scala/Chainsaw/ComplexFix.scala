@@ -5,6 +5,13 @@ import spinal.core._
 
 import scala.language.postfixOps
 
+/**
+ * Represents a complex number in fixed-point format.
+ *
+ * @param maxRaw The maximum raw value that can be represented by the complex number.
+ * @param minRaw The minimum raw value that can be represented by the complex number.
+ * @param exp    The exponent used for the fixed-point representation.
+ */
 class ComplexFix(maxRaw: BigInt, minRaw: BigInt, exp: Int) extends Bundle {
 
   val real, imag = new AFix(maxRaw, minRaw, exp)
