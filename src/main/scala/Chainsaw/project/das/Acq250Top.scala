@@ -39,7 +39,7 @@ case class Acq250Top() extends Acq250 {
     // DDS control
     val ddsCtrl = new Ad9959Ctrl(
       Ad9959Config(
-        frequencyDividerRatio = ConstantConfig(getFdr()),
+        frequencyDividerRatio = RegConfig(getFdr()),
         freq0                 = RegConfig(freqWord(100)), // for carrier 1
         freq1                 = RegConfig(freqWord(80)),  // for carrier 2
         freq2                 = RegConfig(word250M),      // for adc

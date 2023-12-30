@@ -34,6 +34,7 @@ case class Ad9959Config(
   // assertions
   frequencyDividerRatio match {
     case ConstantConfig(value) => assert(value >= 4 && value <= 20)
+    case _ => // do nothing
   }
 }
 

@@ -49,16 +49,13 @@ object buildAcq250 extends App {
 
   val copyFileCommand2 = s"cp $board_dir/Acq250.sdc $destination_path"
   Process(copyFileCommand2).!!
-
-  val copyFileCommand3 = s"cp $board_dir/Acq250.stp $destination_path"
-  Process(copyFileCommand3).!!
-
+  
   // Run the TCL script to create a Quartus project
 
   println(Process(s"$quartus_sh -t $tcl_script_path", workspaceDir).!!)
-//  println(
-//    Process(s"$quartus_stp Acq250Top --enable --signaltap --stp_file=$board_dir/Acq250.stp", workspaceDir).!!
-//  )
+  println(
+    Process(s"$quartus_stp Acq250Top --enable --signaltap --stp_file=$board_dir/Acq250.stp", workspaceDir).!!
+  )
 
   val inputString = readLine("project ready, open project(O) or compile project(C)\n")
   if (inputString == "O") {

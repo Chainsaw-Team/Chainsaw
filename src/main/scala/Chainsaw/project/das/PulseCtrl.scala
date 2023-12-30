@@ -28,6 +28,8 @@ case class PulseCtrl(busIf: BusIf, busClockDomain: ClockDomain, pulseBundle: Pul
       .field(word, AccessType.RW, 125000 / 2, "dynamic gain step, same as pulse points by default")
   }
 
+  val pulse_period_points = getControlData(busArea.pulse_period_points)
+
   // pre-connection
   pulseBundle.sma0n.clear()
   pulseBundle.sma1n.clear()
@@ -40,8 +42,11 @@ case class PulseCtrl(busIf: BusIf, busClockDomain: ClockDomain, pulseBundle: Pul
     delayModule.payloadOut.asBool
   }
 
-  // FIXME: using pipelined comparator to generate pulseOn(or, glitch may appear)
-  private val pulseCounter   = DynamicCounterFreeRun(getControlData(busArea.pulse_period_points))
+  //  better verification on DynamicCounterFreeRun
+  private val pulseCounter = DynamicCounterFreeRun(pulse_period_points)
+  when(pulse_period_points.changed)(
+    pulseCounter.clear()
+  ) // or, when pulse period goes down, the counter may have to run for 1 << 32 cycles before it works again
   private val pulseOn        = (pulseCounter.value < getControlData(busArea.pulse_width_points)).d()
   private val pulseOnDelayed = getDynamicDelayed(pulseOn, getControlData(busArea.pulse_delay_points))
   private val pulseBack      = getDynamicDelayed(pulseOn, getControlData(busArea.pulse_fix_points))
