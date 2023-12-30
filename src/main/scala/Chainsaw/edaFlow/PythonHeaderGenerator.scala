@@ -78,15 +78,15 @@ case class PythonHeaderGenerator(
          |def update_reg(reg):
          |    file_name = r"\\\\.\\xillybus_mem_32"  # replace with your file_name
          |    byte_value = reg.value().to_bytes(${regByteCount}, byteorder='little')
-         |    print(f"{reg.__class__.__name__} value = {reg.value()}")
          |    with open(file_name, "wb") as ctrl:
          |        ctrl.seek(reg.address)
          |        ctrl.write(byte_value)
-         |    time.sleep(0.1)
-         |    with open(file_name, "rb") as ctrl:
-         |        ctrl.seek(reg.address)
-         |        ret = ctrl.read(${regByteCount})
-         |        assert byte_value == ret, f"failed to update reg {reg.__class__.__name__}, target: {byte_value} != actual: {ret}"
+         |    # time.sleep(0.1)
+         |    # print(f"{reg.__class__.__name__} value = {reg.value()}")
+         |    # with open(file_name, "rb") as ctrl:
+         |    #     ctrl.seek(reg.address)
+         |    #     ret = ctrl.read(${regByteCount})
+         |    #     assert byte_value == ret, f"failed to update reg {reg.__class__.__name__}, target: {byte_value} != actual: {ret}"
          |        
          |""".stripMargin)
     pw.close()

@@ -67,12 +67,11 @@ class Ad9959Ctrl(config: Ad9959Config, bus: Option[BusIf], ddsBundle: Ad9959Bund
         bus.get.newReg("fdr").field(UInt(5 bits), AccessType.RW, defaultValue.toLong, "frequency divider ratio")
     }
   }
-  val fr1Reg = U(BigInt("1", 2), 1 bits) @@ fdr @@ U(0, 26 bits)
-
-  (freqs ++ phases :+ fr1Reg).foreach(_.addTag(crossClockDomain))
+  val fr1Reg = U(BigInt("1", 2), 1 bits) @@ getControlData(fdr) @@ U(0, 26 bits)
+  fr1Reg.addTag(crossClockDomain)
 
   // parameters
-  val waitingCycles = if (atSimTime) 100 else 12500000 // waiting 0.1s for host writing registers
+  val waitingCycles = if (atSimTime) 100 else 1250000 // waiting 0.01s X 16 for host writing registers
 
   // address and length
   val CSR   = 0x00 // channel select register
@@ -92,9 +91,6 @@ class Ad9959Ctrl(config: Ad9959Config, bus: Option[BusIf], ddsBundle: Ad9959Bund
   val lengths = (Seq.fill(4)(Seq(lengthCSR, lengthCFTW0, lengthCPOW0)).flatten :+ lengthFR1)
     .map(_ + 8) // + instruction length
     .map(_ + 1) // endReg value
-  val values: Vec[UInt] = Vec( // TODO: pick a value from these regs may be the critical path
-    (0 until 4).flatMap(i => Seq(csrs(i), freqs(i), phases(i) @@ U(0, 16 bits))) :+ fr1Reg
-  )
 
   // constructing sclk clock domain
   val sclkCounter = CounterFreeRun(16)
@@ -106,10 +102,14 @@ class Ad9959Ctrl(config: Ad9959Config, bus: Option[BusIf], ddsBundle: Ad9959Bund
     config = dasClockConfig
   )
 
-  // do serial io in a clock domain 16 times slower than ctrlClk
+  // do serial io in a clock domain 16 times slower than ctrlClk, meeting timing constraints easier
 
   val ctrlOut = ddsBundle.sdio(0) // the only signal we use to control AD9959
   val serialIoArea = new ClockingArea(serialIoDomain) {
+
+    val values: Vec[UInt] = Vec( // TODO: pick a value from these regs may be the critical path
+      ((0 until 4).flatMap(i => Seq(csrs(i), freqs(i), phases(i) @@ U(0, 16 bits))) :+ fr1Reg).map(getControlData)
+    )
 
     // regs for output
     val cs_n, data, rst, io_update = Bool()
@@ -121,8 +121,8 @@ class Ad9959Ctrl(config: Ad9959Config, bus: Option[BusIf], ddsBundle: Ad9959Bund
     Seq(data, rst, io_update).foreach(_.clear()) // set default to low
 
     // constructing change event, which is used to trigger the whole FSM
-    private val freqChange  = freqs.map(_.changed).reduce(_ || _).d()
-    private val phaseChange = phases.map(_.changed).reduce(_ || _).d()
+    private val freqChange  = freqs.map(getControlData).map(_.changed.d()).reduce(_ || _).d()
+    private val phaseChange = phases.map(getControlData).map(_.changed.d()).reduce(_ || _).d()
     private val change      = (freqChange || phaseChange).d()
 
     // components
@@ -139,7 +139,7 @@ class Ad9959Ctrl(config: Ad9959Config, bus: Option[BusIf], ddsBundle: Ad9959Bund
       val WRITE_REGS   = Seq.fill(stepCount)(new State())
       val IO_UPDATE    = new StateDelay(4)
       val RUNNING      = new State()
-      val WAITING_HOST = new StateDelay(waitingCycles) // 1 sec
+      val WAITING_HOST = new StateDelay(waitingCycles)
 
       // state workload
       RESET.onEntry(io_update.clear())

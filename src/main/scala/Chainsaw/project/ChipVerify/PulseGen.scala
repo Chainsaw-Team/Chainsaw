@@ -1,9 +1,10 @@
 package Chainsaw.project.ChipVerify
 
+import Chainsaw.DataUtil
 import spinal.core.ClockDomain.ClockFrequency
 import spinal.core._
 import spinal.core.sim._
-import spinal.lib._
+import spinal.lib.{Stream, _}
 import spinal.lib.fsm.{State, StateDelay, StateMachine}
 
 import scala.language.postfixOps
@@ -13,72 +14,85 @@ import scala.language.postfixOps
 case class PulseGen(frequency: ClockFrequency) extends Module {
 
   // I/O
-  val trigger     = in Bool ()
-  val triggerMode = in UInt (1 bits)
-  val voltageForSample, voltage1ForCamera, pulseWidthForSample, pulseWidthForCamera, delay0, delay1, delay2 =
-    in UInt (8 bits)
-  val pulseToSample, pulseToCamera     = out UInt (14 bits)
-  val pulseToSampleOn, pulseToCameraOn = out Bool ()
-  val daClk                            = out(RegInit(False).toggleWhen(True)) // 125MHz DA clock
+  val updatePulseGen = in Bool ()
+  val dataStreamIn   = slave Stream (Bits(32 bits))
+
+  val trigger                      = in Bool ()
+  val pulseToSample, pulseToCamera = out UInt (14 bits)
+  val daClk                        = out(RegInit(False).toggleWhen(True)) // 125MHz DA clock
 
   // params
-  val voltageForSampleFull = voltageForSample  << 6
-  val voltageForCameraFull = voltage1ForCamera << 6
-  val voltageZero          = U(0x1fff, 14 bits)
-  val cameraFrameCount     = 10 // frames after ref frame
+  val voltageZero = U(0x1fff, 14 bits)
 
   // 0.5us counter
-  val clkPeriod   = 1.0 / frequency.getValue.toInt
-  val stepCycle   = (0.5e-6 / clkPeriod).toInt
+  val clkPeriod = 1.0 / frequency.getValue.toInt
+  val stepCycle = (0.5e-6 / clkPeriod).toInt
+//  val stepCycle   = 10
   val stepCounter = CounterFreeRun(stepCycle)
   println(s"clk period = $clkPeriod, stepCycle = $stepCycle")
 
-  pulseToCameraOn := False
-  pulseToSampleOn := False
+  // components
+  val ramDepth      = 2000
+  val allOnes       = Seq.fill(ramDepth)(B(0xffff, 16 bits))
+  val cameraDataRam = Mem(allOnes)
+  val sampleDataRam = Mem(allOnes)
+  val ramCounter    = Counter(ramDepth)
 
-  val stateCounter = Counter(1 << 8)
-  val pulseCounter = Counter(cameraFrameCount)
+  // pre-assignment
+  pulseToCamera      := voltageZero
+  pulseToSample      := voltageZero
+  dataStreamIn.ready := False
+
   val pulseGenFsm = new StateMachine {
-    val BOOT                                    = makeInstantEntry()
-    val IDLE, CAM_PULSE0, SAM_PULSE, CAM_PULSE1 = new State
+    val BOOT                    = makeInstantEntry()
+    val IDLE, UPDATE, TRIGGERED = new State
+    val CLEAR                   = new StateDelay(10000) // clear data in xillybus buffer
 
     // state transition logic
     BOOT.whenIsActive(goto(IDLE))
-    IDLE.whenIsActive(when(trigger)(goto(CAM_PULSE0)))
-    CAM_PULSE0.whenIsActive {
-      when(stateCounter === delay0 - 1 & stepCounter.willOverflow) {
-        when(triggerMode === U(1))(goto(IDLE)).otherwise(goto(SAM_PULSE))
-      }
+    IDLE.whenIsActive {
+      when(trigger)(goto(TRIGGERED))
+      when(updatePulseGen)(goto(CLEAR))
     }
-    SAM_PULSE.whenIsActive(when(stateCounter === delay1 - 1 & stepCounter.willOverflow)(goto(CAM_PULSE1)))
-    CAM_PULSE1.whenIsActive(when(pulseCounter.willOverflow)(goto(IDLE)))
+    CLEAR.whenCompleted(goto(UPDATE))
+    TRIGGERED.whenIsActive(when(ramCounter.willOverflow)(goto(IDLE)))
+    UPDATE.whenIsActive { when(ramCounter.willOverflow)(goto(IDLE)) }
 
-    // state working logic
-    when(stepCounter.willOverflow && !isActive(IDLE))(stateCounter.increment())
-
-    CAM_PULSE0.onEntry {
+    // workload
+    IDLE.onEntry {
       stepCounter.clear()
-      stateCounter.clear()
+      ramCounter.clear()
     }
-    CAM_PULSE0.whenIsActive(when(stateCounter.value < pulseWidthForCamera)(pulseToCameraOn.set()))
-    SAM_PULSE.onEntry(stateCounter.clear())
-    SAM_PULSE.whenIsActive(when(stateCounter.value < pulseWidthForSample)(pulseToSampleOn.set()))
-    CAM_PULSE1.onEntry {
-      stateCounter.clear()
-      pulseCounter.clear()
+    TRIGGERED.onEntry {
+      stepCounter.clear()
+      ramCounter.clear()
     }
-    CAM_PULSE1.whenIsActive {
-      when(stateCounter.value < pulseWidthForCamera)(pulseToCameraOn.set())
-      when(stateCounter === delay2 - 1 & stepCounter.willOverflow) {
-        pulseCounter.increment()
-        stateCounter.clear()
+    TRIGGERED.whenIsActive {
+      when(stepCounter.willOverflow)(ramCounter.increment())
+    }
+    when(isActive(TRIGGERED).d()) {
+      pulseToCamera := cameraDataRam.readSync(ramCounter.value).takeLow(14).asUInt
+      pulseToSample := sampleDataRam.readSync(ramCounter.value).takeLow(14).asUInt
+    }
+    CLEAR.whenIsActive(dataStreamIn.ready := True)
+    UPDATE.onEntry {
+      stepCounter.clear()
+      ramCounter.clear()
+    }
+    UPDATE.whenIsActive {
+      dataStreamIn.ready := True
+      when(dataStreamIn.valid) {
+        ramCounter.increment()
+        cameraDataRam.write(ramCounter.value, dataStreamIn.payload(31 downto 16))
+        sampleDataRam.write(ramCounter.value, dataStreamIn.payload(15 downto 0))
       }
     }
-
   }
 
-  pulseToCamera := Mux(pulseToCameraOn, voltageForCameraFull, voltageZero)
-  pulseToSample := Mux(pulseToSampleOn, voltageForSampleFull, voltageZero)
+  // debug
+  val pulseToSampleOn, pulseToCameraOn = out Bool ()
+  pulseToSampleOn := (pulseToSample =/= voltageZero).d()
+  pulseToCameraOn := (pulseToCamera =/= voltageZero).d()
 }
 
 object PulseGen extends App {
@@ -86,32 +100,46 @@ object PulseGen extends App {
     import dut._
     clockDomain.forkStimulus(2)
 
-    def triggerOnce(mode: Int) = {
-      trigger             #= false
-      triggerMode         #= mode
-      voltageForSample    #= 0
-      voltage1ForCamera   #= 0
-      pulseWidthForSample #= 0
-      pulseWidthForCamera #= 0
-      delay0              #= 0
+    val cameraSeq = (0 until 2000).map(BigInt(_))
+    val sampleSeq = (0 until 2000).reverse.map(BigInt(_))
+
+    def loopOnce() = {
+      // init
+      trigger              #= false
+      updatePulseGen       #= false
+      dataStreamIn.valid   #= false
+      dataStreamIn.payload #= 0x12345678
+      clockDomain.waitSampling()
+      // start CLEAR by a pulse on updatePulseGen
+      updatePulseGen #= true
+      clockDomain.waitSampling()
+      updatePulseGen #= false
+      // wait for clear
+      clockDomain.waitSampling(15000)
+      // update ram
+      (0 until dut.ramDepth).foreach { i =>
+        dataStreamIn.valid   #= true
+        dataStreamIn.payload #= (cameraSeq(i) << 16) + sampleSeq(i)
+        clockDomain.waitSampling()
+      }
+
+      updatePulseGen #= false
       clockDomain.waitSampling()
 
-      trigger             #= true
-      voltageForSample    #= 255
-      voltage1ForCamera   #= 255
-      pulseWidthForSample #= 10
-      pulseWidthForCamera #= 2
-      delay0              #= 30
-      delay1              #= 30
-      delay2              #= 15
+      // trigger once
+      // start TRIGGERED by a pulse on trigger
+      trigger #= true
       clockDomain.waitSampling()
       trigger #= false
-      clockDomain.waitSampling(25000)
-    }
-    triggerOnce(1)
-    triggerOnce(0)
-    triggerOnce(1)
-    triggerOnce(0)
+      // wait for pulse output
+      clockDomain.waitSampling(stepCycle * ramDepth)
 
+      trigger #= true
+      clockDomain.waitSampling()
+      trigger #= false
+      clockDomain.waitSampling(stepCycle * ramDepth)
+    }
+
+    loopOnce()
   }
 }

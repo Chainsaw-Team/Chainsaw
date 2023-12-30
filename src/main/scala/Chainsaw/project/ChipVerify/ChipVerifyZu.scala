@@ -56,8 +56,8 @@ case class ChipVerifyZu() extends Z7P {
       StreamFifoCC(
         dataType = Bits(bitWidth bits),
         depth    = 1024,
-        xillybus.xillyDomain,
-        xillybus.xillyDomain
+        xillybus.pcieClockDomain,
+        xillybus.pcieClockDomain
       )
     )
     fifo_32.setName("fifo_32")

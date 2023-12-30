@@ -1,5 +1,7 @@
 package require ::quartus::project
 
+set pin_version 1
+
 ## 覆写project
 project_new -overwrite -revision Acq250Top Acq250Top
 
@@ -28,9 +30,6 @@ set_global_assignment -name QSYS_FILE pcie_reconfig.qsys
 
 # timing constraint
 set_global_assignment -name SDC_FILE Acq250.sdc
-
-# signal tap
-set_global_assignment -name USE_SIGNALTAP_FILE Acq250.stp
 
 # clock from oscillator & reset
 
@@ -103,7 +102,13 @@ set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to AD9959_io_update
 
 set_location_assignment PIN_T7 -to AD9959_p[3]
 set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to AD9959_p[3]
-set_location_assignment PIN_T8 -to AD9959_p[2]
+
+if {$pin_version == 1} {
+    set_location_assignment PIN_T8 -to AD9959_p[2]
+} else {
+    set_location_assignment PIN_AC23 -to AD9959_p[2]
+}
+
 set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to AD9959_p[2]
 set_location_assignment PIN_V8 -to AD9959_p[1]
 set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to AD9959_p[1]
@@ -134,6 +139,78 @@ set_instance_assignment -name IO_STANDARD LVDS -to "data_clk(n)"
 # adc data in
 ####################
 
+set_location_assignment PIN_T23 -to adc_a[6]
+set_instance_assignment -name IO_STANDARD LVDS -to adc_a[6]
+set_location_assignment PIN_T26 -to adc_a[5]
+set_instance_assignment -name IO_STANDARD LVDS -to adc_a[5]
+set_location_assignment PIN_R24 -to adc_a[4]
+set_instance_assignment -name IO_STANDARD LVDS -to adc_a[4]
+set_location_assignment PIN_P21 -to adc_a[3]
+set_instance_assignment -name IO_STANDARD LVDS -to adc_a[3]
+set_location_assignment PIN_N25 -to adc_a[2]
+set_instance_assignment -name IO_STANDARD LVDS -to adc_a[2]
+set_location_assignment PIN_R23 -to adc_a[1]
+set_instance_assignment -name IO_STANDARD LVDS -to adc_a[1]
+set_location_assignment PIN_M25 -to adc_a[0]
+set_instance_assignment -name IO_STANDARD LVDS -to adc_a[0]
+set_location_assignment PIN_T24 -to "adc_a[6](n)"
+set_instance_assignment -name IO_STANDARD LVDS -to "adc_a[6](n)"
+set_location_assignment PIN_R26 -to "adc_a[5](n)"
+set_instance_assignment -name IO_STANDARD LVDS -to "adc_a[5](n)"
+set_location_assignment PIN_R25 -to "adc_a[4](n)"
+set_instance_assignment -name IO_STANDARD LVDS -to "adc_a[4](n)"
+set_location_assignment PIN_P22 -to "adc_a[3](n)"
+set_instance_assignment -name IO_STANDARD LVDS -to "adc_a[3](n)"
+set_location_assignment PIN_P26 -to "adc_a[2](n)"
+set_instance_assignment -name IO_STANDARD LVDS -to "adc_a[2](n)"
+set_location_assignment PIN_P23 -to "adc_a[1](n)"
+set_instance_assignment -name IO_STANDARD LVDS -to "adc_a[1](n)"
+set_location_assignment PIN_M26 -to "adc_a[0](n)"
+set_instance_assignment -name IO_STANDARD LVDS -to "adc_a[0](n)"
+
+set_instance_assignment -name IO_STANDARD LVDS -to adc_b[6]
+set_location_assignment PIN_N24 -to adc_b[6]
+set_instance_assignment -name IO_STANDARD LVDS -to adc_b[5]
+set_location_assignment PIN_K24 -to adc_b[5]
+set_instance_assignment -name IO_STANDARD LVDS -to adc_b[4]
+set_location_assignment PIN_N23 -to adc_b[4]
+set_instance_assignment -name IO_STANDARD LVDS -to adc_b[3]
+set_location_assignment PIN_H22 -to adc_b[3]
+set_instance_assignment -name IO_STANDARD LVDS -to adc_b[2]
+set_location_assignment PIN_L22 -to adc_b[2]
+set_instance_assignment -name IO_STANDARD LVDS -to adc_b[1]
+set_location_assignment PIN_J20 -to adc_b[1]
+set_instance_assignment -name IO_STANDARD LVDS -to adc_b[0]
+set_location_assignment PIN_H19 -to adc_b[0]
+set_instance_assignment -name IO_STANDARD LVDS -to "adc_b[6](n)"
+set_location_assignment PIN_M24 -to "adc_b[6](n)"
+set_instance_assignment -name IO_STANDARD LVDS -to "adc_b[5](n)"
+set_location_assignment PIN_K23 -to "adc_b[5](n)"
+set_instance_assignment -name IO_STANDARD LVDS -to "adc_b[4](n)"
+set_location_assignment PIN_M22 -to "adc_b[4](n)"
+set_instance_assignment -name IO_STANDARD LVDS -to "adc_b[3](n)"
+set_location_assignment PIN_J23 -to "adc_b[3](n)"
+set_instance_assignment -name IO_STANDARD LVDS -to "adc_b[2](n)"
+set_location_assignment PIN_K21 -to "adc_b[2](n)"
+set_instance_assignment -name IO_STANDARD LVDS -to "adc_b[1](n)"
+set_location_assignment PIN_J21 -to "adc_b[1](n)"
+set_instance_assignment -name IO_STANDARD LVDS -to "adc_b[0](n)"
+set_location_assignment PIN_H20 -to "adc_b[0](n)"
+
+set_instance_assignment -name PLL_COMPENSATION_MODE SOURCE_SYNCHRONOUS -to adc_b[6]
+set_instance_assignment -name PLL_COMPENSATION_MODE SOURCE_SYNCHRONOUS -to adc_b[5]
+set_instance_assignment -name PLL_COMPENSATION_MODE SOURCE_SYNCHRONOUS -to adc_b[4]
+set_instance_assignment -name PLL_COMPENSATION_MODE SOURCE_SYNCHRONOUS -to adc_b[3]
+set_instance_assignment -name PLL_COMPENSATION_MODE SOURCE_SYNCHRONOUS -to adc_b[2]
+set_instance_assignment -name PLL_COMPENSATION_MODE SOURCE_SYNCHRONOUS -to adc_b[1]
+set_instance_assignment -name PLL_COMPENSATION_MODE SOURCE_SYNCHRONOUS -to adc_b[0]
+set_instance_assignment -name PLL_COMPENSATION_MODE SOURCE_SYNCHRONOUS -to adc_a[6]
+set_instance_assignment -name PLL_COMPENSATION_MODE SOURCE_SYNCHRONOUS -to adc_a[5]
+set_instance_assignment -name PLL_COMPENSATION_MODE SOURCE_SYNCHRONOUS -to adc_a[4]
+set_instance_assignment -name PLL_COMPENSATION_MODE SOURCE_SYNCHRONOUS -to adc_a[3]
+set_instance_assignment -name PLL_COMPENSATION_MODE SOURCE_SYNCHRONOUS -to adc_a[2]
+set_instance_assignment -name PLL_COMPENSATION_MODE SOURCE_SYNCHRONOUS -to adc_a[1]
+set_instance_assignment -name PLL_COMPENSATION_MODE SOURCE_SYNCHRONOUS -to adc_a[0]
 
 ####################
 # sma output

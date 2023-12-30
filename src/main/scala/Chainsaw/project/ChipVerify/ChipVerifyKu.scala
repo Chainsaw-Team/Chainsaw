@@ -106,12 +106,12 @@ case class ChipVerifyKu() extends AXKU041 {
     val trigger = getControlWordCC(ctrlDomain.trigger).asBool.rise(False) || user_key.d(3).rise(False)
     trigger.addAttribute("mark_debug", "true")
     pulseGen.trigger := trigger
-    pulseGen.voltageForSample    := getControlWordCC(ctrlDomain.voltageForSample)
-    pulseGen.voltage1ForCamera    := getControlWordCC(ctrlDomain.voltageForCamera)
-    pulseGen.pulseWidthForSample := getControlWordCC(ctrlDomain.pulseWidthForSample)
-    pulseGen.pulseWidthForCamera := getControlWordCC(ctrlDomain.pulseWidthForCamera)
-    pulseGen.delay0       := getControlWordCC(ctrlDomain.delayForCamera)
-    pulseGen.delay1      := getControlWordCC(ctrlDomain.periodForCamera)
+//    pulseGen.voltageForSample    := getControlWordCC(ctrlDomain.voltageForSample)
+//    pulseGen.voltage1ForCamera    := getControlWordCC(ctrlDomain.voltageForCamera)
+//    pulseGen.pulseWidthForSample := getControlWordCC(ctrlDomain.pulseWidthForSample)
+//    pulseGen.pulseWidthForCamera := getControlWordCC(ctrlDomain.pulseWidthForCamera)
+//    pulseGen.delay0       := getControlWordCC(ctrlDomain.delayForCamera)
+//    pulseGen.delay1      := getControlWordCC(ctrlDomain.periodForCamera)
 
     Seq(an9767.channel1Clk, an9767.channel2Clk, an9767.channel1Wrt, an9767.channel2Wrt).foreach(
       _ := pulseGen.daClk

@@ -12,8 +12,10 @@ import argparse
 # quartus_dir = args.quartus_dir  # ...
 
 # Define the project directory path and Quartus executable path
-project_dir = r"C:\Users\lsfan\IdeaProjects\Chainsaw"  # your own project directory
-quartus_dir = r"C:\intelFPGA\18.1\quartus\bin64"
+project_dir = r"C:\Users\ltr\Documents\GitHub\Chainsaw"  # your own project directory
+assert os.path.isdir(project_dir), "Project directory does not exist"
+quartus_dir = r"C:\intelFPGA_lite\23.1std\quartus\bin64"
+assert os.path.isdir(quartus_dir), "Quartus directory does not exist"
 quartus = os.path.join(quartus_dir, "quartus.exe")
 quartus_sh = os.path.join(quartus_dir, "quartus_sh.exe")
 quartus_stp = os.path.join(quartus_dir, "quartus_stp.exe")
@@ -37,7 +39,6 @@ os.chdir(project_dir)
 if not os.path.isdir(workspace):
     os.makedirs(workspace)
 else:
-    shutil.copy2(os.path.join(workspace, "Acq250.stp"), os.path.join(board_dir, "Acq250.stp"))
     shutil.rmtree(workspace)
     os.makedirs(workspace)
 os.chdir(workspace)
@@ -55,7 +56,7 @@ shutil.copy2(os.path.join(board_dir, "Acq250.stp"), destination_path)
 # Run the TCL script to create a Quartus project
 subprocess.run([quartus_sh, '-t', tcl_script_path])
 
-subprocess.run([quartus_stp, 'Acq250Top', '--enable', "--signaltap", "--stp_file=Acq250.stp"])
+# subprocess.run([quartus_stp, 'Acq250Top', '--enable', "--signaltap", f"--stp_file={os.path.join(board_dir, 'Acq250.stp')}"])
 
 # Open the project created
 subprocess.run([quartus, 'Acq250Top.qpf'])

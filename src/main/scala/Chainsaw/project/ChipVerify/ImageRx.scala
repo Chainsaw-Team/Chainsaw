@@ -10,8 +10,8 @@ case class CxpVideoDma(stream: Int, streamWords: Int) extends Bundle with IMaste
 
   val data               = Bits(stream * streamWords * 32 bits)
   val valid, ready       = Bool
-  val sop, eop, sol, eol = Bool
-  val empty              = Bits(log2Up(4 * streamWords) bits)
+  val sop, eop, sol, eol = Bool // start of packet, end of packet, start of line, end of line
+  val empty              = Bits(log2Up(4 * streamWords) bits) // empty words in the packet
 
   override def asMaster(): Unit = {
     out(data, sop, eop, sol, eol, empty, valid)

@@ -1,17 +1,21 @@
 package Chainsaw.project.das
 
 import Chainsaw.edaFlow.PythonHeaderGenerator
-import Chainsaw.xillybus.XillybusBusIf
+import Chainsaw.xillybus.{XillybusBusIf, XillybusFifoRead, XillybusFifoWrite, XillybusMemBi, XillybusWrapper}
 import spinal.core._
-import spinal.lib.bus.regif.AccessType
-import spinal.core._
-import spinal.core.sim._
 import spinal.lib._
-import spinal.lib.sim._
-import spinal.lib.fsm._
-import spinal.lib.bus._
 
 case class Acq250Top() extends Acq250 {
+
+  val xillybus = XillybusWrapper(4, XillybusWrapper.defaultDevices, device, Some(dataClockDomain), 256)
+  xillybus.pcieIntel <> pcie
+  val pcieClockDomain = xillybus.pcieClockDomain
+
+  val upload_32   = xillybus.getStreamToHost("read_32")
+  val download_32 = xillybus.getStreamFromHost("write_32")
+  val upload_8    = xillybus.getStreamToHost("read_8")
+  val download_8  = xillybus.getStreamFromHost("write_8")
+  val mem_32      = xillybus.memBus
 
   // parameters
   val word250M           = 1.toLong << 31
@@ -27,7 +31,7 @@ case class Acq250Top() extends Acq250 {
     val memBusIf = XillybusBusIf(mem_32)
 
     // loopback
-    download_8.queue(32) >> upload_8
+    download_8 >> upload_8
     download_32.ready.set()
 
     // register file
@@ -69,8 +73,7 @@ case class Acq250Top() extends Acq250 {
 
   }
 
-  dataArea.dataOut.queue(256, dataClockDomain, pcieClockDomain) >> upload_32
-
+  dataArea.dataOut >> upload_32
   pcieArea.memBusIf.accept(PythonHeaderGenerator("Acq250", "Acq250")) // generate python header
 
 }

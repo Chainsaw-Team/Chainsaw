@@ -16,7 +16,13 @@ import scala.language.postfixOps
   * @param devices
   *   the device files you define through xillybus IP factory [[http://xillybus.com/custom-ip-factory]]
   */
-case class XillybusWrapper(pinCount: Int, devices: Seq[XillybusDevice], target: ChainsawDevice) extends Component {
+case class XillybusWrapper(
+    pinCount: Int,
+    devices: Seq[XillybusDevice],
+    target: ChainsawDevice,
+    dataClockDomain: Option[ClockDomain] = None,
+    bufferDepth: Int                     = 16
+) extends Component {
 
   val pcieIntel  = target.isInstanceOf[AlteraDevice].generate(slave(PcieIntel(pinCount)))
   val pcieXilinx = target.isInstanceOf[XilinxDevice].generate(slave(PcieXilinx(pinCount)))
@@ -44,11 +50,6 @@ case class XillybusWrapper(pinCount: Int, devices: Seq[XillybusDevice], target: 
   val memBus = MemBi(xillybus.memsBi.head)
   memBus <> innerMemBus
 
-  // mark debug for all data interface
-//  streamToHost.foreach(_.addAttribute("mark_debug", "true"))
-//  streamFromHost.foreach(_.addAttribute("mark_debug", "true"))
-//  memBus.addAttribute("mark_debug", "true")
-
   // xillybus IP <-> stream interface
 
   val pcieClockDomain = ClockDomain(
@@ -60,27 +61,39 @@ case class XillybusWrapper(pinCount: Int, devices: Seq[XillybusDevice], target: 
     config = ClockDomainConfig(resetActiveLevel = LOW) // TODO: active-low for both Xilinx and Altera?
   )
 
+  // creating buffers for read/write
+  val dataClockDomainInUse = dataClockDomain.getOrElse(pcieClockDomain)
   pcieClockDomain on {
-    xillybus.streamsRead.zip(xillybus.streamReadInterfaces).zip(streamToHost).foreach {
-      case ((device, busSide), userSide) =>
-        busSide.eof := False // unused
-        busSide.empty := !userSide.valid // TODO: should this change in advanced? as there may be a read command in queue
-        // When this signal is high, user r {devfile} data must contain valid data on the following clock cycle.
-        userSide.ready := busSide.rden.d()
-        busSide.data   := userSide.payload
+    xillybus.streamReadInterfaces.zip(streamToHost).foreach { case (busSide, userSide) =>
+      val buffer = StreamFifoCC(
+        dataType  = HardType(busSide.data),
+        depth     = bufferDepth,
+        pushClock = dataClockDomainInUse,
+        popClock  = pcieClockDomain
+      )
+
+      busSide.eof         := False                          // unused
+      userSide            >> buffer.io.push
+      buffer.io.pop.ready := busSide.rden.d()               // data should be valid on the following clock cycle of rden
+      busSide.empty       := buffer.io.popOccupancy <= U(1) // changed in advanced, as a read command may be in queue
+      busSide.data        := buffer.io.pop.payload
     }
 
-    xillybus.streamsWrite.zip(xillybus.streamWriteInterfaces).zip(streamFromHost).foreach {
-      case ((device, busSide), userSide) =>
-        // ignore open signal
-        userSide.valid   := busSide.wren
-        busSide.full     := !userSide.ready
-        userSide.payload := busSide.data
+    xillybus.streamWriteInterfaces.zip(streamFromHost).foreach { case (busSide, userSide) =>
+      val buffer = StreamFifoCC(
+        dataType  = HardType(busSide.data),
+        depth     = bufferDepth,
+        pushClock = pcieClockDomain,
+        popClock  = dataClockDomainInUse
+      )
+
+      buffer.io.pop          >> userSide
+      buffer.io.push.valid   := busSide.wren
+      busSide.full           := !buffer.io.push.ready
+      buffer.io.push.payload := busSide.data
     }
 
   }
-
-  // FIXME: timing conversion
 
   def getStreamFromHost(name: String): Stream[Bits] =
     xillybus.streamsWrite
@@ -115,15 +128,18 @@ case class XillybusWrapper(pinCount: Int, devices: Seq[XillybusDevice], target: 
 }
 
 object XillybusWrapper {
-  def defaultWrapper(pinCount: Int, device: ChainsawDevice) = XillybusWrapper(
+
+  def defaultDevices: Seq[XillybusDevice] = Seq(
+    XillybusFifoRead("read_32", 32),
+    XillybusFifoWrite("write_32", 32),
+    XillybusFifoRead("read_8", 8),
+    XillybusFifoWrite("write_8", 8),
+    XillybusMemBi("mem_32", 32, 16)
+  )
+
+  def defaultWrapper(pinCount: Int, device: ChainsawDevice): XillybusWrapper = XillybusWrapper(
     pinCount,
-    Seq(
-      XillybusFifoRead("read_32", 32),
-      XillybusFifoWrite("write_32", 32),
-      XillybusFifoRead("read_8", 8),
-      XillybusFifoWrite("write_8", 8),
-      XillybusMemBi("mem_32", 32, 16)
-    ),
+    defaultDevices,
     device
   )
 }

@@ -24,53 +24,49 @@ case class DataPath(
   val selfTest = getControlData(busArea.selfTest)
   val header   = getControlData(busArea.header)
 
-  // self-test data generation
-  val counter   = CounterFreeRun(1 << (dataWidth - 1))
-  val padding   = 14 - dataWidth
-  val testData0 = (counter.value  << 1) @@ U(0, padding bits)
-  val testData1 = ((counter.value << 1) + U(1)) @@ U(0, padding bits)
-
   // data selection
-  val dataInUse                         = Mux(selfTest, Vec(testData0, testData1), dataIn).d()
-  val dataInTruncated                   = dataInUse.map(_.takeHigh(dataWidth))
+  val dataInTruncated                   = dataIn.map(_.takeHigh(dataWidth))
   val Seq(phase0, phase1)               = dataInTruncated
   val Seq(phase0Delayed, phase1Delayed) = dataInTruncated.map(_.d())
 
   // data packing
-  // for 8-bit
-  val ctrlCounter = dataWidth match {
+  val packCounter = dataWidth match {
     case 8  => CounterFreeRun(2)
     case 12 => CounterFreeRun(4)
   }
-  when(pulseRise)(ctrlCounter.clear()) // 保持多次寄存器update之间,脉冲头与数据帧头间的偏差稳定
-  val packDone   = ctrlCounter.willOverflowIfInc
-  val packedFlow = Flow(Bits(32 bits))
 
+  when(pulseRise)(packCounter.clear()) // 保持多次寄存器update之间,脉冲头与数据帧头间的偏差稳定
+  val packDone = packCounter.willOverflowIfInc
+
+  val packedData = Bits(32 bits)
   dataWidth match {
     case 8 =>
-      packedFlow.payload := (phase1 ## phase0 ## phase1Delayed ## phase0Delayed)
-      packedFlow.valid   := ~(ctrlCounter.value === U(0))
+      packedData := (phase1 ## phase0 ## phase1Delayed ## phase0Delayed)
     case 12 =>
-      packedFlow.valid := ~(ctrlCounter.value === U(0))
-      switch(ctrlCounter.value) {
-        is(0)(packedFlow.payload.assignDontCare())
-        is(1)(packedFlow.payload := phase0.takeLow(8) ## phase1Delayed ## phase0Delayed)
-        is(2)(packedFlow.payload := phase1.takeLow(4) ## phase0 ## phase1Delayed ## phase0Delayed.takeHigh(4))
-        is(3)(packedFlow.payload := phase1 ## phase0 ## phase1Delayed.takeHigh(8))
+      switch(packCounter.value) {
+        is(0)(packedData.assignDontCare())
+        is(1)(packedData := phase0.takeLow(8) ## phase1Delayed ## phase0Delayed)
+        is(2)(packedData := phase1.takeLow(4) ## phase0 ## phase1Delayed ## phase0Delayed.takeHigh(4))
+        is(3)(packedData := phase1 ## phase0 ## phase1Delayed.takeHigh(8))
       }
   }
 
-  val streamIn = Stream(Fragment(Bits(32 bits)))
-  streamIn.fragment := packedFlow.payload
-  streamIn.valid    := packedFlow.valid
-
+  val packedValid = ~(packCounter.value === U(0))
   // "move" the pulse to the next packDone, avoid the header from splitting any packet
   val pulseReg = RegInit(False)
   when(pulseRise & ~packDone)(pulseReg.set())
   when(packDone)(pulseReg.clear())
-  streamIn.last := packDone & (pulseRise | pulseReg)
+  val packedLast = packDone & (pulseRise | pulseReg)
 
-  assert(~(streamIn.last & ~streamIn.valid))
+  // preparing test data
+  val testCounter = CounterFreeRun(BigInt(1) << 32)
+  val testData    = testCounter.value.asBits
+  when(packedLast)(testCounter.clear())
+
+  val streamIn = Stream(Fragment(Bits(32 bits)))
+  streamIn.fragment := Mux(selfTest, testData, packedData).d()
+  streamIn.valid    := packedValid.d()
+  streamIn.last     := packedLast.d()
 
   val withGps = streamIn.queue(32).insertHeader(gpsInfo).m2sPipe()
   val FlowOut = withGps.insertHeader(header.asBits).m2sPipe().toFlow
@@ -79,6 +75,7 @@ case class DataPath(
   dataOut.valid   := FlowOut.valid
 
   // debug
+  assert(~(streamIn.last & ~streamIn.valid))
   packDone.setName("packDone")
   pulseRise.setName("pulseRise")
   pulseReg.setName("pulseDelayed")

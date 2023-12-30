@@ -10,17 +10,17 @@ import spinal.lib.com.uart.Uart
 
 case class CxpHostWrapper() extends BlackBox {
 
-  // TODO: a program parsing verilog and generate blackbox
   setDefinitionName("cxp_host_wrapper")
-  val UART = master(Uart())
-  val dma_clk                      = out Bool ()
-  val dmaOut   = master(CxpVideoDma(1, 4))
-  dmaOut.setName("dma")
-
+  // ports(on board)
+  val UART                         = master(Uart())
   val fmc_ref_clk_n, fmc_ref_clk_p = in Bool ()
   val fmc_rx_n, fmc_rx_p           = in Bits (4 bits)
   val fmc_tx                       = out Bits (4 bits)
   val pocxp_en_tri_o               = out Bits (4 bits)
   val power_good                   = out Bool ()
+  // nets
+  val dma_clk = out Bool ()
+  val dmaOut  = master(CxpVideoDma(1, 4))
+  dmaOut.setName("dma")
 
 }

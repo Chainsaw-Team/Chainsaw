@@ -41,13 +41,4 @@ class Acq250 extends Component with Board {
     )
   )
 
-  val xillybus = XillybusWrapper.defaultWrapper(4, device)
-  xillybus.pcieIntel <> pcie
-  val pcieClockDomain = xillybus.pcieClockDomain
-
-  val upload_32   = xillybus.getStreamToHost("read_32")
-  val download_32 = xillybus.getStreamFromHost("write_32")
-  val upload_8    = xillybus.getStreamToHost("read_8")
-  val download_8  = xillybus.getStreamFromHost("write_8")
-  val mem_32      = xillybus.memBus
 }

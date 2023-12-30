@@ -41,7 +41,7 @@ package object das {
     500 / ctrlClockRate
   }
 
-  var dataWidth = 8
+  var dataWidth = 12
   var atSimTime = false
 
   // utils
@@ -50,3 +50,4 @@ package object das {
     ctrl.d(3)
   }
 }
+
