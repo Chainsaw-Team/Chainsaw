@@ -80,6 +80,27 @@ class StreamMuxSafe[T <: Data](dataType: T, portCount: Int) extends Component {
   io.select.ready := io.inputs.map(_.ready).reduce(_ && _)
 }
 
+// very common in DSP
+class StreamP2SCC(bitWidth: Int, p2sFactor: Int) extends Component {
+
+  val slow = slave Stream Vec(Bits(bitWidth bits), p2sFactor)
+  val fast = master Stream Bits(bitWidth bits)
+
+  val clkSlow, clkFast, rst = in Bool ()
+
+  val domainSlow = ClockDomain(clkSlow, reset = rst)
+  val domainFast = ClockDomain(clkFast, reset = rst)
+
+  val fifo = StreamFifoCC(Bits(8 * p2sFactor bits), 8, domainSlow, domainFast)
+
+  val streamIn         = slow.translateWith(slow.payload.reduce(_ ## _))
+  val dataInFastDomain = streamIn.queue(8, domainSlow, domainFast)
+  domainFast on {
+    StreamWidthAdapter(dataInFastDomain, fast, BIG)
+  }
+
+}
+
 object StreamPokeFloating {
   def apply(
       stream: Stream[Floating],

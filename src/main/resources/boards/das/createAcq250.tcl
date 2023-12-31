@@ -20,7 +20,21 @@ set_global_assignment -name PROJECT_OUTPUT_DIRECTORY output_files
 # all-in-one verilog top module
 set_global_assignment -name VERILOG_FILE Acq250Top.v
 
+####################
+# LVDSDEBUG and IPs
+####################
+set_global_assignment -name VERILOG_FILE LVDSDEBUG.v
+
+set_global_assignment -name VERILOG_FILE ./src/LVDS14.v
+set_global_assignment -name VERILOG_FILE ./src/LVDSPLL.v
+set_global_assignment -name VERILOG_FILE ./src/LVDSPLL/LVDSPLL_0002.v
+set_global_assignment -name QIP_FILE LVDSPLL.qip
+set_global_assignment -name QIP_FILE LVDSPLL_0002.qip
+set_global_assignment -name QIP_FILE LVDS14.qip
+
+####################
 # xillybus files
+####################
 # from the generated files
 set_global_assignment -name VERILOG_FILE xillybus.v
 set_global_assignment -name QXP_FILE xillybus_core.qxp
@@ -28,18 +42,23 @@ set_global_assignment -name QXP_FILE xillybus_core.qxp
 set_global_assignment -name VERILOG_FILE pcie_c5_4x.v
 set_global_assignment -name QSYS_FILE pcie_reconfig.qsys
 
+####################
 # timing constraint
+####################
 set_global_assignment -name SDC_FILE Acq250.sdc
 
+####################
 # clock from oscillator & reset
-
+####################
 set_location_assignment PIN_R20 -to clk
 set_instance_assignment -name IO_STANDARD LVDS -to clk
 set_location_assignment PIN_P20 -to "clk(n)"
 set_location_assignment PIN_Y24 -to rstn
 set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to rstn
 
+####################
 # PCIe
+####################
 set_location_assignment PIN_U22 -to pcie_perstn
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to pcie_perstn
 set_location_assignment PIN_V6 -to pcie_refclk
@@ -212,6 +231,22 @@ set_instance_assignment -name PLL_COMPENSATION_MODE SOURCE_SYNCHRONOUS -to adc_a
 set_instance_assignment -name PLL_COMPENSATION_MODE SOURCE_SYNCHRONOUS -to adc_a[1]
 set_instance_assignment -name PLL_COMPENSATION_MODE SOURCE_SYNCHRONOUS -to adc_a[0]
 
+set_instance_assignment -name PLL_COMPENSATION_MODE SOURCE_SYNCHRONOUS -to adc_clk
+set_instance_assignment -name PLL_COMPENSATION_MODE SOURCE_SYNCHRONOUS -to adc_b[6]
+set_instance_assignment -name PLL_COMPENSATION_MODE SOURCE_SYNCHRONOUS -to adc_b[5]
+set_instance_assignment -name PLL_COMPENSATION_MODE SOURCE_SYNCHRONOUS -to adc_b[4]
+set_instance_assignment -name PLL_COMPENSATION_MODE SOURCE_SYNCHRONOUS -to adc_b[3]
+set_instance_assignment -name PLL_COMPENSATION_MODE SOURCE_SYNCHRONOUS -to adc_b[2]
+set_instance_assignment -name PLL_COMPENSATION_MODE SOURCE_SYNCHRONOUS -to adc_b[1]
+set_instance_assignment -name PLL_COMPENSATION_MODE SOURCE_SYNCHRONOUS -to adc_b[0]
+set_instance_assignment -name PLL_COMPENSATION_MODE SOURCE_SYNCHRONOUS -to adc_a[6]
+set_instance_assignment -name PLL_COMPENSATION_MODE SOURCE_SYNCHRONOUS -to adc_a[5]
+set_instance_assignment -name PLL_COMPENSATION_MODE SOURCE_SYNCHRONOUS -to adc_a[4]
+set_instance_assignment -name PLL_COMPENSATION_MODE SOURCE_SYNCHRONOUS -to adc_a[3]
+set_instance_assignment -name PLL_COMPENSATION_MODE SOURCE_SYNCHRONOUS -to adc_a[2]
+set_instance_assignment -name PLL_COMPENSATION_MODE SOURCE_SYNCHRONOUS -to adc_a[1]
+set_instance_assignment -name PLL_COMPENSATION_MODE SOURCE_SYNCHRONOUS -to adc_a[0]
+
 ####################
 # sma output
 ####################
@@ -244,11 +279,5 @@ set_location_assignment PIN_AB6 -to gain[1]
 set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to gain[1]
 set_location_assignment PIN_AA6 -to gain[0]
 set_instance_assignment -name IO_STANDARD "3.3-V LVCMOS" -to gain[0]
-
-####################
-# timing constraints
-####################
-
-# set_instance_assignment -name PLL_COMPENSATION_MODE SOURCE_SYNCHRONOUS -to adc_clk
 
 project_close

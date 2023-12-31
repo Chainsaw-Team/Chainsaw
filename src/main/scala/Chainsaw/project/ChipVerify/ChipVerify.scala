@@ -64,7 +64,7 @@ case class ChipVerify() extends AXKU041 {
     XillybusFifoWrite("write_8", 8),
     XillybusMemBi("mem_8", 8, 5)
   )
-  val xillybus = XillybusWrapper(pinCount = 8, devices, this.device, Some(dmaClockDomain), 16)
+  val xillybus = XillybusWrapper(pinCount = 8, devices, this.device, Some(dmaClockDomain))
   xillybus.pcieXilinx <> pcie
 
   // stream loopback for PCIe test

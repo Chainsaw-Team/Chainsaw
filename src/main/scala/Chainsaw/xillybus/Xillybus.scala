@@ -70,7 +70,6 @@ case class MemBi(device: XillybusDevice) extends Bundle {
   val hasRead  = device.direction == "read" || device.direction == "bi"
   val wName    = s"user_w_${device.name}"
   val rName    = s"user_r_${device.name}"
-  println(s"has read = $hasRead, has write = $hasWrite")
 
   // I/O
   // Host -> FPGA

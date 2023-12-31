@@ -9,8 +9,6 @@ import spinal.lib.bus.regif._
 
 import scala.language.postfixOps
 
-// TODO: 更完整的正确性测试
-
 case class DynamicDelay(delayMax: Int, payloadIn: Bits, delay: Option[UInt], bus: Option[BusIf]) extends Area {
 
   val delayWidth = log2Up(delayMax + 1)
@@ -28,13 +26,13 @@ case class DynamicDelay(delayMax: Int, payloadIn: Bits, delay: Option[UInt], bus
   }
 
   val payloadOut = Bits(payloadIn.getBitsWidth bits)
-  val stable = Bool()
+  val stable     = Bool()
 
   val counterWidth = delayWidth
   val paddedLength = pow2(counterWidth)
 
   // delay datapath
-  val ram = Mem(HardType(payloadIn), paddedLength)
+  val ram              = Mem(HardType(payloadIn), paddedLength)
   val writeAddrCounter = CounterFreeRun(paddedLength)
   // ram latency = +2 for read latency, +1 for address latency
   val readAddr = (writeAddrCounter.value + 3 - delayInUse).d()
@@ -57,37 +55,36 @@ case class DynamicDelay(delayMax: Int, payloadIn: Bits, delay: Option[UInt], bus
 case class DynamicDelayModule(delayMax: Int, dataWidth: Int) extends Module {
 
   val delayWidth = log2Up(delayMax + 1)
-  val delay = in UInt (delayWidth bits)
-  val payloadIn = in Bits (dataWidth bits)
+  val delay      = in UInt (delayWidth bits)
+  val payloadIn  = in Bits (dataWidth bits)
   val payloadOut = out Bits (dataWidth bits)
-  val stable = out Bool()
+  val stable     = out Bool ()
 
   val area = DynamicDelay(delayMax, payloadIn, Some(delay), None)
   payloadOut := area.payloadOut
-  stable := area.stable
+  stable     := area.stable
 }
 
 object DynamicDelayModule extends App {
 
   SimConfig.withFstWave.compile(DynamicDelayModule(16, 8)).doSim { dut =>
-
     dut.clockDomain.forkStimulus(2)
     dut.clockDomain.waitSampling()
 
     (0 until 100).foreach { i =>
-      dut.delay #= 16
+      dut.delay     #= 16
       dut.payloadIn #= i
       dut.clockDomain.waitSampling()
     }
 
     (0 until 100).foreach { i =>
-      dut.delay #= 0
+      dut.delay     #= 0
       dut.payloadIn #= i
       dut.clockDomain.waitSampling()
     }
 
     (0 until 100).foreach { i =>
-      dut.delay #= 3
+      dut.delay     #= 3
       dut.payloadIn #= i
       dut.clockDomain.waitSampling()
     }

@@ -9,9 +9,7 @@ import spinal.lib.fsm._
 
 import scala.language.postfixOps
 
-sealed trait ConfigItem { // TODO: make this a Chainsaw feature
-
-}
+sealed trait ConfigItem {}
 
 case class ConstantConfig(value: BigInt) extends ConfigItem
 
@@ -34,12 +32,10 @@ case class Ad9959Config(
   // assertions
   frequencyDividerRatio match {
     case ConstantConfig(value) => assert(value >= 4 && value <= 20)
-    case _ => // do nothing
+    case _                     => // do nothing
   }
 }
 
-/** */
-// TODO: using bus interface as input for instantiation, each reg can be either fixed or configurable
 class Ad9959Ctrl(config: Ad9959Config, bus: Option[BusIf], ddsBundle: Ad9959Bundle) extends Area {
 
   val freqs = config.freqs.zipWithIndex.map { case (value, i) =>
@@ -108,7 +104,7 @@ class Ad9959Ctrl(config: Ad9959Config, bus: Option[BusIf], ddsBundle: Ad9959Bund
   val ctrlOut = ddsBundle.sdio(0) // the only signal we use to control AD9959
   val serialIoArea = new ClockingArea(serialIoDomain) {
 
-    val values: Vec[UInt] = Vec( // TODO: pick a value from these regs may be the critical path
+    val values: Vec[UInt] = Vec(
       ((0 until 4).flatMap(i => Seq(csrs(i), freqs(i), phases(i) @@ U(0, 16 bits))) :+ fr1Reg).map(getControlData)
     )
 

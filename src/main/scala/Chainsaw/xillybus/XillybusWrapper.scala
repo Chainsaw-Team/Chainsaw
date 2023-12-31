@@ -16,13 +16,7 @@ import scala.language.postfixOps
   * @param devices
   *   the device files you define through xillybus IP factory [[http://xillybus.com/custom-ip-factory]]
   */
-case class XillybusWrapper(
-    pinCount: Int,
-    devices: Seq[XillybusDevice],
-    target: ChainsawDevice,
-    dataClockDomain: Option[ClockDomain] = None,
-    bufferDepth: Int                     = 16
-) extends Component {
+case class XillybusWrapper(pinCount: Int, devices: Seq[XillybusDevice], target: ChainsawDevice, dataClockDomain: Option[ClockDomain] = None) extends Component {
 
   val pcieIntel  = target.isInstanceOf[AlteraDevice].generate(slave(PcieIntel(pinCount)))
   val pcieXilinx = target.isInstanceOf[XilinxDevice].generate(slave(PcieXilinx(pinCount)))
@@ -64,33 +58,39 @@ case class XillybusWrapper(
   // creating buffers for read/write
   val dataClockDomainInUse = dataClockDomain.getOrElse(pcieClockDomain)
   pcieClockDomain on {
-    xillybus.streamReadInterfaces.zip(streamToHost).foreach { case (busSide, userSide) =>
-      val buffer = StreamFifoCC(
-        dataType  = HardType(busSide.data),
-        depth     = bufferDepth,
-        pushClock = dataClockDomainInUse,
-        popClock  = pcieClockDomain
-      )
+    xillybus.streamsRead.zip(xillybus.streamReadInterfaces).zip(streamToHost).foreach {
+      case ((device, busSide), userSide) =>
+        val buffer = StreamFifoCC(
+          dataType  = HardType(busSide.data),
+          depth     = device.getFifoDepth,
+          pushClock = dataClockDomainInUse,
+          popClock  = pcieClockDomain
+        )
 
-      busSide.eof         := False                          // unused
-      userSide            >> buffer.io.push
-      buffer.io.pop.ready := busSide.rden.d()               // data should be valid on the following clock cycle of rden
-      busSide.empty       := buffer.io.popOccupancy <= U(1) // changed in advanced, as a read command may be in queue
-      busSide.data        := buffer.io.pop.payload
+        println(f"fifoDepth for ${device.name} = ${device.getFifoDepth}")
+
+        busSide.eof         := False            // unused
+        userSide            >> buffer.io.push
+        buffer.io.pop.ready := busSide.rden.d() // data should be valid on the following clock cycle of rden
+        busSide.empty := buffer.io.popOccupancy <= U(1) // changed in advanced, as a read command may be in queue
+        busSide.data  := buffer.io.pop.payload
     }
 
-    xillybus.streamWriteInterfaces.zip(streamFromHost).foreach { case (busSide, userSide) =>
-      val buffer = StreamFifoCC(
-        dataType  = HardType(busSide.data),
-        depth     = bufferDepth,
-        pushClock = pcieClockDomain,
-        popClock  = dataClockDomainInUse
-      )
+    xillybus.streamsWrite.zip(xillybus.streamWriteInterfaces).zip(streamFromHost).foreach {
+      case ((device, busSide), userSide) =>
+        val buffer = StreamFifoCC(
+          dataType  = HardType(busSide.data),
+          depth     = device.getFifoDepth,
+          pushClock = pcieClockDomain,
+          popClock  = dataClockDomainInUse
+        )
 
-      buffer.io.pop          >> userSide
-      buffer.io.push.valid   := busSide.wren
-      busSide.full           := !buffer.io.push.ready
-      buffer.io.push.payload := busSide.data
+        println(f"fifoDepth for ${device.name} = ${device.getFifoDepth}")
+
+        buffer.io.pop          >> userSide
+        buffer.io.push.valid   := busSide.wren
+        busSide.full           := !buffer.io.push.ready
+        buffer.io.push.payload := busSide.data
     }
 
   }
@@ -137,9 +137,5 @@ object XillybusWrapper {
     XillybusMemBi("mem_32", 32, 16)
   )
 
-  def defaultWrapper(pinCount: Int, device: ChainsawDevice): XillybusWrapper = XillybusWrapper(
-    pinCount,
-    defaultDevices,
-    device
-  )
+  def defaultWrapper(pinCount: Int, device: ChainsawDevice): XillybusWrapper = XillybusWrapper(pinCount, defaultDevices, device)
 }

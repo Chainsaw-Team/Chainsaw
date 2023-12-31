@@ -17,6 +17,7 @@ class Acq250 extends Component with Board {
   lazy val ddsBundle    = out(Ad9959Bundle())
   lazy val pulseBundle  = out(PulseBundle())
   lazy val gain         = out UInt (6 bits)
+  lazy val adcBundle    = in(Adc250())
 
   override val xdcFile: File                 = new File("boards/das/createAcq250.tcl")
   override val device: Device.ChainsawDevice = new AlteraDevice(CycloneV, "5CGXFC9D6F27I7", 125 MHz, None)

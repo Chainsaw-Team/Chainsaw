@@ -13,7 +13,14 @@ package Chainsaw.xillybus
   * @param addrWidth
   *   for address based port, width of address
   */
-case class XillybusDevice(name: String, deviceType: String, direction: String, bitWidth: Int, addrWidth: Int = -1) {
+case class XillybusDevice(
+    name: String,
+    deviceType: String,
+    direction: String,
+    bitWidth: Int,
+    addrWidth: Int = -1,
+    depth: Int     = -1
+) {
 
   deviceType match {
     case "fifo" =>
@@ -31,16 +38,21 @@ case class XillybusDevice(name: String, deviceType: String, direction: String, b
   def fullName = s"user_${directionName}_$name"
 
   def deviceName = s"\\\\.\\xillybus_$name" // device name in windows system
+
+  def getFifoDepth: Int = deviceType match {
+    case "fifo" => if (depth == -1) 2048 / (bitWidth / 8) else depth
+    case "mem"  => throw new IllegalAccessError("mem device has no FIFO depth")
+  }
 }
 
 // factory methods
 
 object XillybusFifoRead {
-  def apply(name: String, bitWidth: Int) = XillybusDevice(name, "fifo", "read", bitWidth)
+  def apply(name: String, bitWidth: Int, depth: Int = -1) = XillybusDevice(name, "fifo", "read", bitWidth, depth=depth)
 }
 
 object XillybusFifoWrite {
-  def apply(name: String, bitWidth: Int) = XillybusDevice(name, "fifo", "write", bitWidth)
+  def apply(name: String, bitWidth: Int, depth: Int = -1) = XillybusDevice(name, "fifo", "write", bitWidth, depth=depth)
 }
 
 object XillybusMemWrite {

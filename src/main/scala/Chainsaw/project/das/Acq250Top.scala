@@ -7,7 +7,15 @@ import spinal.lib._
 
 case class Acq250Top() extends Acq250 {
 
-  val xillybus = XillybusWrapper(4, XillybusWrapper.defaultDevices, device, Some(dataClockDomain), 256)
+  val devices = Seq(
+    XillybusFifoRead("read_32", 32),
+    XillybusFifoWrite("write_32", 32, 8), // unused, set a shallow FIFO
+    XillybusFifoRead("read_8", 8, 8),     // unused, set a shallow FIFO
+    XillybusFifoWrite("write_8", 8, 8),   // unused, set a shallow FIFO
+    XillybusMemBi("mem_32", 32, 16)
+  )
+
+  val xillybus = XillybusWrapper(4, devices, device, Some(dataClockDomain))
   xillybus.pcieIntel <> pcie
   val pcieClockDomain = xillybus.pcieClockDomain
 
@@ -25,6 +33,17 @@ case class Acq250Top() extends Acq250 {
   ////////////////////
   // PCIe area for register file and DDS control
   ////////////////////
+
+  val lvdsDebug = LVDSDEBUG()
+  lvdsDebug.adc_clk   := adc_clk
+  lvdsDebug.rstn      := rstn
+  lvdsDebug.adcBundle := adcBundle
+
+  val lvdsClockDomain = ClockDomain(
+    clock  = lvdsDebug.lvds_clk,
+    reset  = rstn,
+    config = ClockDomainConfig(resetActiveLevel = LOW)
+  )
 
   val pcieArea = new ClockingArea(pcieClockDomain) {
 
@@ -63,12 +82,13 @@ case class Acq250Top() extends Acq250 {
     val pulseCtrl = PulseCtrl(pcieArea.memBusIf, pcieClockDomain, pulseBundle, gain)
     val dataOut   = Stream(Bits(32 bits))
     val dataPath = DataPath(
-      busIf          = pcieArea.memBusIf,
-      busClockDomain = pcieClockDomain,
-      dataIn         = Vec(U(0, 14 bits), U(0, 14 bits)),
-      pulseRise      = pulseCtrl.pulseRise,
-      gpsInfo        = B(0, 32 bits),
-      dataOut        = dataOut
+      busIf           = pcieArea.memBusIf,
+      busClockDomain  = pcieClockDomain,
+      lvdsClockDomain = lvdsClockDomain,
+      lvdsDataIn      = lvdsDebug.adcData,
+      pulseRise       = pulseCtrl.pulseRise,
+      gpsInfo         = B(0, 32 bits),
+      dataOut         = dataOut
     )
 
   }

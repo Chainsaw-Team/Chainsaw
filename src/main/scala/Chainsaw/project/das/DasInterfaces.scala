@@ -14,7 +14,7 @@ case class GpsBundle() extends Bundle {
 /** ADC芯片与FPGA的接口
   */
 case class Adc250() extends Bundle {
-  val AdcinA, AdcinB = in Bits (7 bits) // 名字与引脚匹配
+  val adc_a, adc_b = in Bits (7 bits)
   this.setName("")
 }
 
@@ -50,12 +50,5 @@ case class PulseBundle() extends Bundle {
   */
 case class Adc62_5() extends Bundle { // 信号采集模块输出的ADC数据
   val DOUTA, DOUTB, DOUTC, DOUTD, DOUTBA, DOUTBB, DOUTBC, DOUTBD = Bits(14 bits)
-  this.setName("")
-}
-
-/** ADC进入数据处理时钟域的接口,频率为1/2采样率.空间上,adc0对应于上面的两个端口,adc1对应于下面的两个端口;时间上,0S的数据在时域上在1S之前
-  */
-case class Adc125() extends Bundle { // 送入信号处理时钟域的ADC数据
-  val adc0X0S, adc0X1S, adc1X0S, adc1X1S = Bits(14 bits)
   this.setName("")
 }

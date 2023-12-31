@@ -1,42 +1,86 @@
 package Chainsaw.project.das
 
-import Chainsaw.DataUtil
+import Chainsaw.{DataUtil, VecUtil}
 import spinal.core._
 import spinal.lib._
 import spinal.lib.bus.regif.{AccessType, BusIf}
 
+import scala.language.postfixOps
+
 case class DataPath(
     busIf: BusIf,
     busClockDomain: ClockDomain,
-    dataIn: Vec[UInt], // data from ADC
+    lvdsClockDomain: ClockDomain,
+    lvdsDataIn: Adc62_5,
     pulseRise: Bool,
     gpsInfo: Bits, // information from GPS module
     dataOut: Stream[Bits]
 ) extends Area {
 
-  // initialize cross clock domain registers
-  val HEADER = 0x40c040c0L
-  val BITWIDTH = 12
+  // parameter
+  val HEADER         = 0x40c040c0L
+  val ADCBITWIDTH    = 14
+  val UPLOADBITWIDTH = 12
 
+  ////////////////////
+  // initialize cross clock domain registers
+  ////////////////////
   val busArea = new ClockingArea(busClockDomain) {
-    // initialize cross clock domain registers, all "points" means number of clock cycles
     val selfTest = busIf.newReg("selfTest").field(Bool(), AccessType.RW, 0, "self-test flag")
     val header   = busIf.newReg("header").field(word(), AccessType.RW, HEADER, "frame header")
+    val useChannel0 =
+      busIf.newReg("useChannel0").field(Bool(), AccessType.RW, 1, "data source control, 0 for port 1,2, 1 for port 3,4")
   }
-  val selfTest = getControlData(busArea.selfTest)
-  val header   = getControlData(busArea.header)
+  val selfTest    = getControlData(busArea.selfTest)
+  val header      = getControlData(busArea.header)
+  val useChannel0 = getControlData(busArea.useChannel0)
 
+  ////////////////////
+  // poly-phase
+  ////////////////////
+  def p2s(vec: Vec[Bits]): Bits = {
+    val streamIn  = Stream(Bits(ADCBITWIDTH * 2 bits))
+    val streamOut = Stream(Bits(ADCBITWIDTH bits))
 
-  val counter   = CounterFreeRun(1 << (BITWIDTH - 1))
-  val padding   = 14 - BITWIDTH
+    streamIn.valid   := True
+//    streamIn.payload := vec.reduce(_ ## _)
+    streamIn.payload := vec.reverse.reduce(_ ## _) // TODO: order ?
+
+    streamIn.queue(8, lvdsClockDomain, ClockDomain.current)
+    StreamWidthAdapter(streamIn, streamOut)
+
+    streamOut.m2sPipe().freeRun().payload // pipelined output
+  }
+
+  val adcData0                 = Vec(lvdsDataIn.DOUTD, lvdsDataIn.DOUTC, lvdsDataIn.DOUTB, lvdsDataIn.DOUTA)
+  val adcData1                 = Vec(lvdsDataIn.DOUTBD, lvdsDataIn.DOUTBC, lvdsDataIn.DOUTBB, lvdsDataIn.DOUTBA)
+  val channels: Seq[Vec[Bits]] = adcData0.groupByChannel(2) ++ adcData1.groupByChannel(2)
+  val Seq(adc0X0S, adc0X1S, adc1X0S, adc1X1S) = channels.map(p2s)
+
+  ////////////////////
+  // channel selection
+  ////////////////////
+  val dataSelected = Vec(Bits(ADCBITWIDTH bits), 2)
+  dataSelected(0) := Mux(useChannel0, adc0X0S, adc1X0S).d()
+  dataSelected(1) := Mux(useChannel0, adc0X1S, adc1X1S).d()
+
+  ////////////////////
+  // test data generation
+  ////////////////////
+  val counter   = CounterFreeRun(1 << (UPLOADBITWIDTH - 1))
+  val padding   = ADCBITWIDTH - UPLOADBITWIDTH
   val testData0 = (counter.value  << 1) @@ U(0, padding bits)
   val testData1 = ((counter.value << 1) + U(1)) @@ U(0, padding bits)
 
+  ////////////////////
   // data selection
-  val dataInUse = Mux(selfTest, Vec(testData0, testData1), dataIn).d()
+  ////////////////////
+  val dataInUse = Mux(selfTest, Vec(testData0, testData1), dataSelected).d()
 
-  // data selection
-  val dataInTruncated                   = dataInUse.map(_.takeHigh(BITWIDTH))
+  ////////////////////
+  // data packing
+  ////////////////////
+  val dataInTruncated                   = dataInUse.map(_.takeHigh(UPLOADBITWIDTH))
   val Seq(phase0, phase1)               = dataInTruncated
   val Seq(phase0Delayed, phase1Delayed) = dataInTruncated.map(_.d())
 
@@ -60,11 +104,9 @@ case class DataPath(
   when(packDone)(pulseReg.clear())
   val packedLast = packDone & (pulseRise | pulseReg)
 
-  // preparing test data
-  val testCounter = CounterFreeRun(BigInt(1) << 32)
-  val testData    = testCounter.value.asBits
-  when(packedLast)(testCounter.clear())
-
+  ////////////////////
+  // header insertion
+  ////////////////////
   val streamIn = Stream(Fragment(Bits(32 bits)))
   streamIn.fragment := packedData.d()
   streamIn.valid    := packedValid.d()
