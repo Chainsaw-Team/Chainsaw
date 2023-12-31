@@ -7,6 +7,17 @@ import spinal.lib.bus.regif.{AccessType, BusIf}
 
 import scala.language.postfixOps
 
+/**
+ * The data path for processing ADC data, including poly-phase decomposition, parallel to serial conversion, data packing and framing
+ *
+ * @param busIf           The Xillybus mem bus interface.
+ * @param busClockDomain  The 125MHz clock domain for the Xillybus.
+ * @param lvdsClockDomain The 62.5MHz clock domain for the LVDS data.
+ * @param lvdsDataIn      The LVDS data input.
+ * @param pulseRise       A boolean flag indicating the beginning of a pulse.
+ * @param gpsInfo         Time information from the GPS module.
+ * @param dataOut         The output stream of processed data.
+ */
 case class DataPath(
     busIf: BusIf,
     busClockDomain: ClockDomain,
@@ -54,6 +65,13 @@ case class DataPath(
 
   val adcData0                 = Vec(lvdsDataIn.DOUTD, lvdsDataIn.DOUTC, lvdsDataIn.DOUTB, lvdsDataIn.DOUTA)
   val adcData1                 = Vec(lvdsDataIn.DOUTBD, lvdsDataIn.DOUTBC, lvdsDataIn.DOUTBB, lvdsDataIn.DOUTBA)
+  /**
+   * Groups the ADC data from two sources into channels.
+   *
+   * @param adcData0 The ADC data from source 0.
+   * @param adcData1 The ADC data from source 1.
+   * @return A sequence of vectors of bits representing the grouped channels.
+   */
   val channels: Seq[Vec[Bits]] = adcData0.groupByChannel(2) ++ adcData1.groupByChannel(2)
   val Seq(adc0X0S, adc0X1S, adc1X0S, adc1X1S) = channels.map(p2s)
 
@@ -105,7 +123,7 @@ case class DataPath(
   val packedLast = packDone & (pulseRise | pulseReg)
 
   ////////////////////
-  // header insertion
+  // framing(header insertion)
   ////////////////////
   val streamIn = Stream(Fragment(Bits(32 bits)))
   streamIn.fragment := packedData.d()

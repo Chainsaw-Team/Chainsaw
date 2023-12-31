@@ -23,12 +23,13 @@ case class Adc250() extends Bundle {
   * @param csn
   *   The chip select signal, active low.
   * @param sclk
-  *   The serial clock signal.
+  *   The clock output for controlling AD9959.
   * @param rst
   *   The reset signal.
   * @param io_update
   *   The I/O update signal.
   * @param p
+  *   Unused
   * @param sdio
   *   A 4-bit I/O interface for serial data to/from AD9959
   */
@@ -46,6 +47,7 @@ case class PulseBundle() extends Bundle {
 
 // 内部接口
 
+// TODO: optimize naming
 /** ADC数据从LVDS离开的接口,频率为1/4采样率
   */
 case class Adc62_5() extends Bundle { // 信号采集模块输出的ADC数据
