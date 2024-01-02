@@ -65,7 +65,6 @@ class Ad9959Ctrl(config: Ad9959Config, bus: Option[BusIf], ddsBundle: Ad9959Bund
     }
   }
   val fr1Reg = U(BigInt("1", 2), 1 bits) @@ getControlData(fdr) @@ U(0, 26 bits)
-  fr1Reg.addTag(crossClockDomain)
 
   // parameters
   val waitingCycles = if (atSimTime) 100 else 1250000 // waiting 0.01s X 16 for host writing registers
@@ -120,7 +119,8 @@ class Ad9959Ctrl(config: Ad9959Config, bus: Option[BusIf], ddsBundle: Ad9959Bund
     // constructing change event, which is used to trigger the whole FSM
     private val freqChange  = freqs.map(getControlData).map(_.changed.d()).reduce(_ || _).d()
     private val phaseChange = phases.map(getControlData).map(_.changed.d()).reduce(_ || _).d()
-    private val change      = (freqChange || phaseChange).d()
+    private val fdrChange   = getControlData(fdr).changed
+    private val change      = (freqChange || phaseChange || fdrChange).d()
 
     // components
     val writeRegCounter = Counter(128)

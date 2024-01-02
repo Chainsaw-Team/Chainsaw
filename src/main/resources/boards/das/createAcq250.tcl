@@ -1,5 +1,6 @@
 package require ::quartus::project
 
+# 0 for original, 1 for later version
 set pin_version 1
 
 ## 覆写project

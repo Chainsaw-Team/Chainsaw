@@ -7,17 +7,24 @@ import spinal.lib.bus.regif.{AccessType, BusIf}
 
 import scala.language.postfixOps
 
-/**
- * The data path for processing ADC data, including poly-phase decomposition, parallel to serial conversion, data packing and framing
- *
- * @param busIf           The Xillybus mem bus interface.
- * @param busClockDomain  The 125MHz clock domain for the Xillybus.
- * @param lvdsClockDomain The 62.5MHz clock domain for the LVDS data.
- * @param lvdsDataIn      The LVDS data input.
- * @param pulseRise       A boolean flag indicating the beginning of a pulse.
- * @param gpsInfo         Time information from the GPS module.
- * @param dataOut         The output stream of processed data.
- */
+/** The data path for processing ADC data, including poly-phase decomposition, parallel to serial conversion, data
+  * packing and framing
+  *
+  * @param busIf
+  *   The Xillybus mem bus interface.
+  * @param busClockDomain
+  *   The 125MHz clock domain for the Xillybus.
+  * @param lvdsClockDomain
+  *   The 62.5MHz clock domain for the LVDS data.
+  * @param lvdsDataIn
+  *   The LVDS data input.
+  * @param pulseRise
+  *   A boolean flag indicating the beginning of a pulse.
+  * @param gpsInfo
+  *   Time information from the GPS module.
+  * @param dataOut
+  *   The output stream of processed data.
+  */
 case class DataPath(
     busIf: BusIf,
     busClockDomain: ClockDomain,
@@ -47,33 +54,42 @@ case class DataPath(
   val useChannel0 = getControlData(busArea.useChannel0)
 
   ////////////////////
-  // poly-phase
+  // test data generation
   ////////////////////
-  def p2s(vec: Vec[Bits]): Bits = {
-    val streamIn  = Stream(Bits(ADCBITWIDTH * 2 bits))
-    val streamOut = Stream(Bits(ADCBITWIDTH bits))
-
-    streamIn.valid   := True
-//    streamIn.payload := vec.reduce(_ ## _)
-    streamIn.payload := vec.reverse.reduce(_ ## _) // TODO: order ?
-
-    streamIn.queue(8, lvdsClockDomain, ClockDomain.current)
-    StreamWidthAdapter(streamIn, streamOut)
-
-    streamOut.m2sPipe().freeRun().payload // pipelined output
+  val lvdsArea = new ClockingArea(lvdsClockDomain) {
+    val counter = CounterFreeRun(1 << (UPLOADBITWIDTH - 2))
+    val padding = ADCBITWIDTH - UPLOADBITWIDTH
+    val testData = (0 until 4)
+      .map { i => // 0,1,2,3, corresponding to D,C,B,A
+        ((counter.value << 2) + U(i)) @@ U(0, padding bits)
+      }
+      .map(_.asBits)
+      .map(_.d())
   }
 
-  val adcData0                 = Vec(lvdsDataIn.DOUTD, lvdsDataIn.DOUTC, lvdsDataIn.DOUTB, lvdsDataIn.DOUTA)
-  val adcData1                 = Vec(lvdsDataIn.DOUTBD, lvdsDataIn.DOUTBC, lvdsDataIn.DOUTBB, lvdsDataIn.DOUTBA)
-  /**
-   * Groups the ADC data from two sources into channels.
-   *
-   * @param adcData0 The ADC data from source 0.
-   * @param adcData1 The ADC data from source 1.
-   * @return A sequence of vectors of bits representing the grouped channels.
-   */
-  val channels: Seq[Vec[Bits]] = adcData0.groupByChannel(2) ++ adcData1.groupByChannel(2)
-  val Seq(adc0X0S, adc0X1S, adc1X0S, adc1X1S) = channels.map(p2s)
+  val testData = Vec(lvdsArea.testData)
+  // data order in time is D,C,B,A
+  val adcData0 = Vec(lvdsDataIn.DOUTD, lvdsDataIn.DOUTC, lvdsDataIn.DOUTB, lvdsDataIn.DOUTA)
+  val adcData1 = Vec(lvdsDataIn.DOUTBD, lvdsDataIn.DOUTBC, lvdsDataIn.DOUTBB, lvdsDataIn.DOUTBA)
+
+  ////////////////////
+  // poly-phase & parallel to serial conversion
+  ////////////////////
+  def p2s(vec: Vec[Bits]): Bits = {
+    val streamParallelSlow = Stream(Bits(ADCBITWIDTH * 2 bits))
+    val streamSerial       = Stream(Bits(ADCBITWIDTH bits))
+
+    streamParallelSlow.valid   := True
+    streamParallelSlow.payload := vec.reverse.reduce(_ ## _)
+//    streamParallelSlow.payload := vec.reduce(_ ## _)
+
+    val streamParallelFast = streamParallelSlow.queue(8, lvdsClockDomain, ClockDomain.current)
+    StreamWidthAdapter(streamParallelFast, streamSerial, endianness = LITTLE)
+
+    streamSerial.m2sPipe().freeRun().payload // pipelined output
+  }
+  val channels: Seq[Vec[Bits]] = adcData0.groupByChannel(2) ++ adcData1.groupByChannel(2) ++ testData.groupByChannel(2)
+  val Seq(adc0X0S, adc0X1S, adc1X0S, adc1X1S, testData0, testData1) = channels.map(p2s)
 
   ////////////////////
   // channel selection
@@ -81,14 +97,6 @@ case class DataPath(
   val dataSelected = Vec(Bits(ADCBITWIDTH bits), 2)
   dataSelected(0) := Mux(useChannel0, adc0X0S, adc1X0S).d()
   dataSelected(1) := Mux(useChannel0, adc0X1S, adc1X1S).d()
-
-  ////////////////////
-  // test data generation
-  ////////////////////
-  val counter   = CounterFreeRun(1 << (UPLOADBITWIDTH - 1))
-  val padding   = ADCBITWIDTH - UPLOADBITWIDTH
-  val testData0 = (counter.value  << 1) @@ U(0, padding bits)
-  val testData1 = ((counter.value << 1) + U(1)) @@ U(0, padding bits)
 
   ////////////////////
   // data selection
