@@ -30,6 +30,8 @@ set_false_path -from [get_ports rstn]
 # data processing clock domain -> PCIe,connected by StreamFifoCC
 set_false_path -from [get_clocks data_clk] -to [get_clocks pcie_clk]
 set_false_path -from [get_clocks pcie_clk] -to [get_clocks data_clk]
+# PCIe data clock domain -> data processing clock domain, connected by 3 stage
+set_false_path -from [get_clocks pcie_data_clk] -to [get_clocks data_clk]
 # PCIe sampling 1-bit from a slower clock domain(dds_clk), ignore
 set_false_path -from [get_clocks dds_clk] -to [get_clocks pcie_data_clk]
 set_false_path -from [get_clocks pcie_data_clk] -to [get_clocks dds_clk]
