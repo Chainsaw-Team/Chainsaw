@@ -2,13 +2,12 @@ package Chainsaw.edaFlow.boards
 
 import spinal.core._
 import spinal.lib.IMasterSlave
-import spinal.lib.Stream
 
 // M2C = Mezzanine-to-Carrier,that is, sub-module to FPGA, vise versa
 // CC = clock capable pins, these pins can be used for clock signals.
 // FIXME: use "generate" instead of lazy
 
-abstract class Fmc extends Bundle with IMasterSlave {
+abstract class Fmc extends Bundle with IMasterSlave { // TODO: pull request to spinal.lib.bus.fmc
 
   lazy val CLK_M2C_P, CLK_M2C_N = Bits(2 bits)
   val LA_P, LA_N                = Bits(34 bits) // 68 single-ended signals/34 differential pairs, 00,01,17,18 are CC
@@ -40,7 +39,9 @@ class FmcLpc() extends Fmc {
 
   lazy val DP_M2C_P, DP_M2C_N, DP_C2M_P, DP_C2M_N = Bits(1 bits) // multi-gigabit transceiver data pairs
 
-  override def asMaster(): Unit = out(LA_P, LA_N)
+  override def asMaster(): Unit = {
+    out(LA_P, LA_N)
+  }
 
 }
 
@@ -57,7 +58,11 @@ class FmcHpc() extends Fmc {
 
 }
 
-class Pcie(pinCount: Int) extends Bundle with IMasterSlave {
+object FmcHpc {
+  def apply(): FmcHpc = new FmcHpc()
+}
+
+class PcieIntel(pinCount: Int) extends Bundle with IMasterSlave {
   assert(Seq(1, 2, 4, 8, 16).contains(pinCount), "pinCount must be 1,2,4,8 or 16")
   val perstn, refclk = Bool()
   val rx             = Bits(pinCount bits)
@@ -65,12 +70,28 @@ class Pcie(pinCount: Int) extends Bundle with IMasterSlave {
   this.setName("pcie")
 
   override def asMaster(): Unit = {
-    in(perstn, refclk, rx)
-    out(tx)
+    out(perstn, refclk, rx)
+    in(tx)
+  }
+}
+
+class PcieXilinx(pinCount: Int) extends Bundle with IMasterSlave {
+  assert(Seq(1, 2, 4, 8, 16).contains(pinCount), "pinCount must be 1,2,4,8 or 16")
+  val PERST_B_LS, REFCLK_P, REFCLK_N = Bool() // FIXME: is PERST_B_LS active-low?
+  val RX_P, RX_N, TX_P, TX_N         = Bits(pinCount bits)
+  this.setName("PCIE")
+
+  override def asMaster(): Unit = {
+    out(PERST_B_LS, REFCLK_P, REFCLK_N, RX_P, RX_N)
+    in(TX_P, TX_N)
   }
 
 }
 
-object Pcie {
-  def apply(pinCount: Int): Pcie = new Pcie(pinCount)
+object PcieIntel {
+  def apply(pinCount: Int): PcieIntel = new PcieIntel(pinCount)
+}
+
+object PcieXilinx {
+  def apply(pinCount: Int): PcieXilinx = new PcieXilinx(pinCount)
 }

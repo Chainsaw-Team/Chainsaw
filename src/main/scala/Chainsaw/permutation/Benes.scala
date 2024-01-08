@@ -1,8 +1,8 @@
 package Chainsaw.permutation
 
-import spinal.core._
 import org.jgrapht.alg.color.SmallestDegreeLastColoring
 import org.jgrapht.graph._
+import spinal.core._
 
 import scala.collection.JavaConverters._
 

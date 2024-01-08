@@ -1,5 +1,3 @@
 package Chainsaw
 
-package object memory {
-
-}
+package object memory {}

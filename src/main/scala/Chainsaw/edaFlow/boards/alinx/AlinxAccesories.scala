@@ -1,12 +1,22 @@
-package Chainsaw.edaFlow.boards
+package Chainsaw.edaFlow.boards.alinx
 
+import Chainsaw.edaFlow.boards.FmcLpc
 import spinal.core._
-import spinal.lib._
 
 import scala.language.postfixOps
 
-class Alinx40Pin() extends Bundle {
-  val P, N = Bits(17 bits)
+/** */
+class Alinx40Pin() extends Bundle { // TODO: pull request to spinal.lib.bus.alinx
+  // FIXME: "bools" in same bits must have same direction
+  val P, N                 = Bits(17 bits) // P = 3,5,7...35, N = 4,6,8...36
+  val validRange: Seq[Int] = 3 to 36
+
+  def apply(idx: Int): Bool = {
+    assert(validRange.contains(idx), "pin idx out of range")
+    if (idx % 2 == 1) P(idx / 2 - 1) else N(idx / 2 - 2)
+  }
+
+  def foreach(f: (Int, Bool) => Unit): Unit = validRange.foreach(i => f(i, apply(i)))
 }
 
 object Alinx40Pin {
@@ -30,10 +40,36 @@ case class AN9767() extends Component {
   alinx40PinOut.P(8) := channel2Wrt
 }
 
+case class AN9238() extends Component {
+  val alinx40Pin               = Alinx40Pin()
+  val channel1, channel2       = out UInt (12 bits)
+  val channel1Clk, channel2Clk = in Bool ()
+  val channel1Otr, channel2Otr = out Bool ()
+
+  alinx40Pin.foreach { case (i, pin) =>
+    i match {
+      case 5  => out(pin)    := channel2Clk
+      case 31 => out(pin)    := channel1Clk
+      case 16 => channel2Otr := in(pin)
+      case 32 => channel1Otr := in(pin)
+      case _ =>
+        if (i < 16) channel2(i - 4) := in(pin)
+        else {
+          val idx = if (i % 2 == 0) i - 20 else i - 18
+          channel1(idx) := in(pin)
+        }
+    }
+  }
+}
+
+object AN9238 extends App {
+  SpinalVerilog(AN9238())
+}
+
 object AN9767 {
   def getVoltageValue(voltage: Double): UInt = {
     // -4V -> 0x0000, 4V -> 0x3FFF
-    val step = (0x3fff - 0x0000) / (4.0 - (-4.0))
+    val step  = (0x3fff - 0x0000) / (4.0 - (-4.0))
     val value = ((voltage - (-4.0)) * step + 0x0000).toInt
     println(s"voltage: $voltage, value: $value")
     U(value, 14 bits)

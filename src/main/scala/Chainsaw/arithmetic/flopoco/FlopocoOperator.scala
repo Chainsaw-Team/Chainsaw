@@ -2,7 +2,6 @@ package Chainsaw.arithmetic.flopoco
 
 import Chainsaw._
 import Chainsaw.edaFlow.Device._
-import Chainsaw.edaFlow._
 import spinal.core._
 
 import java.io.File

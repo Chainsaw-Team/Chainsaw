@@ -1,178 +1,156 @@
 package Chainsaw.xillybus
 
+import Chainsaw._
+import Chainsaw.edaFlow.Device._
+import Chainsaw.edaFlow.boards.{PcieIntel, PcieXilinx}
 import spinal.core._
 import spinal.lib._
 
 import scala.language.postfixOps
 
-/** pcie-related signals on a board, which are necessary for a xillybus IP
- *
- *
- *
-  */
-case class PcieBundle() extends Bundle {
-  val perstn, refclk = in Bool ()
-  val rx             = in Bits (4 bits)
-  val tx             = out Bits (4 bits)
-  this.setName("pcie")
-}
+// TODO: do clockCrossing for output
 
-/** interface of a MemWrite device when you use it a as control channel which
-  * manipulate a register file
-  *
-  * @param ctrlDevice
-  *   the MemWrite device configuration
-  */
-case class XillybusCtrl(ctrlDevice: XillybusDevice) extends Bundle {
-  val update = Bool()
-  val addr   = UInt(ctrlDevice.addrWidth bits)
-  val value  = UInt(ctrlDevice.bitWidth bits)
-}
-
-case class FifoWriteInterface(width: Int) extends Bundle with IMasterSlave {
-  val wrreq, wrfull = Bool()
-  val data          = Bits(width bits)
-
-  override def asMaster(): Unit = {
-    in(wrfull)
-    out(wrreq, data)
-  }
-}
-
-case class FifoReadInterface(width: Int) extends Bundle with IMasterSlave {
-  val rdreq, rdempty = Bool()
-  val q              = Bits(width bits)
-
-  override def asMaster(): Unit = {
-    in(rdempty, q)
-    out(rdreq)
-  }
-}
-
-/** wrapper for xillybus that generate FIFOs for each stream channel, and expose
-  * the ctrl interface for the memory-map channel
+/** wrapper for xillybus that generate FIFOs for each stream channel, and expose the ctrl interface for the memory-map
+  * channel
   *
   * @param devices
-  *   the device files you define through xillybus IP factory
-  *   [[http://xillybus.com/custom-ip-factory]]
+  *   the device files you define through xillybus IP factory [[http://xillybus.com/custom-ip-factory]]
   */
-case class XillybusWrapper(devices: Seq[XillybusDevice]) extends Component {
+case class XillybusWrapper(
+    pinCount: Int,
+    devices: Seq[XillybusDevice],
+    target: ChainsawDevice,
+    dataClockDomain: Option[ClockDomain] = None
+) extends Component {
 
-  val dataClk =
-    in Bool () // clock from user application domain(rather than xillybus domain)
-  val ctrlClk = in Bool () // same as above
-  val pcie    = PcieBundle()
+  val pcieIntel  = target.isInstanceOf[AlteraDevice].generate(slave(PcieIntel(pinCount)))
+  val pcieXilinx = target.isInstanceOf[XilinxDevice].generate(slave(PcieXilinx(pinCount)))
 
-  val xillybus = Xillybus(devices) // xillybus IP
-
-  // I/O
-  val fifoWriteInterfaces = xillybus.streamsRead.map(device =>
-    slave(FifoWriteInterface(device.bitWidth))
-  )
-  val fifoReadInterfaces = xillybus.streamsWrite.map(device =>
-    slave(FifoReadInterface(device.bitWidth))
-  )
-  require(
-    xillybus.memsWrite.length == 1,
-    "this wrapper is valid only when xillybus has one and only one MemWrite device as control interface"
-  )
-  val ctrlDevice = xillybus.memsWrite.head
-  val ctrlOut    = out(XillybusCtrl(ctrlDevice))
+  val xillybus = Xillybus(pinCount, devices, target) // xillybus IP
 
   // global connections
-  pcie <> xillybus.pcie
+  target match {
+    case _: AlteraDevice => pcieIntel  <> xillybus.pcieIntel
+    case _: XilinxDevice => pcieXilinx <> xillybus.pcieXilinx
+  }
 
-  val dataDomain = ClockDomain(
-    clock  = dataClk,
-    reset  = xillybus.pcie.perstn,
-    config = ClockDomainConfig(resetActiveLevel = LOW)
+  val streamToHost   = xillybus.streamsRead.map(device => slave(Stream(Bits(device.bitWidth bits))))
+  val streamFromHost = xillybus.streamsWrite.map(device => master(Stream(Bits(device.bitWidth bits))))
+
+  assert(
+    xillybus.memsBi.length + xillybus.memsRead.length + xillybus.memsWrite.length == 1,
+    "only one mem device is supported"
   )
-  val ctrlDomain = ClockDomain(
-    clock  = ctrlClk,
-    reset  = xillybus.pcie.perstn,
-    config = ClockDomainConfig(resetActiveLevel = LOW)
+  val innerMemBus = xillybus.memBiInterfaces.headOption
+    .getOrElse(
+      xillybus.memWriteInterfaces.headOption
+        .getOrElse(xillybus.memReadInterfaces.headOption.get)
+    )
+  val memBus = MemBi(xillybus.memsBi.head)
+  memBus <> innerMemBus
+
+  // xillybus IP <-> stream interface
+
+  val pcieClockDomain = ClockDomain(
+    clock = xillybus.bus_clk,
+    reset = target match {
+      case device: AlteraDevice => xillybus.pcieIntel.perstn
+      case device: XilinxDevice => xillybus.pcieXilinx.PERST_B_LS
+    },
+    config = ClockDomainConfig(resetActiveLevel = LOW) // TODO: active-low for both Xilinx and Altera?
   )
-  val xillyDomain = ClockDomain(
-    clock  = xillybus.bus_clk,
-    reset  = xillybus.pcie.perstn,
-    config = ClockDomainConfig(resetActiveLevel = LOW)
-  )
 
-  val bufferSize = 4096
+  // creating buffers for read/write
+  // TODO: considering using extra stage for data from/to FIFO
+  val dataClockDomainInUse = dataClockDomain.getOrElse(pcieClockDomain)
+  pcieClockDomain on {
+    xillybus.streamsRead.zip(xillybus.streamReadInterfaces).zip(streamToHost).foreach {
+      case ((device, busSide), userSide) =>
+        val buffer = StreamFifoCC(
+          dataType  = HardType(busSide.data),
+          depth     = device.getFifoDepth,
+          pushClock = dataClockDomainInUse,
+          popClock  = pcieClockDomain
+        )
+        buffer.setDefinitionName(s"${device.name}_fifo")
 
-  // stream channels connections
-  xillybus.streamsRead
-    .zip(xillybus.streamReadInterfaces.zip(fifoWriteInterfaces))
-    .foreach { case (device, (busSide, userSide)) =>
-      val dcFifo = StreamFifoCC(
-        Bits(device.bitWidth bits),
-        bufferSize / (device.bitWidth / 8),
-        dataDomain,
-        xillyDomain
-      )
-      dcFifo.setName(s"${device.name}_fifo")
-      // xillybus <-> FIFO
-      dcFifo.io.pop.ready := busSide.rden
-      busSide.empty       := !dcFifo.io.pop.valid
-      busSide.data        := dcFifo.io.pop.payload
-      busSide.eof         := False
-      // user logic <-> FIFO
-      dcFifo.io.push.valid   := userSide.wrreq
-      dcFifo.io.push.payload := userSide.data
-      userSide.wrfull        := !dcFifo.io.push.ready
+        println(f"fifoDepth for ${device.name} = ${device.getFifoDepth}")
 
-      dcFifo.io.pushOccupancy.setName("pushOccupancy")
-      dcFifo.io.pop.setName("popOccupancy")
+        busSide.eof := False // unused
+        userSide    >> buffer.io.push
+
+        val streamOut = buffer.io.pop.m2sPipe() // extra stage before connected to Xillybus, or deep buffer may lead to intra-clock timing issue
+        streamOut.ready := busSide.rden.d() // data should be valid on the following clock cycle of rden
+        busSide.empty := buffer.io.popOccupancy.d() <= U(1) // changed in advanced, as a read command may be in queue
+        busSide.data  := streamOut.payload
+
+//        buffer.io.pop.ready := busSide.rden.d() // data should be valid on the following clock cycle of rden
+//        busSide.empty := buffer.io.popOccupancy <= U(1) // changed in advanced, as a read command may be in queue
+//        busSide.data  := buffer.io.pop.payload
     }
 
-  xillybus.streamsWrite
-    .zip(xillybus.streamWriteInterfaces.zip(fifoReadInterfaces))
-    .foreach { case (device, (busSide, userSide)) =>
-      val dcFifo = StreamFifoCC(
-        Bits(device.bitWidth bits),
-        bufferSize.toInt / (device.bitWidth / 8),
-        xillyDomain,
-        dataDomain
-      )
-      dcFifo.setName(s"${device.name}_fifo")
-      // xillybus <-> FIFO
-      dcFifo.io.push.valid   := busSide.wren
-      dcFifo.io.push.payload := busSide.data
-      busSide.full           := !dcFifo.io.push.ready
-      // user logic <-> FIFO
-      dcFifo.io.pop.ready := userSide.rdreq
-      userSide.rdempty    := !dcFifo.io.pop.valid
-      busSide.data        := dcFifo.io.pop.payload
+    xillybus.streamsWrite.zip(xillybus.streamWriteInterfaces).zip(streamFromHost).foreach {
+      case ((device, busSide), userSide) =>
+        val buffer = StreamFifoCC(
+          dataType  = HardType(busSide.data),
+          depth     = device.getFifoDepth,
+          pushClock = pcieClockDomain,
+          popClock  = dataClockDomainInUse
+        )
+        buffer.setDefinitionName(s"${device.name}_fifo")
+
+        println(f"fifoDepth for ${device.name} = ${device.getFifoDepth}")
+
+        buffer.io.pop          >> userSide
+        buffer.io.push.valid   := busSide.wren
+        busSide.full           := !buffer.io.push.ready
+        buffer.io.push.payload := busSide.data
     }
 
-  // ctrl channel connections
-  val ctrlChannel = xillybus.memWriteInterfaces.head
-  ctrlChannel.full := False // as we use a register file
+  }
 
-  val combinedType = HardType(
-    UInt(ctrlDevice.bitWidth + ctrlDevice.addrWidth bits)
-  )
-  val ctrlFifo = StreamFifoCC(combinedType, 16, xillyDomain, ctrlDomain)
-  ctrlFifo.setName(s"${ctrlDevice.name}_fifo")
-  ctrlFifo.io.push.valid   := ctrlChannel.wren
-  ctrlFifo.io.push.payload := ctrlChannel.addr @@ ctrlChannel.data
-
-  ctrlOut.update := ctrlFifo.io.pop.valid
-  ctrlOut.addr  := ctrlFifo.io.pop.payload.takeHigh(ctrlDevice.addrWidth).asUInt
-  ctrlOut.value := ctrlFifo.io.pop.payload.takeLow(ctrlDevice.bitWidth).asUInt
-  ctrlFifo.io.pop.ready := True
-
-  def getReadInterfaceByName(name: String) =
+  def getStreamFromHost(name: String): Stream[Bits] =
     xillybus.streamsWrite
-      .zip(fifoReadInterfaces)
+      .zip(streamFromHost)
       .find(_._1.name == name)
       .get
       ._2
 
-  def getWriteInterfaceByName(name: String) =
+  def getStreamToHost(name: String): Stream[Bits] =
     xillybus.streamsRead
-      .zip(fifoWriteInterfaces)
+      .zip(streamToHost)
       .find(_._1.name == name)
       .get
       ._2
+
+  // TODO: need to upgrade ip
+  if (target.isInstanceOf[XilinxDevice]) println("""
+      |execute following tcl commands before synth_design:
+      |read_verilog xillybus.v # from the corebundle generated
+      |read_verilog xillybus_core.v # from the corebundle generated
+      |read_verilog xillybus_core.edf # from the corebundle generated
+      |import_ip $deviceFamily.xci # from the demo project for this family
+      |""".stripMargin)
+
+  if (target.isInstanceOf[AlteraDevice]) println("""
+      |execute following tcl commands before synth_design:
+      |set_global_assignment -name VERILOG_FILE xillybus.v # from the corebundle generated
+      |set_global_assignment -name QXP_FILE xillybus_core.qxp # from the corebundle generated
+      |set_global_assignment -name VERILOG_FILE pcie_c5_4x.v # from the demo project for this family
+      |set_global_assignment -name QSYS_FILE pcie_reconfig.qsys # from the demo project for this family
+      |""".stripMargin)
+}
+
+object XillybusWrapper {
+
+  def defaultDevices: Seq[XillybusDevice] = Seq(
+    XillybusFifoRead("read_32", 32),
+    XillybusFifoWrite("write_32", 32),
+    XillybusFifoRead("read_8", 8),
+    XillybusFifoWrite("write_8", 8),
+    XillybusMemBi("mem_32", 32, 16)
+  )
+
+  def defaultWrapper(pinCount: Int, device: ChainsawDevice): XillybusWrapper =
+    XillybusWrapper(pinCount, defaultDevices, device)
 }

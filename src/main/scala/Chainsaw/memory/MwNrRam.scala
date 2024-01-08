@@ -1,21 +1,11 @@
 package Chainsaw.memory
 
-import Chainsaw._                // for basic templates
-import Chainsaw.dsp._            // for dsp operators
-import Chainsaw.arithmetic._     // for arithmetic operators
-import Chainsaw.crypto._         // for crypto operators
-import Chainsaw.edaFlow.vivado._ // for Xilinx FPGA Flow
-
+import Chainsaw._
+import Chainsaw.edaFlow._
+import Chainsaw.edaFlow.vivado._
+import Chainsaw.memory.RamPortType._
 import spinal.core._
 import spinal.lib._
-import spinal.lib.fsm._       // for finite state machine dialect
-import spinal.lib.bus._       // for all kinds of bus and regIf
-import spinal.lib.bus.regif._ // for regIf
-import spinal.sim._           // for simulation
-import spinal.core.sim._      // for more simulation
-import Chainsaw.edaFlow._
-
-import Chainsaw.memory.RamPortType._
 
 /** @see
   *   ''Efficient Multi-Ported Memories for FPGAs'' [[https://dl.acm.org/doi/10.1145/1723112.1723122]]
@@ -133,6 +123,6 @@ case class mWnRDUT(m: Int, n: Int, mode: MwNrMode) extends Component {
 
 object MwNrRam {
   def main(args: Array[String]): Unit = {
-    VivadoTask.fastImplModule("MwNrRam", MwNrRam(2, 2, PURELOGIC))
+    VivadoTask.implModule("MwNrRam", MwNrRam(2, 2, PURELOGIC))
   }
 }

@@ -1,8 +1,8 @@
 package Chainsaw.arithmetic
 
 import Chainsaw._
+import Chainsaw.arithmetic.bitheap._
 import spinal.core._
-import bitheap._
 
 import scala.language.postfixOps
 

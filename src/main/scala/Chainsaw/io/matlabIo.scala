@@ -8,13 +8,13 @@ package Chainsaw.io
 import com.mathworks.engine.MatlabEngine
 import com.mathworks.matlab.types
 import spinal.core._
+
 import java.nio.file.Paths
 import scala.io.Source
 
 object matlabIo {
 
-  /**
-    * Define your Matlab working space's path.
+  /** Define your Matlab working space's path.
     */
   var matlabWorkingSpace = java.nio.file.Paths.get("./matlabWorkspace")
 
@@ -30,8 +30,10 @@ object matlabIo {
   type MCellStr      = types.CellStr
 
   /** Write content to a file in matlabWorkingSpace
-    * @param fileName String
-    * @param content String
+    * @param fileName
+    *   String
+    * @param content
+    *   String
     */
   def writeFile(fileName: String, content: String) = {
     val filepath = Paths.get(matlabWorkingSpace.toString, fileName)
@@ -42,8 +44,10 @@ object matlabIo {
   }
 
   /** Write content to a file incrementally
-    * @param fileName String
-    * @param content String
+    * @param fileName
+    *   String
+    * @param content
+    *   String
     */
   def writeFileIncrementally(fileName: String, content: String) = {
     val filepath   = Paths.get(matlabWorkingSpace.toString, fileName)
@@ -54,8 +58,7 @@ object matlabIo {
     writer.close()
   }
 
-  /**
-    * Utils used for Array.
+  /** Utils used for Array.
     */
   implicit class ArrayUtil(array: Array[_]) {
     def info: String = { // valid for "pure" array only
@@ -92,8 +95,7 @@ object matlabIo {
     }
   }
 
-  /**
-    * Utils used for Matlab's Struct type.
+  /** Utils used for Matlab's Struct type.
     */
   implicit class StructUtil(struct: MStruct) {
     def formatted = {
@@ -112,52 +114,45 @@ object matlabIo {
     }
   }
 
-  /**
-    * Create one-dimensional Matlab array from Seq.
+  /** Create one-dimensional Matlab array from Seq.
     */
   implicit class MatlabArray[T](array: Seq[T]) {
     def asMatlab = "[" + array.mkString(", ") + "]"
   }
 
-  /**
-    * Create two-dimensional Matlab array from Seq.
+  /** Create two-dimensional Matlab array from Seq.
     */
   implicit class MatlabArray2[T](array: Seq[Seq[T]]) {
     def asMatlab = "[" + array.map(_.mkString(", ")).mkString("; ") + "]"
   }
 
-  /**
-    * Create complex type from Matlab complex Type "MComplex".
+  /** Create complex type from Matlab complex Type "MComplex".
     */
   implicit class MComplexUtil(complex: MComplex) {
     def toBComplex = breeze.math.Complex(complex.real, complex.imag)
   }
 
-  /**
-    * Utils used for MatlabEngine.
+  /** Utils used for MatlabEngine.
     */
   implicit class EngUtil(eng: MatlabEngine) {
     def setWorkingDir(workingDir: String): Unit = eng.eval(s"cd $workingDir")
 
-  /**
-    * Get fileName as type [T].
-    */
+    /** Get fileName as type [T].
+      */
     def load[T](fileName: String): T = {
       eng.eval(s"load $fileName")
       eng.getVariable(fileName).asInstanceOf[T]
     }
 
-  /**
-    * Get variable from a file through Matlab working space.
-    */
+    /** Get variable from a file through Matlab working space.
+      */
     def load[T](fileName: String, varName: String): T = {
       eng.eval(s"load $fileName")
       eng.getVariable(varName).asInstanceOf[T]
     }
 
-  /**
-    * Get variable from Matlab as SFix.
-    */
+    /** Get variable from Matlab as SFix.
+      */
     def getSFixType(variableName: String) = {
       eng.eval(
         s"temp0 = ${variableName}.numerictype.Signedness;\n" +
@@ -171,9 +166,8 @@ object matlabIo {
       HardType(SFix((wordLength - 1 - fractionLength) exp, -fractionLength exp))
     }
 
-  /**
-    * Get variable from Matlab as fixed raws.
-    */
+    /** Get variable from Matlab as fixed raws.
+      */
     def getFixRaws(variableName: String) = {
       eng.eval(s"temp = int($variableName);")
       eng.getVariable("temp").asInstanceOf[Array[Int]]

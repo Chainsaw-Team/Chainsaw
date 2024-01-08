@@ -5,7 +5,6 @@ import Chainsaw.edaFlow.EdaFlowUtils.EdaDirectoryUtils.{genRtlSourcesAndDeviceFr
 import spinal.core._
 
 import java.io.File
-import scala.collection.mutable.ArrayBuffer
 
 sealed trait ChainsawEdaFlowInput {
   def getWorkspaceDir(): File

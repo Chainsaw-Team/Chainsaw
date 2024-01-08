@@ -1,7 +1,6 @@
 package Chainsaw.dsp
 
 import Chainsaw._
-import Chainsaw.intel.QuartusFlow
 import Chainsaw.edaFlow.vivado._
 import spinal.core._
 import spinal.lib._

@@ -1,8 +1,9 @@
 package Chainsaw.edaFlow
 
+import Chainsaw.edaFlow.Device._
 import Chainsaw.edaFlow.EdaFlowUtils.ParseReportUtils
 import org.slf4j._
-import Chainsaw.edaFlow.Device._
+
 import java.io.File
 import scala.io.Source
 

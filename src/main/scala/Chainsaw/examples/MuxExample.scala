@@ -1,12 +1,9 @@
 package Chainsaw.examples
 
-import spinal.core._
-import spinal.core.sim._
-import spinal.lib._
-import spinal.lib.fsm._
 import Chainsaw._
 import Chainsaw.edaFlow.Device.vu9p
 import Chainsaw.edaFlow.vivado._
+import spinal.core._
 
 import java.io.File
 import scala.language.postfixOps

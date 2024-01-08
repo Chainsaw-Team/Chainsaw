@@ -3,13 +3,9 @@ package Chainsaw.arithmetic.flopoco
 import Chainsaw._
 import Chainsaw.edaFlow.Device.XilinxDeviceFamily
 import Chainsaw.edaFlow.vivado._
-import spinal.core._
-import spinal.lib._
-import Chainsaw.edaFlow._
 import spinal.core.{IntToBuilder, _}
 
 import scala.language.postfixOps
-import scala.util.Random
 
 /** An integer squarer(input is unsigned).
   *

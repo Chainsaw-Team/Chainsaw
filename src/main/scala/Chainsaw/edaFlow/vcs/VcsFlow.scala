@@ -3,19 +3,15 @@ package Chainsaw.edaFlow.vcs
 import Chainsaw._
 import Chainsaw.edaFlow.Device.generic
 import Chainsaw.edaFlow._
+import org.apache.commons.io.FileUtils
+import org.slf4j._
+import spinal.core._
+import spinal.core.sim._
+import spinal.sim._
 
 import java.io.File
 import scala.collection.mutable.ArrayBuffer
 import scala.io.Source
-import org.apache.commons.io.FileUtils
-import spinal.lib._
-import spinal.core._
-import spinal.core.sim._
-import spinal.lib.sim._
-import org.scalatest.funsuite._
-import org.slf4j._
-import spinal.lib.DoCmd
-import spinal.sim.VCSFlags
 
 /** The class which can be used to run VcsTask
   * @param designInput

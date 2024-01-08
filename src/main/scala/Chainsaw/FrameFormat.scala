@@ -1,12 +1,12 @@
 package Chainsaw
 
-import scala.collection.mutable.ArrayBuffer
-
-/** @param flow
-  *   a 2-dimensional matrix in which each row is a cycle, a each column is a
-  *   port, element >= 0 means valid, elements share a same value should be the
-  *   same
-  */
+/**
+ * Represents a frame format, which is a 2-dimensional matrix containing cycles and ports.
+ *
+ * @param flow
+ * The frame format matrix, where each row represents a cycle and each column represents a port.
+ * Each element >= 0 indicates a valid value, and elements with the same value should be the same.
+ */
 case class FrameFormat(flow: Seq[Seq[Int]]) {
 
   /** -------- properties
@@ -46,8 +46,7 @@ case class FrameFormat(flow: Seq[Seq[Int]]) {
       .mkString("\n")}"
   }
 
-  /** generate the waveform figure as json file, which can be rendered by VS
-    * Code plugin "Waveform Render"
+  /** generate the waveform figure as json file, which can be rendered by VS Code plugin "Waveform Render"
     *
     * @param name
     *   name of the json file
@@ -68,9 +67,8 @@ case class FrameFormat(flow: Seq[Seq[Int]]) {
 
     val waves: Seq[String] =
       flow.transpose.map(seq => seq.map(toWave).mkString(""))
-    val data: Seq[Seq[String]] = flow.transpose.map(seq =>
-      seq.filter(_ > -1).map(toData) ++ seq.filter(_ > -1).map(toDataPrime)
-    )
+    val data: Seq[Seq[String]] =
+      flow.transpose.map(seq => seq.filter(_ > -1).map(toData) ++ seq.filter(_ > -1).map(toDataPrime))
 
     val waveforms = waves.zip(data).zipWithIndex.map { case ((wave, data), i) =>
       Waveform(s"port$i", addPrePost(wave.repeat(2)), data)

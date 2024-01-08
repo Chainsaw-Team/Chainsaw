@@ -1,0 +1,10 @@
+set_global_assignment -name IP_TOOL_NAME "ALTLVDS_RX"
+set_global_assignment -name IP_TOOL_VERSION "18.0"
+set_global_assignment -name IP_GENERATED_DEVICE_FAMILY "{Cyclone V}"
+set_global_assignment -name VERILOG_FILE [file join $::quartus(qip_path) "LVDS14.v"]
+set_global_assignment -name MISC_FILE [file join $::quartus(qip_path) "LVDS14.bsf"]
+set_global_assignment -name MISC_FILE [file join $::quartus(qip_path) "LVDS14_inst.v"]
+set_global_assignment -name MISC_FILE [file join $::quartus(qip_path) "LVDS14_bb.v"]
+set_global_assignment -name MISC_FILE [file join $::quartus(qip_path) "LVDS14.inc"]
+set_global_assignment -name MISC_FILE [file join $::quartus(qip_path) "LVDS14.cmp"]
+set_global_assignment -name MISC_FILE [file join $::quartus(qip_path) "LVDS14.ppf"]

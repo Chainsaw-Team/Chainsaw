@@ -85,8 +85,7 @@ class StreamExampleTest extends AnyFlatSpec {
       if (s == 0.0) {
         ret += a(i)
         i += 1
-      }
-      else {
+      } else {
         ret += b(j)
         j += 1
       }
@@ -108,6 +107,36 @@ class StreamExampleTest extends AnyFlatSpec {
         dut.clockDomain.forkStimulus(2)
         dut.clockDomain.waitSamplingWhere(scoreboard.matches == ret.length)
       }
+    }
+
+  }
+
+  // TODO: test P2SCC with StreamUtils
+  it should "work with P2SCC" in {
+
+    SimConfig.withFstWave.compile(new StreamP2SCC(8, 3)).doSim { dut =>
+      dut.domainSlow.forkStimulus(6)
+      dut.domainFast.forkStimulus(2)
+
+      dut.slow.valid #= false
+      dut.fast.ready #= false
+      dut.domainSlow.waitSampling()
+
+      dut.fast.ready #= true
+      (0 until 10).foreach { i =>
+        if (i < 10) {
+          (0 until 3).foreach { j =>
+            dut.slow.valid      #= true
+            dut.slow.payload(j) #= i * 3 + j
+          }
+          dut.slow.valid #= true
+        } else {
+          dut.slow.valid #= false
+        }
+        dut.domainSlow.waitSampling()
+      }
+      dut.domainSlow.waitSampling(10)
+
     }
 
   }

@@ -3,13 +3,9 @@ package Chainsaw.arithmetic.flopoco
 import Chainsaw._
 import Chainsaw.edaFlow.Device.XilinxDeviceFamily
 import Chainsaw.edaFlow.vivado._
-import spinal.core._
-import spinal.lib._
-import Chainsaw.edaFlow._
 import spinal.core.{IntToBuilder, _}
 
 import scala.language.postfixOps
-import scala.util.Random
 
 /** General-purpose lookup table, need to enter the "truth table", when the output bit width is large, the automatic
   * complement of 0

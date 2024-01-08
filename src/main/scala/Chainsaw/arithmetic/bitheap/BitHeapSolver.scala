@@ -1,12 +1,11 @@
 package Chainsaw.arithmetic.bitheap
 
-import Chainsaw.arithmetic.{Compressor3to1, Compressor6to3}
 import Chainsaw._
-import Chainsaw.arithmetic._
+import Chainsaw.arithmetic.{Compressor3to1, _}
 
-import scala.math._
-import scala.collection.mutable.ArrayBuffer
 import scala.collection._
+import scala.collection.mutable.ArrayBuffer
+import scala.math._
 
 /** the base class of BitHeap solver, it define all the method which solver need
   * @note

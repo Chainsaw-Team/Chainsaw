@@ -1,13 +1,8 @@
 package Chainsaw.dsp
 
-import spinal.core._
-import spinal.lib._
-import spinal.core.sim._
-import spinal.sim._
-import spinal.lib.fsm._
-import spinal.lib.bus._
 import Chainsaw._
 import Chainsaw.edaFlow.vivado._
+import spinal.core._
 
 import scala.collection.mutable.ArrayBuffer
 

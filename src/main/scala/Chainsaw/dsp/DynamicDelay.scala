@@ -1,8 +1,8 @@
 package Chainsaw.dsp
 
 import Chainsaw._
-import Chainsaw.memory.DynamicTimeOut
 import Chainsaw.edaFlow.vivado._
+import Chainsaw.memory.DynamicTimeOut
 import spinal.core._
 import spinal.lib._
 

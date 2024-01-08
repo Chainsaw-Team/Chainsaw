@@ -1,9 +1,9 @@
 package Chainsaw.edaFlow
 
-import Chainsaw.edaFlow.vivado.VivadoUtil
 import Chainsaw._
-import spinal.lib._
+import Chainsaw.edaFlow.vivado.VivadoUtil
 import spinal.core._
+
 import java.io.File
 
 object Device {
@@ -33,7 +33,7 @@ object Device {
       familyPart: String,
       fMax: HertzNumber,
       xdcFile: Option[File],
-      budget: VivadoUtil = VivadoUtil()
+      budget: VivadoUtil = VivadoUtil() // FIXME: budget for Xilinx, Altera and Generic
   ) {}
 
   class XilinxDevice(
@@ -59,6 +59,7 @@ object Device {
       xdcFile: Option[File],
       budget: VivadoUtil = VivadoUtil()
   ) extends ChainsawDevice(Altera, family, part, fMax, xdcFile, budget) {
+
 
     def bramCapacity = budget.bram36 * 36 * 1024 / pow2(20).toDouble
 

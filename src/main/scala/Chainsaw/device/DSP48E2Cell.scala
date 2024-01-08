@@ -2,6 +2,7 @@ package Chainsaw.device
 
 import spinal.core._
 import spinal.lib.History
+
 import scala.language.postfixOps
 
 /** @param nameIdx

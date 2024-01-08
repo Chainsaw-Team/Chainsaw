@@ -33,8 +33,8 @@ class CheckNode(idx: Int) extends TannerNode() {
 }
 
 class TannerEdge(
-                  var messageLikelihood: Llr = Llr(0),
-                  var checkLikelihood: Llr   = Llr(0)
+    var messageLikelihood: Llr = Llr(0),
+    var checkLikelihood: Llr   = Llr(0)
 ) {
   def messageNode(implicit tannerGraph: TannerGraph) = tannerGraph.getEdgeSource(this).asInstanceOf[MessageNode]
   def checkNode(implicit tannerGraph: TannerGraph)   = tannerGraph.getEdgeTarget(this).asInstanceOf[CheckNode]
@@ -82,7 +82,7 @@ case class TannerGraph() extends SimpleGraph[TannerNode, TannerEdge](classOf[Tan
           .map(other => getEdge(other, check).messageLikelihood)
           .reduce(_ ⊞ _)
         getEdge(message, check).checkLikelihood = likelihood
-        if(verbose >= 1) println(s"L[$check -> $message] = ${likelihood.value}")
+        if (verbose >= 1) println(s"L[$check -> $message] = ${likelihood.value}")
       }
     )
   }
@@ -100,7 +100,7 @@ case class TannerGraph() extends SimpleGraph[TannerNode, TannerEdge](classOf[Tan
           .reduce(_ + _) + base
 
         this.getEdge(message, check).messageLikelihood = likelihood
-        if(verbose >= 1) println(s"L[$message -> $check] = ${likelihood.value}")
+        if (verbose >= 1) println(s"L[$message -> $check] = ${likelihood.value}")
       }
     }
   }
@@ -132,7 +132,7 @@ object TannerGraph {
     // add nodes
     (0 until parityCheckMatrix.messageNodeCount).foreach(i => graph.addMessageNode(i))
     (0 until parityCheckMatrix.checkNodeCount).foreach(i   => graph.addCheckNode(i))
-    if(verbose >= 1) println(graph.vertexSet().asScala.mkString(" "))
+    if (verbose >= 1) println(graph.vertexSet().asScala.mkString(" "))
     // add edges
     parityCheckMatrix.value.zipWithIndex.foreach { case (row, checkId) =>
       row.zipWithIndex.foreach { case (ele, messageId) =>
@@ -140,7 +140,7 @@ object TannerGraph {
           val src = graph.messageNodes(messageId)
           val des = graph.checkNodes(checkId)
           graph.addEdge(src, des, new TannerEdge())
-          if(verbose >= 1) println(s"add $src -> $des")
+          if (verbose >= 1) println(s"add $src -> $des")
         }
       }
     }

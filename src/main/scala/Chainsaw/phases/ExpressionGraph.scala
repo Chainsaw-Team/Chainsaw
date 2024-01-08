@@ -1,14 +1,9 @@
 package Chainsaw.phases
 
-import Chainsaw.{ChainsawBaseModule, FixedLatency, logger, verbose}
-import optimus.optimization.enums.SolverLib
-import optimus.optimization.model.MPFloatVar
-import optimus.optimization.{MPModel, add, minimize, release, start}
+import Chainsaw.logger
 import org.jgrapht._
 import org.jgrapht.graph._
 import spinal.core._
-import spinal.core.internals._
-import Chainsaw._
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable

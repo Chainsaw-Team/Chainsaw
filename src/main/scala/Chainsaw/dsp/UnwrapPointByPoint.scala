@@ -1,9 +1,9 @@
 package Chainsaw.dsp
 
+import Chainsaw.NumericExt._
 import Chainsaw._
 import Chainsaw.edaFlow.vivado._
 import spinal.core._
-import Chainsaw.NumericExt._
 
 import scala.language.postfixOps // for Xilinx FPGA Flow
 

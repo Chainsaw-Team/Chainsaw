@@ -1,6 +1,7 @@
 package Chainsaw.examples
 
 import org.yaml.snakeyaml.Yaml
+
 import scala.io.Source
 
 // for details, see https://bitbucket.org/snakeyaml/snakeyaml/wiki/Documentation

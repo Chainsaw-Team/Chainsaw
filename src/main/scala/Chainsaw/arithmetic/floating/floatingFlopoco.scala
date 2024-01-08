@@ -1,9 +1,8 @@
 package Chainsaw.arithmetic.floating
 
 import Chainsaw.edaFlow.Device._
-import Chainsaw.{ChainsawBaseGenerator, FLOPOCO, doCmd, doCmds, logger}
-import spinal.core.sim.SimConfig
-import spinal.core.{HertzNumber, IntToBuilder}
+import Chainsaw.{FLOPOCO, doCmd, doCmds, logger}
+import spinal.core.HertzNumber
 
 import java.io.File
 import scala.io.Source

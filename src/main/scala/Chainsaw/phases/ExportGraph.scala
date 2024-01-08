@@ -13,8 +13,7 @@ import java.io.File
 import javax.imageio.ImageIO
 
 /** unified graph visualization interface
- *
- */
+  */
 object ExportGraph {
   def apply[V, E](graph: Graph[V, E], name: String) = {
     val graphAdapter = new JGraphXAdapter[V, E](graph) // manager which store the information for rendering
@@ -26,7 +25,7 @@ object ExportGraph {
     layout.setLevelDistance(5)
 
     layout.execute(graphAdapter.getDefaultParent) // starts from a tree layout
-    val image = mxCellRenderer.createBufferedImage(graphAdapter, null, 2, Color.WHITE, true, null)
+    val image   = mxCellRenderer.createBufferedImage(graphAdapter, null, 2, Color.WHITE, true, null)
     val imgFile = new File(dagOutputDir, s"$name.png")
     logger.info(s"view the DFG of $name at ${imgFile.getAbsolutePath}")
     ImageIO.write(image, "PNG", imgFile)

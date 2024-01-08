@@ -1,7 +1,7 @@
-package Chainsaw.project.chipEval
+package Chainsaw.project.ChipVerify
 
 import Chainsaw.DataUtil
-import Chainsaw.edaFlow.boards.{AN9767, AXKU041, FL1010}
+import Chainsaw.edaFlow.boards.alinx.{AN9767, AXKU041, FL1010}
 import Chainsaw.edaFlow.vivado.VivadoTask
 import spinal.core._
 import spinal.lib._
@@ -54,6 +54,6 @@ case class DaExample() extends AXKU041 {
 object DaExample extends App {
 
   SpinalVerilog(DaExample())
-  VivadoTask.fastGenModuleBitStream("DaExample", DaExample())
+  VivadoTask.genBitStreamForBoard("DaExample", DaExample())
 
 }

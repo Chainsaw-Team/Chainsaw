@@ -1,12 +1,10 @@
 package Chainsaw.arithmetic.flopoco
 
-import Chainsaw.{ChainsawOperatorModule, NumericType, TestCase, pow2}
 import Chainsaw.edaFlow.Device._
 import Chainsaw.edaFlow.vivado._
-import spinal.lib._
+import Chainsaw.{ChainsawOperatorModule, NumericType, TestCase, pow2}
 import spinal.core._
-import spinal.lib.fsm._
-import spinal.core.sim._
+import spinal.lib._
 
 import scala.util.Random
 

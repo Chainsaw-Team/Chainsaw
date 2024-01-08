@@ -7,9 +7,7 @@ import Chainsaw.edaFlow.vivado.VivadoUtil
 import spinal.core._
 import spinal.lib._
 
-import scala.collection.immutable
-import scala.collection.mutable.ArrayBuffer
-import scala.math.{BigInt, log}
+import scala.math.BigInt
 
 /** the abstract class of row adder compressor which define almost all information need, but some information needs to
   * be defined in the subclass according to the specific compressor

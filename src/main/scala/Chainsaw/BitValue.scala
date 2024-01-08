@@ -3,7 +3,6 @@ package Chainsaw
 import spinal.core._
 
 import scala.collection.mutable.ArrayBuffer
-import scala.math.BigInt
 
 /** this class providing methods for you to manipulate BigInt just like Bits
   * @param value

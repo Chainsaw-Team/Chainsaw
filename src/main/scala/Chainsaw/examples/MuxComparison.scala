@@ -1,15 +1,15 @@
 package Chainsaw.examples
 
 import spinal.core._
-import spinal.core.internals.{LeafStatement, StatementDoubleLinkedContainer, StatementDoubleLinkedContainerElement, SwitchStatement, TreeStatement, WhenStatement}
+import spinal.core.internals.{SwitchStatement, TreeStatement, WhenStatement}
 
 import scala.language.postfixOps
 
 class MuxComparison(style: Int) extends Component {
 
   val a, b, c, d = in UInt (8 bits)
-  val ctrl = in UInt (2 bits)
-  val r = out UInt (8 bits)
+  val ctrl       = in UInt (2 bits)
+  val r          = out UInt (8 bits)
 
   style match {
     case 0 =>
@@ -36,17 +36,17 @@ class MuxComparison(style: Int) extends Component {
       r := vec(ctrl)
   }
 
-  val context: Unit = GlobalData.get.phaseContext.topLevel
-    .dslBody.foreachStatements { s =>
+  val context: Unit = GlobalData.get.phaseContext.topLevel.dslBody.foreachStatements { s =>
     println(s"${ClassName(s)} -> $s")
     s match {
-      case statement: TreeStatement => statement match {
-        case statement: SwitchStatement =>
-          statement.elements.foreach(println)
-        case statement: WhenStatement =>
-          println(statement.whenTrue)
-          println(statement.whenFalse)
-      }
+      case statement: TreeStatement =>
+        statement match {
+          case statement: SwitchStatement =>
+            statement.elements.foreach(println)
+          case statement: WhenStatement =>
+            println(statement.whenTrue)
+            println(statement.whenFalse)
+        }
       case _ =>
     }
   }

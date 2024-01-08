@@ -1,9 +1,9 @@
 package Chainsaw.device
 
-import spinal.core._
 import Chainsaw._
-import java.io.File
+import spinal.core._
 
+import java.io.File
 import scala.language.postfixOps
 
 /** Primitives in unisim library, usePrimitives in Chainsaw package should be set as true for synth, false for sim
@@ -30,7 +30,7 @@ case class CARRY8(carryType: String = "SINGLE_CY8") extends Unisim {
     val CARRY_TYPE = carryType
   }
   val CO, O      = out UInt (8 bits)
-  val CI, CI_TOP = in Bool (1 bits)
+  val CI, CI_TOP = in Bool ()
   val DI, S      = in UInt (8 bits) // S is the "propagate" input
   addPrimitive("CARRY8")
 }
@@ -43,16 +43,16 @@ object MULTMODE extends Enumeration {
   val AB1, AD0B1, AAD01, AD0AD01 = Value
 }
 
-import MULTMODE._
+import Chainsaw.device.MULTMODE._
 
 // ports for cascading
 case class DSPCASC() extends Bundle {
-  val A        = UInt(30 bits)
-  val B        = UInt(18 bits)
-  val P        = UInt(48 bits)
-  val CARRY    = Bool()
-  val MULTSIGN = Bool()
-  val all      = Seq(A, B, P, CARRY, MULTSIGN)
+  val ACIN        = UInt(30 bits)
+  val BCIN        = UInt(18 bits)
+  val PCIN        = UInt(48 bits)
+  val CARRYCASCIN = Bool()
+  val MULTSIGNIN  = Bool()
+  val all         = Seq(ACIN, BCIN, PCIN, CARRYCASCIN, MULTSIGNIN)
 }
 
 case class DSPCONTROL() extends Bundle { // 4
@@ -113,17 +113,17 @@ case class DSP48E2(attrs: DSPAttrs) extends Unisim { // This is actually a Black
   DATAIN.setName("")
   DATAOUT.setName("")
 
-  CASCDATAIN.A.setName("ACIN")
-  CASCDATAIN.B.setName("BCIN")
-  CASCDATAIN.P.setName("PCIN")
-  CASCDATAIN.CARRY.setName("CARRYCASCIN")
-  CASCDATAIN.MULTSIGN.setName("MULTSIGNIN")
+  CASCDATAIN.ACIN.setName("ACIN")
+  CASCDATAIN.BCIN.setName("BCIN")
+  CASCDATAIN.PCIN.setName("PCIN")
+  CASCDATAIN.CARRYCASCIN.setName("CARRYCASCIN")
+  CASCDATAIN.MULTSIGNIN.setName("MULTSIGNIN")
 
-  CASCDATAOUT.A.setName("ACOUT")
-  CASCDATAOUT.B.setName("BCOUT")
-  CASCDATAOUT.P.setName("PCOUT")
-  CASCDATAOUT.CARRY.setName("CARRYCASCOUT")
-  CASCDATAOUT.MULTSIGN.setName("MULTSIGNOUT")
+  CASCDATAOUT.ACIN.setName("ACOUT")
+  CASCDATAOUT.BCIN.setName("BCOUT")
+  CASCDATAOUT.PCIN.setName("PCOUT")
+  CASCDATAOUT.CARRYCASCIN.setName("CARRYCASCOUT")
+  CASCDATAOUT.MULTSIGNIN.setName("MULTSIGNOUT")
 
   val inputs  = Seq(INST, CASCDATAIN, DATAIN, CEs, RSTs)
   val outputs = Seq(CASCDATAOUT, DATAOUT)

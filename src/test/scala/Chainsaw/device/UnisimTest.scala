@@ -29,7 +29,7 @@ class UnisimTest extends AnyFlatSpec {
   "LUT6" should "synth" in {
     if (hasVivado)
       VivadoTask
-        .fastSynthModule("Lut6Dut", Lut6Dut(BigInt(0)))
+        .synthModule("Lut6Dut", Lut6Dut(BigInt(0)))
         .requireUtil(VivadoUtil(lut = 1), PreciseRequirement)
   }
 
@@ -51,7 +51,7 @@ class UnisimTest extends AnyFlatSpec {
   it should "synth" in {
     if (hasVivado)
       VivadoTask
-        .fastSynthModule("CARRY8", CARRY8())
+        .synthModule("CARRY8", CARRY8())
         .requireUtil(VivadoUtil(carry8 = 1), PreciseRequirement)
   }
 

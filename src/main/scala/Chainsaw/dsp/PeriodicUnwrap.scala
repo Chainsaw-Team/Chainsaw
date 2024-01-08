@@ -1,10 +1,9 @@
 package Chainsaw.dsp
 import Chainsaw._
-import Chainsaw.io.pythonIo._
 import Chainsaw.edaFlow.vivado._
+import Chainsaw.io.pythonIo._
 import spinal.core._
 
-import java.io.File
 import scala.language.postfixOps
 
 case class PeriodicUnwrap(numericType: NumericType, periodMax: Int) extends ChainsawDynamicInfiniteGenerator {

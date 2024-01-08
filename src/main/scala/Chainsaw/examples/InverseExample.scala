@@ -1,13 +1,8 @@
 package Chainsaw.examples
 
-import spinal.core._
-import spinal.core.sim._
-import spinal.lib._
-import spinal.lib.fsm._
-
-import Chainsaw._
-import Chainsaw.edaFlow.vivado._
 import Chainsaw.device._
+import Chainsaw.edaFlow.vivado._
+import spinal.core._
 
 import scala.language.postfixOps
 
@@ -29,7 +24,7 @@ case class InverseExample(method: Int) extends Component {
 
 object InverseExample {
   def main(args: Array[String]): Unit = {
-    VivadoTask.fastSynthModule("InverseExample", InverseExample(0)) // 500 LUT
-    VivadoTask.fastSynthModule("InverseExample", InverseExample(1)) // 250 LUT
+    VivadoTask.synthModule("InverseExample", InverseExample(0)) // 500 LUT
+    VivadoTask.synthModule("InverseExample", InverseExample(1)) // 250 LUT
   }
 }

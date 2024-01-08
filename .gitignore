@@ -35,6 +35,7 @@ src/main/resources/*
 !src/main/resources/install
 !src/main/resources/matlabScripts/
 !src/main/resources/das/
+!src/main/resources/xdc/
 
 
 # Workspaces
@@ -59,3 +60,21 @@ src/main/scala/draft.sc
 /src/main/resources/das/matlab/
 
 
+*.rpt
+*.summary
+*.cdb
+*.hdb
+*.qws
+*.rdb
+*.db_info
+*.hif
+*.qmsg
+*.sci
+*.qsf
+*.qpf
+*.ddb
+Acq250.py
+db/Acq250Top.cbx.xml
+db/Acq250Top.smart_action.txt
+regIf.html
+regIf.py

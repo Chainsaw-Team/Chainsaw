@@ -1,13 +1,10 @@
 package Chainsaw.phases
 
+import Chainsaw._
 import spinal.core._
+import spinal.core.internals._
 import spinal.core.sim._
 import spinal.lib._
-import spinal.lib.fsm._
-
-import Chainsaw._
-
-import spinal.core.internals._
 
 /** padding for generators with unaligned data
   */

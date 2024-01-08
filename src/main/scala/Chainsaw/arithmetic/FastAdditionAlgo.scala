@@ -1,15 +1,11 @@
 package Chainsaw.arithmetic
 
-import spinal.core._
-import spinal.core.sim._
-import spinal.lib._
-import spinal.lib.fsm._
-
-import scala.util.Random
 import Chainsaw._
 import Chainsaw.edaFlow.vivado._
+import spinal.core._
 
 import scala.collection.mutable.ArrayBuffer
+import scala.util.Random
 
 abstract class FastAdditionAlgo extends HardAlgo {
 

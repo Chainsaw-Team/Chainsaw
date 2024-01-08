@@ -3,7 +3,6 @@ package Chainsaw.examples
 import ai.djl.ndarray._
 import ai.djl.ndarray.types._
 
-import java.io.OutputStream
 import java.nio.file.{Files, Paths}
 
 object NDArrayExample extends App {

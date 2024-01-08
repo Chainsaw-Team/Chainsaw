@@ -4,15 +4,10 @@ object RamPortType extends Enumeration {
   val READ, WRITE, READWRITE = Value
 }
 
+import Chainsaw.memory.RamPortType._
 import spinal.core._
+import spinal.core.sim._
 import spinal.lib._
-import spinal.lib.fsm._ // for finite state machine dialect
-import spinal.lib.bus._ // for all kinds of bus and regIf
-import spinal.lib.bus.regif._ // for regIf
-import spinal.sim._ // for simulation
-import spinal.core.sim._ // for more simulation
-
-import RamPortType._
 
 case class XILINX_BRAM_PORT(dataWidth: Int, addressWidth: Int, portType: RamPortType = READWRITE)
     extends Bundle
@@ -93,12 +88,10 @@ case class XILINX_BRAM_PORT(dataWidth: Int, addressWidth: Int, portType: RamPort
     }
   }
 
-
 }
 
-/** General BRAM model for FPGAs
- * BRAMs are natively synchronous both at read and write port
- */
+/** General BRAM model for FPGAs BRAMs are natively synchronous both at read and write port
+  */
 case class BlockRam(dataWidth: Int, addressWidth: Int) extends Component {
 
   val ioA = slave(XILINX_BRAM_PORT(dataWidth, addressWidth))

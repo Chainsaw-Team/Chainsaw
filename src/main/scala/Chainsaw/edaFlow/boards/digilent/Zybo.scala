@@ -1,4 +1,4 @@
-package Chainsaw.edaFlow.boards
+package Chainsaw.edaFlow.boards.digilent
 
 import Chainsaw.edaFlow.Device._
 import Chainsaw.edaFlow._
