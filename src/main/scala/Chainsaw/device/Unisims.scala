@@ -30,7 +30,7 @@ case class CARRY8(carryType: String = "SINGLE_CY8") extends Unisim {
     val CARRY_TYPE = carryType
   }
   val CO, O      = out UInt (8 bits)
-  val CI, CI_TOP = in Bool (1 bits)
+  val CI, CI_TOP = in Bool ()
   val DI, S      = in UInt (8 bits) // S is the "propagate" input
   addPrimitive("CARRY8")
 }

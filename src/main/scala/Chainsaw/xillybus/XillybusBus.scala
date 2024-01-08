@@ -28,6 +28,11 @@ case class XillybusBusIf(bus: MemBi) extends BusIf {
   override val readData  = RegInit(B(0, bus.device.bitWidth bits))
   override val readError = RegInit(False) // unused
 
+  override val withStrb: Boolean = false
+  override val wstrb: Bits       = withStrb generate Bits(strbWidth bits)
+  override val wmask: Bits       = withStrb generate Bits(busDataWidth bit)
+  override val wmaskn: Bits      = withStrb generate Bits(busDataWidth bit)
+
   bus.dataR := readData
   bus.full  := False
   bus.empty := False

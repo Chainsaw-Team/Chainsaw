@@ -57,6 +57,12 @@ case class YourBusIf(bus: YourBus) extends BusIf {
 
   override def busDataWidth = bus.rData.getBitsWidth
 
+  override val withStrb: Boolean = false
+  override val wstrb: Bits       = withStrb generate Bits(strbWidth bits)
+  override val wmask: Bits       = withStrb generate Bits(busDataWidth bit)
+  override val wmaskn: Bits      = withStrb generate Bits(busDataWidth bit)
+
+  override type RefOwnerType = this.type
 }
 
 // using bus interface to generate a register file in your design

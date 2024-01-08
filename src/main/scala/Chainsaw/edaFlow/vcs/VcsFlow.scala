@@ -7,6 +7,7 @@ import org.apache.commons.io.FileUtils
 import org.slf4j._
 import spinal.core._
 import spinal.core.sim._
+import spinal.sim._
 
 import java.io.File
 import scala.collection.mutable.ArrayBuffer
